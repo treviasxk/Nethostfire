@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>10</LangVersion>
+    <Version>1.0.4.0</Version>
+    <AssemblyVersion>1.0.4.0</AssemblyVersion>
+    <FileVersion>1.0.4.0</FileVersion>
+    <Company>Trevias Xk</Company>
+    <Authors>Trevias Xk</Authors>
+    <Product>Nethostfire</Product>
+    <Description>Nethostfire é um servidor criado em .NET Core com C#, é um projeto simples e de fácil entendimento, é perfeito para criação de servidores de jogos como por exemplo a Unity 3D.</Description>
+    <Copyright>Trevias Xk © 2022</Copyright>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+</Project>
