@@ -12,6 +12,7 @@ namespace Nethostfire {
         static UdpClient MyClient;
         static IPEndPoint Host;
         static int PacketCount, PackTmp, TimeTmp;
+        static float PacketsReceived, PacketsSent;
         static string PublicKeyXMLServer = "";
         static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
@@ -31,7 +32,29 @@ namespace Nethostfire {
         /// <summary>
         /// Quantidade de pacotes recebido por segundo.
         /// </summary>
-        public static int PacketsReceivedPerSeconds {get {return PackTmp;}}
+        public static string PacketsPerSeconds {get {return PackTmp +"pps";}}
+        public static string PacketsSizeReceived {get {
+                if(PacketsReceived > 1024000000)
+                return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
+                if(PacketsReceived > 1024000)
+                return (PacketsReceived / 1024000).ToString("0.00") + "MB";
+                if(PacketsReceived > 1024)
+                return (PacketsReceived / 1024).ToString("0.00") + "KB";
+                if(PacketsReceived < 1024)
+                return (PacketsReceived).ToString("0.00") + "Bytes";
+                return "";
+        }}
+        public static string PacketsSizeSent {get {
+                if(PacketsSent > 1000000000)
+                return (PacketsSent / 1000000000).ToString("0.00") + "GB";
+                if(PacketsSent > 1000000)
+                return (PacketsSent / 1000000).ToString("0.00") + "MB";
+                if(PacketsSent > 1000)
+                return (PacketsSent / 1000).ToString("0.00") + "KB";
+                if(PacketsSent < 1000)
+                return (PacketsSent).ToString("0.00") + "Bytes";
+                return "";
+        }}
         /// <summary>
         /// Conecta no servidor com um IP e Porta especifico.
         /// </summary>
@@ -80,6 +103,7 @@ namespace Nethostfire {
                 if(Status == ClientStatusConnection.Connected){
                   byte[] buffer = Resources.ByteToSend(_byte, _type, _encrypt);
                   MyClient.Send(buffer, buffer.Length); 
+                  PacketsSent += buffer.Length;
                 }
             }catch{}
         }
@@ -100,15 +124,16 @@ namespace Nethostfire {
             }
         }
         private static void ClientReceiveUDP(){
-            while(true){
-                PacketCount++;
-                if(DateTime.Now.Second != TimeTmp){
-                    TimeTmp = DateTime.Now.Second;
-                    PackTmp = PacketCount;
-                    PacketCount = 0;
-                }
+            while(true){            
                 try{
                     byte[] data = MyClient.Receive(ref Host);
+                    PacketsReceived += data.Length;
+                    PacketCount++;
+                    if(DateTime.Now.Second != TimeTmp){
+                        TimeTmp = DateTime.Now.Second;
+                        PackTmp = PacketCount;
+                        PacketCount = 0;
+                    }
                     if(data.Length == 1){
                         switch(data[0]){
                             case 0:

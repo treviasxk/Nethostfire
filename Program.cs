@@ -50,13 +50,14 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         Console.WriteLine("[STATUS] {0}", _status);
         if(_status == ClientStatusConnection.Connected){
-            string _text = "OI";
-            Client.SendBytes(Encoding.UTF8.GetBytes(_text), _text.GetType());
+            var _text = Encoding.UTF8.GetBytes("Hello world");
+            Client.SendBytes(_text, _text.GetType());
         }
     }
     static void OnReceivedNewDataServer(byte[] _byte, Type _type){
         Console.WriteLine("[RECEIVED] {0} - {1}", _type, Encoding.UTF8.GetString(_byte));
     }
+    
     //========================= Events Server =========================
     static void OnConnectedClient(DataClient _dataClient){
         Console.WriteLine("[CLIENT] {0} conectou no servidor.", _dataClient.IP);

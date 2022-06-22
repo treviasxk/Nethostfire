@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -67,6 +68,7 @@ class Resources{
             return (null, null);
         }
     }
+    
     public static byte[] ByteToSend(byte[] _byte, Type _type, bool _encrypt){
         try{
             if(_encrypt){

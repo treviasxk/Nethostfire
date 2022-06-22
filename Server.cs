@@ -49,16 +49,16 @@ namespace Nethostfire {
       /// </summary>
       public static string PacketsPerSeconds {get {return PackTmp +"pps";}}
       public static string PacketsSizeReceived {get {
-            if(PacketsReceived > 1000000000)
-            return (PacketsReceived / 1000000000).ToString("0.00") + "GB";
-            if(PacketsReceived > 1000000)
-            return (PacketsReceived / 1000000).ToString("0.00") + "MB";
-            if(PacketsReceived > 1000)
-            return (PacketsReceived / 1000).ToString("0.00") + "KB";
-            if(PacketsReceived < 1000)
+            if(PacketsReceived > 1024000000)
+            return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
+            if(PacketsReceived > 1024000)
+            return (PacketsReceived / 1024000).ToString("0.00") + "MB";
+            if(PacketsReceived > 1024)
+            return (PacketsReceived / 1024).ToString("0.00") + "KB";
+            if(PacketsReceived < 1024)
             return (PacketsReceived).ToString("0.00") + "Bytes";
             return "";
-         }}
+      }}
       public static string PacketsSizeSent {get {
             if(PacketsSent > 1000000000)
             return (PacketsSent / 1000000000).ToString("0.00") + "GB";
@@ -69,7 +69,7 @@ namespace Nethostfire {
             if(PacketsSent < 1000)
             return (PacketsSent).ToString("0.00") + "Bytes";
             return "";
-         }}
+      }}
       /// <summary>
       /// O modo Debug gera um arquivo de log "/Nethostfire_ErrorLogs.txt" e acrescente detalhes de um erro sempre que ocorre durante a execução.
       /// </summary>
@@ -224,6 +224,7 @@ namespace Nethostfire {
                if(DataClients.Any(DataClient => DataClient.IP.ToString() == _ip.ToString())){
                   int index = DataClients.FindIndex(DataClient => DataClient.IP.ToString() == _ip.ToString());
                   _dataClient = DataClients.ElementAt(index);
+
                   if(data.Length == 1){
                      switch(data[0]){
                         case 0:
@@ -239,7 +240,7 @@ namespace Nethostfire {
                }
 
                if(data.Length > 1){
-                  var _data = Resources.ByteToReceive(data);
+                  (byte[], Type) _data = Resources.ByteToReceive(data);
                   string _text = Encoding.UTF8.GetString(_data.Item1);
                   if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
                      _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
