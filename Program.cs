@@ -31,6 +31,7 @@ class Program {
         switch(op){
             case "1":
                 Server.Start(new IPEndPoint(IPAddress.Any, 25000));
+                Client.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
                 Console.ReadKey();
             break;
             case "2":
@@ -51,11 +52,12 @@ class Program {
         Console.WriteLine("[STATUS] {0}", _status);
         if(_status == ClientStatusConnection.Connected){
             var _text = Encoding.UTF8.GetBytes("Hello world");
-            Client.SendBytes(_text, _text.GetType());
+            Client.SendBytes(_text, _text.GetHashCode());
         }
     }
-    static void OnReceivedNewDataServer(byte[] _byte, Type _type){
-        Console.WriteLine("[RECEIVED] {0} - {1}", _type, Encoding.UTF8.GetString(_byte));
+    static void OnReceivedNewDataServer(byte[] _byte, int _hashCode){
+        //Console.WriteLine("[RECEIVED] {0} - {1}", _hashCode, Encoding.UTF8.GetString(_byte));
+        Client.SendBytes(_byte, _hashCode);
     }
     
     //========================= Events Server =========================
@@ -65,10 +67,12 @@ class Program {
     static void OnDisconnectedClient(DataClient _dataClient){
         Console.WriteLine("[CLIENT] {0} desconectou do servidor.", _dataClient.IP);
     }
-    static void OnReceivedNewDataClient(byte[] _byte, Type _type, DataClient _dataClient){
+
+
+    static void OnReceivedNewDataClient(byte[] _byte, int _hashCode, DataClient _dataClient){
         Console.Title = "Server - (Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent;
-        Console.WriteLine("[RECEIVED] {0} - {1}", _type, Encoding.UTF8.GetString(_byte));
-        Server.SendBytes(_byte, _type, _dataClient);
+        //Console.WriteLine("[RECEIVED] {0}", _hashCode);
+        Server.SendBytes(_byte, _hashCode, _dataClient);
     }
     static void OnServerStatusConnection(ServerStatusConnection _status){
         if(_status == ServerStatusConnection.Running){
