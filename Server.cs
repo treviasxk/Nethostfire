@@ -117,41 +117,32 @@ namespace Nethostfire {
       /// <summary>
       ///  Envia uma string para o servidor.
       /// </summary>
-      public static void SendBytes(byte[] _byte, Type _type, DataClient _dataClient, bool _encrypt = false){
-         try{
-            if(Status == ServerStatusConnection.Running){
-               byte[] buffer = Resources.ByteToSend(_byte, _type, _encrypt);
-               MyServer.Send(buffer, buffer.Length, _dataClient.IP);
-               PacketsSent += buffer.Length;
-            }
-         }catch{}
+      public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient){
+         if(Status == ServerStatusConnection.Running){
+            Resources.Send(MyServer, _byte, _hashCode, _dataClient);
+            PacketsSent += _byte.Length;
+         }
       }
       /// <summary>
       ///  Envie a string para um grupo de Clients conectado no servidor.
       /// </summary>
-      public static void SendBytesGroup(byte[] _byte, Type _type, List<DataClient> _dataClients, bool _encrypt = false){
+      public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients){
          foreach(DataClient _dataClient in _dataClients){
-            try{
-               if(Status == ServerStatusConnection.Running){
-                  byte[] buffer = Resources.ByteToSend(_byte, _type, _encrypt);
-                  MyServer.Send(buffer, buffer.Length, _dataClient.IP);
-                  PacketsSent += buffer.Length;
-               }
-            }catch{}
+            if(Status == ServerStatusConnection.Running){
+               Resources.Send(MyServer, _byte, _hashCode, _dataClient);
+               PacketsSent += _byte.Length;
+            }
          }
       }
       /// <summary>
       ///  Envie a string para todos os Clients conectado no servidor.
       /// </summary>
-      public static void SendBytesAll(byte[] _byte, Type _type, bool _encrypt = false){
+      public static void SendBytesAll(byte[] _byte, int _hashCode){
          foreach(DataClient _dataClient in DataClients){
-            try{
-               if(Status == ServerStatusConnection.Running){
-                  byte[] buffer = Resources.ByteToSend(_byte, _type, _encrypt);
-                  MyServer.Send(buffer, buffer.Length, _dataClient.IP);
-                  PacketsSent += buffer.Length;
-               }
-            }catch{}
+            if(Status == ServerStatusConnection.Running){
+               Resources.Send(MyServer, _byte, _hashCode, _dataClient);
+               PacketsSent += _byte.Length;
+            }
          }
       }
       /// <summary>
@@ -234,13 +225,14 @@ namespace Nethostfire {
                         case 1:
                            _dataClient.Ping = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) - _dataClient.Time - 1000;
                            _dataClient.Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+                           SendOnline(_dataClient);
                         break;
                      }
                   }
                }
 
                if(data.Length > 1){
-                  (byte[], Type) _data = Resources.ByteToReceive(data);
+                  (byte[], int) _data = Resources.ByteToReceive(data);
                   string _text = Encoding.UTF8.GetString(_data.Item1);
                   if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
                      _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
@@ -260,12 +252,21 @@ namespace Nethostfire {
       static void SendEncryption(DataClient _dataClient){
          try{
             if(Status == ServerStatusConnection.Running){
-               string _text = Resources.PublicKeyXML;
-               byte[] buffer  = Resources.ByteToSend(Encoding.UTF8.GetBytes(_text), _text.GetType(), false);
+               byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
+               Resources.Send(MyServer, _byte, _byte.GetHashCode(), _dataClient);
+            }
+         }catch{}
+      }
+      static void SendOnline(DataClient _dataClient){
+         try{
+            if(Status == ServerStatusConnection.Running){
+               byte[] buffer  = new byte[] {1};
                MyServer.Send(buffer, buffer.Length, _dataClient.IP);
             }
          }catch{}
       }
+
+
       static void CheckOnline(){
          while(true){
             for(int i = 0; i < DataClients.Count; i++){

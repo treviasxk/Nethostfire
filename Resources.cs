@@ -1,13 +1,14 @@
-using System.Linq;
+using System.IO.Compression;
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
-using System.Text;
+
 
 namespace Nethostfire {
     public partial class Eventos: EventArgs{
-        public delegate void OnReceivedNewDataServer(byte[] _byte, Type _type);
+        public delegate void OnReceivedNewDataServer(byte[] _byte, int _hashCode);
         public delegate void OnClientStatusConnection(ClientStatusConnection _status);
-        public delegate void OnReceivedNewDataClient(byte[] _byte, Type _type, DataClient _dataClient);
+        public delegate void OnReceivedNewDataClient(byte[] _byte,  int _hashCode, DataClient _dataClient);
         public delegate void OnServerStatusConnection(ServerStatusConnection _status);
         public delegate void OnConnectedClient(DataClient _dataClient);
         public delegate void OnDisconnectedClient(DataClient _dataClient);
@@ -28,12 +29,60 @@ namespace Nethostfire {
         Connected = 2,
         Connecting = 3,
     }
+public class Utility{
+
+    public static byte[] EncryptRSAByte(byte[] _byte){
+        try{
+            Resources.RSA.FromXmlString(Resources.PublicKeyXML);
+            return Resources.RSA.Encrypt(_byte, true);
+        }catch(Exception ex){
+            Resources.AddLogError(ex);
+            return null;
+        }
+    }
+    
+    public static byte[] DecryptRSAByte(byte[] _byte){
+        try{
+            Resources.RSA.FromXmlString(Resources.PublicKeyXML);
+            return Resources.RSA.Decrypt(_byte, RSAEncryptionPadding.OaepSHA1);
+        }catch(Exception ex){
+            Resources.AddLogError(ex);
+            return null;
+        }
+    }
+
+    public static byte[] CompressByte(byte[] _byte){
+        try{
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(output, CompressionMode.Compress)){
+                dstream.Write(_byte, 0, _byte.Length);
+            }
+            return output.ToArray();
+        }catch(Exception ex){
+            Resources.AddLogError(ex);
+            return null;
+        }
+    }
+    
+    public static byte[] DecompressByte(byte[] data){
+        try{
+            MemoryStream input = new MemoryStream(data);
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress)){
+                dstream.CopyTo(output);
+            }
+            return output.ToArray();
+        }catch(Exception ex){
+            Resources.AddLogError(ex);
+            return null;
+        }
+    }
+}
 }
 
 class Resources{
     public static bool SaveLogError = true;
     public static string PrivateKeyXML, PublicKeyXML;
-    public static Rijndael CryptClient = Rijndael.Create();
     public static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
     public static void GenerateKeyRSA(){
         PrivateKeyXML = RSA.ToXmlString(true);
@@ -47,51 +96,39 @@ class Resources{
         }catch{}
     }
 
-    public static (byte[], Type) ByteToReceive(byte[] _byte){
+    public static (byte[], int) ByteToReceive(byte[] _byte){
         try{
-            if(_byte[0] == 1){
-                RSA.FromXmlString(PrivateKeyXML);
-                byte[] type = new byte[_byte[1]];
-                type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
-                byte[] data = new byte[_byte.Length - type.Length - 2];
-                _byte.Skip(2 + _byte[1]).ToArray().CopyTo(data,0);
-                return (RSA.Decrypt(data, RSAEncryptionPadding.OaepSHA1), Type.GetType(Encoding.UTF8.GetString(type)));
-            }else{
-                byte[] type = new byte[_byte[1]];
-                type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
-                byte[] data = new byte[_byte.Length - type.Length - 2];
-                _byte.Skip(2 + _byte[1]).ToArray().CopyTo(data,0);
-                return (data, Type.GetType(Encoding.UTF8.GetString(type)));
-            }
+            byte[] type = new byte[_byte[0]];
+            type = _byte.Skip(1).ToArray().Take(_byte[0]).ToArray();
+            byte[] data = new byte[_byte.Length - type.Length - 1];
+            _byte.Skip(1 + _byte[0]).ToArray().CopyTo(data,0);
+            return (data, BitConverter.ToInt32(type,0));
         }catch(Exception ex){
             AddLogError(ex);
-            return (null, null);
+            return (null, 0);
         }
     }
     
-    public static byte[] ByteToSend(byte[] _byte, Type _type, bool _encrypt){
+    public static byte[] ByteToSend(byte[] _byte, int _hashCode){
         try{
-            if(_encrypt){
-                RSA.FromXmlString(PublicKeyXML);
-                _byte = RSA.Encrypt(_byte, RSAEncryptionPadding.OaepSHA1);
-                byte[] type = Encoding.UTF8.GetBytes(_type.ToString());
-                byte[] data = new byte[_byte.Length + type.Length + 2];
-                type.CopyTo(data, 2);
-                _byte.CopyTo(data, 2 + type.Length);
-                data[0] = 1;
-                data[1] = (byte)type.Length;
-                return data;
-            }else{
-                byte[] type = Encoding.UTF8.GetBytes(_type.ToString());
-                byte[] data = new byte[_byte.Length + type.Length + 2];
-                type.CopyTo(data, 2);
-                _byte.CopyTo(data, 2 + type.Length);
-                data[1] = (byte)type.Length;
-                return data;
-            }
+            byte[] type = BitConverter.GetBytes(_hashCode);
+            byte[] data = new byte[_byte.Length + type.Length + 1];
+            type.CopyTo(data, 1);
+            _byte.CopyTo(data, 1 + type.Length);
+            data[0] = (byte)type.Length;
+            return data;
         }catch(Exception ex){
             AddLogError(ex);
             return null;
         }
+    }
+    public static void Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient _dataClient = null){
+        try{
+            byte[] buffer = Resources.ByteToSend(_byte, _hashCode);
+            if(_dataClient == null)
+                _udpClient.Send(buffer, buffer.Length);
+            else
+                _udpClient.Send(buffer, buffer.Length, _dataClient.IP);
+        }catch{}
     }
 }
