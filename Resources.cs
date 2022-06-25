@@ -5,17 +5,9 @@ using System.Security.Cryptography;
 
 
 namespace Nethostfire {
-    public partial class Eventos: EventArgs{
-        public delegate void OnReceivedNewDataServer(byte[] _byte, int _hashCode);
-        public delegate void OnClientStatusConnection(ClientStatusConnection _status);
-        public delegate void OnReceivedNewDataClient(byte[] _byte,  int _hashCode, DataClient _dataClient);
-        public delegate void OnServerStatusConnection(ServerStatusConnection _status);
-        public delegate void OnConnectedClient(DataClient _dataClient);
-        public delegate void OnDisconnectedClient(DataClient _dataClient);
-    }
     public class DataClient{
-        public IPEndPoint IP;
-        public float Ping;
+        public IPEndPoint? IP;
+        public string? Ping;
         public long Time;
         public string PublicKeyXML = "";
     }
@@ -31,23 +23,23 @@ namespace Nethostfire {
     }
 public class Utility{
 
-    public static byte[] EncryptRSAByte(byte[] _byte){
+    public static byte[] EncryptRSAByte(byte[] _byte, string _publicKeyXML){
         try{
-            Resources.RSA.FromXmlString(Resources.PublicKeyXML);
+            Resources.RSA.FromXmlString(_publicKeyXML);
             return Resources.RSA.Encrypt(_byte, true);
         }catch(Exception ex){
             Resources.AddLogError(ex);
-            return null;
+            return new byte[]{};
         }
     }
     
     public static byte[] DecryptRSAByte(byte[] _byte){
         try{
-            Resources.RSA.FromXmlString(Resources.PublicKeyXML);
-            return Resources.RSA.Decrypt(_byte, RSAEncryptionPadding.OaepSHA1);
+            Resources.RSA.FromXmlString(Resources.PrivateKeyXML);
+            return Resources.RSA.Decrypt(_byte, true);
         }catch(Exception ex){
             Resources.AddLogError(ex);
-            return null;
+            return new byte[]{};
         }
     }
 
@@ -60,7 +52,7 @@ public class Utility{
             return output.ToArray();
         }catch(Exception ex){
             Resources.AddLogError(ex);
-            return null;
+            return new byte[]{};
         }
     }
     
@@ -74,15 +66,15 @@ public class Utility{
             return output.ToArray();
         }catch(Exception ex){
             Resources.AddLogError(ex);
-            return null;
+            return new byte[]{};
         }
     }
 }
 }
 
 class Resources{
-    public static bool SaveLogError = true;
-    public static string PrivateKeyXML, PublicKeyXML;
+    public static bool SaveLogError = false;
+    public static string PrivateKeyXML = "", PublicKeyXML = "";
     public static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
     public static void GenerateKeyRSA(){
         PrivateKeyXML = RSA.ToXmlString(true);
@@ -105,7 +97,7 @@ class Resources{
             return (data, BitConverter.ToInt32(type,0));
         }catch(Exception ex){
             AddLogError(ex);
-            return (null, 0);
+            return (new byte[]{}, 0);
         }
     }
     
@@ -119,10 +111,10 @@ class Resources{
             return data;
         }catch(Exception ex){
             AddLogError(ex);
-            return null;
+            return new byte[]{};
         }
     }
-    public static void Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient _dataClient = null){
+    public static void Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient? _dataClient = null){
         try{
             byte[] buffer = Resources.ByteToSend(_byte, _hashCode);
             if(_dataClient == null)

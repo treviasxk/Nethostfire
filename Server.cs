@@ -9,29 +9,29 @@ using System.Text;
 
 namespace Nethostfire {
    public class Server {
-      static UdpClient MyServer;
-      static IPEndPoint Host;
+      static UdpClient? MyServer;
+      static IPEndPoint? Host;
       static int PacketCount, PackTmp, TimeTmp;
       static float PacketsReceived, PacketsSent;
       static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
       static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
-      static  Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
+      static Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
       /// <summary>
       /// O evento é chamado quando uma string é recebido de um Client e também será retornado uma string e o endereço IP do Client no parâmetro da função.
       /// </summary>
-      public static event Eventos.OnReceivedNewDataClient OnReceivedNewDataClient;
+      public static Action<byte[], int, DataClient>? OnReceivedNewDataClient;
         /// <summary>
         /// O evento é chamado quando o status do servidor muda: Stopped ou Running e também será retornado um ServerStatusConnection no parâmetro da função.
         /// </summary>
-      public static event Eventos.OnServerStatusConnection OnServerStatusConnection;
+      public static Action<ServerStatusConnection>? OnServerStatusConnection;
       /// <summary>
       /// O evento é chamado quando um Client é conectado no servidor.
       /// </summary>
-      public static event Eventos.OnConnectedClient OnConnectedClient;
+      public static Action<DataClient>? OnConnectedClient;
       /// <summary>
       /// O evento é chamado quando um Client se conecta no servidor e também é retornado o endereço IP do Client.
       /// </summary>
-      public static event Eventos.OnDisconnectedClient OnDisconnectedClient;
+      public static Action<DataClient>? OnDisconnectedClient;
       /// <summary>
       /// Lista de todos os Clients que estão conectado no servidor.
       /// </summary>
@@ -39,7 +39,7 @@ namespace Nethostfire {
       /// <summary>
       /// Estado atual do servidor, Connected, Disconnected ou Reconnecting.
       /// </summary>
-      public static ServerStatusConnection Status {get;set;} = ServerStatusConnection.Stopped;
+      public static ServerStatusConnection Status = ServerStatusConnection.Stopped;
       /// <summary>
       /// Número total de Clients conectado
       /// </summary>
@@ -103,22 +103,22 @@ namespace Nethostfire {
          if(Status == ServerStatusConnection.Running){
             manualResetEvent.Reset();
             Thread.Sleep(3000);
-            DisconnectClientAll();
+            DataClients.Clear();
             Resources.GenerateKeyRSA();
-            Thread.Sleep(2000);
             ChangeStatus(ServerStatusConnection.Stopped);
          }
       }
       /// Reinicia o servidor. (Todos os Clients serão desconectados)
       public static void Reset(){
          Stop();
-         Start(Host);
+         if(Host != null)
+            Start(Host);
       }
       /// <summary>
       ///  Envia uma string para o servidor.
       /// </summary>
       public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient){
-         if(Status == ServerStatusConnection.Running){
+         if(Status == ServerStatusConnection.Running && MyServer != null){
             Resources.Send(MyServer, _byte, _hashCode, _dataClient);
             PacketsSent += _byte.Length;
          }
@@ -128,7 +128,7 @@ namespace Nethostfire {
       /// </summary>
       public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients){
          foreach(DataClient _dataClient in _dataClients){
-            if(Status == ServerStatusConnection.Running){
+            if(Status == ServerStatusConnection.Running && MyServer != null){
                Resources.Send(MyServer, _byte, _hashCode, _dataClient);
                PacketsSent += _byte.Length;
             }
@@ -139,7 +139,7 @@ namespace Nethostfire {
       /// </summary>
       public static void SendBytesAll(byte[] _byte, int _hashCode){
          foreach(DataClient _dataClient in DataClients){
-            if(Status == ServerStatusConnection.Running){
+            if(Status == ServerStatusConnection.Running && MyServer != null){
                Resources.Send(MyServer, _byte, _hashCode, _dataClient);
                PacketsSent += _byte.Length;
             }
@@ -150,7 +150,7 @@ namespace Nethostfire {
       /// </summary>
       public static void DisconnectClient(DataClient _dataClient){
          try{
-            if(Status == ServerStatusConnection.Running){
+            if(Status == ServerStatusConnection.Running && MyServer != null){
                byte[] buffer = new byte[] {0};
                MyServer.Send(buffer, buffer.Length, _dataClient.IP);
             }
@@ -162,7 +162,7 @@ namespace Nethostfire {
       public static void DisconnectClientGroup(List<DataClient> _DataClients){
          foreach(DataClient _dataClient in _DataClients){
             try{
-               if(Status == ServerStatusConnection.Running){
+               if(Status == ServerStatusConnection.Running && MyServer != null){
                   byte[] buffer = new byte[] {0};
                   MyServer.Send(buffer, buffer.Length, _dataClient.IP);
                }
@@ -175,13 +175,14 @@ namespace Nethostfire {
       public static void DisconnectClientAll(){
          foreach(DataClient _dataClient in DataClients){
             try{
-               if(Status == ServerStatusConnection.Running){
+               if(Status == ServerStatusConnection.Running && MyServer != null){
                   byte[] buffer = new byte[] {0};
                   MyServer.Send(buffer, buffer.Length, _dataClient.IP);
                }
             }catch{}
          }
          DataClients.Clear();
+         Thread.Sleep(3000);
       }
       /// <summary>
       ///  Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
@@ -200,6 +201,7 @@ namespace Nethostfire {
          }
       }
       static void ServerReceiveUDP(){
+         if(MyServer != null)
          while(true){
             try{
                IPEndPoint _ip = new IPEndPoint(IPAddress.Any, 0);
@@ -212,8 +214,8 @@ namespace Nethostfire {
                   PacketCount = 0;
                }
                DataClient _dataClient = new DataClient();
-               if(DataClients.Any(DataClient => DataClient.IP.ToString() == _ip.ToString())){
-                  int index = DataClients.FindIndex(DataClient => DataClient.IP.ToString() == _ip.ToString());
+               if(DataClients.Any(DataClient => DataClient.IP?.ToString() == _ip.ToString())){
+                  int index = DataClients.FindIndex(DataClient => DataClient.IP?.ToString() == _ip.ToString());
                   _dataClient = DataClients.ElementAt(index);
 
                   if(data.Length == 1){
@@ -223,7 +225,7 @@ namespace Nethostfire {
                            DataClients.Remove(_dataClient);
                         break;
                         case 1:
-                           _dataClient.Ping = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) - _dataClient.Time - 1000;
+                           _dataClient.Ping = ((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) - _dataClient.Time - 1000).ToString() + "ms";
                            _dataClient.Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
                            SendOnline(_dataClient);
                         break;
@@ -251,7 +253,7 @@ namespace Nethostfire {
       }
       static void SendEncryption(DataClient _dataClient){
          try{
-            if(Status == ServerStatusConnection.Running){
+            if(Status == ServerStatusConnection.Running && MyServer != null){
                byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
                Resources.Send(MyServer, _byte, _byte.GetHashCode(), _dataClient);
             }
@@ -259,7 +261,7 @@ namespace Nethostfire {
       }
       static void SendOnline(DataClient _dataClient){
          try{
-            if(Status == ServerStatusConnection.Running){
+            if(Status == ServerStatusConnection.Running && MyServer != null){
                byte[] buffer  = new byte[] {1};
                MyServer.Send(buffer, buffer.Length, _dataClient.IP);
             }
