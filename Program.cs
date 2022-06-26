@@ -5,6 +5,7 @@
 using System.Net;
 using System.Text;
 using Nethostfire;
+
 class Program {
     static void Main(string[] args){
         Server.OnConnectedClient += OnConnectedClient;
@@ -26,7 +27,7 @@ class Program {
         Console.WriteLine(" 1 - Server");
         Console.WriteLine(" 2 - Client");
         Console.WriteLine(" 3 - Sair");
-        string? op = Console.ReadLine();
+        string op = Console.ReadLine();
         Console.Clear();
         switch(op){
             case "1":
@@ -57,7 +58,7 @@ class Program {
         }
     }
     static void OnReceivedNewDataServer(byte[] _byte, int _hashCode){
-        Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent;
+        Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent + ")";
         //Console.WriteLine("[RECEIVED] {0} - {1}", _hashCode, Encoding.UTF8.GetString(_byte));
         Client.SendBytes(_byte, _hashCode);
     }
@@ -71,7 +72,7 @@ class Program {
     }
 
     static void OnReceivedNewDataClient(byte[] _byte, int _hashCode, DataClient _dataClient){
-        //Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent;
+        //Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent + ")";
         //Console.WriteLine("[RECEIVED] {0}", _hashCode);
         Server.SendBytes(_byte, _hashCode, _dataClient);
     }

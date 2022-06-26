@@ -9,8 +9,8 @@ using System.Text;
 
 namespace Nethostfire {
     public class Client {
-        static UdpClient? MyClient;
-        static IPEndPoint? Host;
+        static UdpClient MyClient;
+        static IPEndPoint Host;
         static int PacketCount, PackTmp, TimeTmp;
         static long PingTmp, PingCount;
         static float PacketsReceived, PacketsSent;
@@ -21,11 +21,11 @@ namespace Nethostfire {
         /// <summary>
         /// O evento é chamado quando uma string é recebido de um Client e também será retornado uma string e o endereço IP do Client no parâmetro da função.
         /// </summary>
-        public static Action<byte[], int>? OnReceivedNewDataServer;
+        public static Action<byte[], int> OnReceivedNewDataServer;
         /// <summary>
         /// O evento é chamado quando o status do client muda: Connected, Disconnected ou Connecting e também será retornado um StatusConnection no parâmetro da função.
         /// </summary>
-        public static Action<ClientStatusConnection>? OnClientStatusConnection;
+        public static Action<ClientStatusConnection> OnClientStatusConnection;
         /// <summary>
         /// Estado atual do Client, Connected, Disconnected ou Connecting.
         /// </summary>
@@ -96,8 +96,7 @@ namespace Nethostfire {
                 try{
                     manualResetEvent.Reset();
                     PublicKeyXML = "";
-                    byte[] buffer = new byte[] {0};
-                    MyClient?.Send(buffer, buffer.Length);
+                    Resources.SendPing(MyClient, new byte[]{0});
                 }catch{
                     Thread.Sleep(3000);
                 }
@@ -108,7 +107,7 @@ namespace Nethostfire {
         ///  Envia uma string para o servidor.
         /// </summary>
         public static void SendBytes(byte[] _byte, int _hashCode){
-            if(Status == ClientStatusConnection.Connected && MyClient != null){
+            if(Status == ClientStatusConnection.Connected){
                 Resources.Send(MyClient, _byte, _hashCode);
                 PacketsSent += _byte.Length;
             }
@@ -134,7 +133,6 @@ namespace Nethostfire {
                 if(MyClient != null)
                 try{
                     byte[] data = MyClient.Receive(ref Host);
-                    PacketsReceived += data.Length;
                     PackTmp++;
                     if(DateTime.Now.Second != TimeTmp){
                         TimeTmp = DateTime.Now.Second;
@@ -155,14 +153,18 @@ namespace Nethostfire {
                             break;
                         }
                     }
+
                     if(data.Length > 1){
+                        PacketsReceived += data.Length;
                         var _data = Resources.ByteToReceive(data);
-                        string _text = Encoding.UTF8.GetString(_data.Item1);
-                        if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
-                            PublicKeyXML = _text;
-                            if(Status == ClientStatusConnection.Connecting){
-                                ChangeStatus(ClientStatusConnection.Connected);
-                                PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                        if(PublicKeyXML == ""){
+                            string _text = Encoding.UTF8.GetString(_data.Item1);
+                            if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
+                                PublicKeyXML = _text;
+                                if(Status == ClientStatusConnection.Connecting){
+                                    ChangeStatus(ClientStatusConnection.Connected);
+                                    PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                }
                             }
                         }else{
                             OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
@@ -170,7 +172,6 @@ namespace Nethostfire {
                     }
                 }catch(Exception ex){
                     Resources.AddLogError(ex);
-                    //ChangeStatus(ClientStatusConnection.Connecting);
                 }
                 manualResetEvent.WaitOne();
             }
@@ -178,14 +179,13 @@ namespace Nethostfire {
         static void SendOnline(){
             while(true){
                 try{
-                    if(Status == ClientStatusConnection.Connecting && MyClient != null){
+                    if(Status == ClientStatusConnection.Connecting){
                         string _text = Resources.PublicKeyXML;
                         byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
                         Resources.Send(MyClient, _byte, _byte.GetHashCode());   
                     }
-                    if(Status == ClientStatusConnection.Connected && MyClient != null){
-                        byte[] buffer  = new byte[] {1};
-                        MyClient.Send(buffer, buffer.Length);
+                    if(Status == ClientStatusConnection.Connected){
+                        Resources.SendPing(MyClient, new byte[]{1});
                     }
                 }catch{}
                 Thread.Sleep(1000);

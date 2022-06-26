@@ -1,13 +1,16 @@
-using System.IO.Compression;
+// Software desenvolvido por Trevias Xk
+// Redes sociais:       treviasxk
+// Github:              https://github.com/treviasxk
+
 using System.Net;
 using System.Net.Sockets;
+using System.IO.Compression;
 using System.Security.Cryptography;
-
 
 namespace Nethostfire {
     public class DataClient{
-        public IPEndPoint? IP;
-        public string? Ping;
+        public IPEndPoint IP;
+        public string Ping;
         public long Time;
         public string PublicKeyXML = "";
     }
@@ -21,55 +24,54 @@ namespace Nethostfire {
         Connected = 2,
         Connecting = 3,
     }
-public class Utility{
-
-    public static byte[] EncryptRSAByte(byte[] _byte, string _publicKeyXML){
-        try{
-            Resources.RSA.FromXmlString(_publicKeyXML);
-            return Resources.RSA.Encrypt(_byte, true);
-        }catch(Exception ex){
-            Resources.AddLogError(ex);
-            return new byte[]{};
-        }
-    }
-    
-    public static byte[] DecryptRSAByte(byte[] _byte){
-        try{
-            Resources.RSA.FromXmlString(Resources.PrivateKeyXML);
-            return Resources.RSA.Decrypt(_byte, true);
-        }catch(Exception ex){
-            Resources.AddLogError(ex);
-            return new byte[]{};
-        }
-    }
-
-    public static byte[] CompressByte(byte[] _byte){
-        try{
-            MemoryStream output = new MemoryStream();
-            using (DeflateStream dstream = new DeflateStream(output, CompressionMode.Compress)){
-                dstream.Write(_byte, 0, _byte.Length);
+    public class Utility{
+        public static byte[] EncryptRSAByte(byte[] _byte, string _publicKeyXML){
+            try{
+                Resources.RSA.FromXmlString(_publicKeyXML);
+                return Resources.RSA.Encrypt(_byte, true);
+            }catch(Exception ex){
+                Resources.AddLogError(ex);
+                return new byte[]{};
             }
-            return output.ToArray();
-        }catch(Exception ex){
-            Resources.AddLogError(ex);
-            return new byte[]{};
         }
-    }
-    
-    public static byte[] DecompressByte(byte[] data){
-        try{
-            MemoryStream input = new MemoryStream(data);
-            MemoryStream output = new MemoryStream();
-            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress)){
-                dstream.CopyTo(output);
+        
+        public static byte[] DecryptRSAByte(byte[] _byte){
+            try{
+                Resources.RSA.FromXmlString(Resources.PrivateKeyXML);
+                return Resources.RSA.Decrypt(_byte, true);
+            }catch(Exception ex){
+                Resources.AddLogError(ex);
+                return new byte[]{};
             }
-            return output.ToArray();
-        }catch(Exception ex){
-            Resources.AddLogError(ex);
-            return new byte[]{};
+        }
+
+        public static byte[] CompressByte(byte[] _byte){
+            try{
+                MemoryStream output = new MemoryStream();
+                using (DeflateStream dstream = new DeflateStream(output, CompressionMode.Compress)){
+                    dstream.Write(_byte, 0, _byte.Length);
+                }
+                return output.ToArray();
+            }catch(Exception ex){
+                Resources.AddLogError(ex);
+                return new byte[]{};
+            }
+        }
+        
+        public static byte[] DecompressByte(byte[] data){
+            try{
+                MemoryStream input = new MemoryStream(data);
+                MemoryStream output = new MemoryStream();
+                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress)){
+                    dstream.CopyTo(output);
+                }
+                return output.ToArray();
+            }catch(Exception ex){
+                Resources.AddLogError(ex);
+                return new byte[]{};
+            }
         }
     }
-}
 }
 
 class Resources{
@@ -114,13 +116,21 @@ class Resources{
             return new byte[]{};
         }
     }
-    public static void Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient? _dataClient = null){
+    public static void Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient _dataClient = null){
         try{
             byte[] buffer = Resources.ByteToSend(_byte, _hashCode);
             if(_dataClient == null)
                 _udpClient.Send(buffer, buffer.Length);
             else
                 _udpClient.Send(buffer, buffer.Length, _dataClient.IP);
+        }catch{}
+    }
+    public static void SendPing(UdpClient _udpClient, byte[] _byte, Nethostfire.DataClient _dataClient = null){
+        try{
+            if(_dataClient == null)
+                _udpClient.Send(_byte, _byte.Length);
+            else
+                _udpClient.Send(_byte, _byte.Length, _dataClient.IP);
         }catch{}
     }
 }

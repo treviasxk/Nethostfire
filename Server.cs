@@ -9,8 +9,8 @@ using System.Text;
 
 namespace Nethostfire {
    public class Server {
-      static UdpClient? MyServer;
-      static IPEndPoint? Host;
+      static UdpClient MyServer;
+      static IPEndPoint Host;
       static int PacketCount, PackTmp, TimeTmp;
       static float PacketsReceived, PacketsSent;
       static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
@@ -19,19 +19,19 @@ namespace Nethostfire {
       /// <summary>
       /// O evento é chamado quando uma string é recebido de um Client e também será retornado uma string e o endereço IP do Client no parâmetro da função.
       /// </summary>
-      public static Action<byte[], int, DataClient>? OnReceivedNewDataClient;
+      public static Action<byte[], int, DataClient> OnReceivedNewDataClient;
         /// <summary>
         /// O evento é chamado quando o status do servidor muda: Stopped ou Running e também será retornado um ServerStatusConnection no parâmetro da função.
         /// </summary>
-      public static Action<ServerStatusConnection>? OnServerStatusConnection;
+      public static Action<ServerStatusConnection> OnServerStatusConnection;
       /// <summary>
       /// O evento é chamado quando um Client é conectado no servidor.
       /// </summary>
-      public static Action<DataClient>? OnConnectedClient;
+      public static Action<DataClient> OnConnectedClient;
       /// <summary>
       /// O evento é chamado quando um Client se conecta no servidor e também é retornado o endereço IP do Client.
       /// </summary>
-      public static Action<DataClient>? OnDisconnectedClient;
+      public static Action<DataClient> OnDisconnectedClient;
       /// <summary>
       /// Lista de todos os Clients que estão conectado no servidor.
       /// </summary>
@@ -118,7 +118,7 @@ namespace Nethostfire {
       ///  Envia uma string para o servidor.
       /// </summary>
       public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient){
-         if(Status == ServerStatusConnection.Running && MyServer != null){
+         if(Status == ServerStatusConnection.Running){
             Resources.Send(MyServer, _byte, _hashCode, _dataClient);
             PacketsSent += _byte.Length;
          }
@@ -128,7 +128,7 @@ namespace Nethostfire {
       /// </summary>
       public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients){
          foreach(DataClient _dataClient in _dataClients){
-            if(Status == ServerStatusConnection.Running && MyServer != null){
+            if(Status == ServerStatusConnection.Running){
                Resources.Send(MyServer, _byte, _hashCode, _dataClient);
                PacketsSent += _byte.Length;
             }
@@ -139,7 +139,7 @@ namespace Nethostfire {
       /// </summary>
       public static void SendBytesAll(byte[] _byte, int _hashCode){
          foreach(DataClient _dataClient in DataClients){
-            if(Status == ServerStatusConnection.Running && MyServer != null){
+            if(Status == ServerStatusConnection.Running){
                Resources.Send(MyServer, _byte, _hashCode, _dataClient);
                PacketsSent += _byte.Length;
             }
@@ -150,9 +150,8 @@ namespace Nethostfire {
       /// </summary>
       public static void DisconnectClient(DataClient _dataClient){
          try{
-            if(Status == ServerStatusConnection.Running && MyServer != null){
-               byte[] buffer = new byte[] {0};
-               MyServer.Send(buffer, buffer.Length, _dataClient.IP);
+            if(Status == ServerStatusConnection.Running){
+               Resources.SendPing(MyServer, new byte[]{0},_dataClient);
             }
          }catch{}
       }
@@ -162,9 +161,8 @@ namespace Nethostfire {
       public static void DisconnectClientGroup(List<DataClient> _DataClients){
          foreach(DataClient _dataClient in _DataClients){
             try{
-               if(Status == ServerStatusConnection.Running && MyServer != null){
-                  byte[] buffer = new byte[] {0};
-                  MyServer.Send(buffer, buffer.Length, _dataClient.IP);
+               if(Status == ServerStatusConnection.Running){
+                  Resources.SendPing(MyServer, new byte[]{0},_dataClient);
                }
             }catch{}
          }
@@ -175,9 +173,8 @@ namespace Nethostfire {
       public static void DisconnectClientAll(){
          foreach(DataClient _dataClient in DataClients){
             try{
-               if(Status == ServerStatusConnection.Running && MyServer != null){
-                  byte[] buffer = new byte[] {0};
-                  MyServer.Send(buffer, buffer.Length, _dataClient.IP);
+               if(Status == ServerStatusConnection.Running){
+                  Resources.SendPing(MyServer, new byte[]{0},_dataClient);
                }
             }catch{}
          }
@@ -200,13 +197,12 @@ namespace Nethostfire {
             }
          }
       }
+      static IPEndPoint _ip = new IPEndPoint(IPAddress.Any, 0);
       static void ServerReceiveUDP(){
          if(MyServer != null)
          while(true){
             try{
-               IPEndPoint _ip = new IPEndPoint(IPAddress.Any, 0);
                byte[] data = MyServer.Receive(ref _ip);
-               PacketsReceived += data.Length;
                PacketCount++;
                if(DateTime.Now.Second != TimeTmp){
                   TimeTmp = DateTime.Now.Second;
@@ -214,8 +210,8 @@ namespace Nethostfire {
                   PacketCount = 0;
                }
                DataClient _dataClient = new DataClient();
-               if(DataClients.Any(DataClient => DataClient.IP?.ToString() == _ip.ToString())){
-                  int index = DataClients.FindIndex(DataClient => DataClient.IP?.ToString() == _ip.ToString());
+               if(DataClients.Any(DataClient => DataClient.IP.ToString() == _ip.ToString())){
+                  int index = DataClients.FindIndex(DataClient => DataClient.IP.ToString() == _ip.ToString());
                   _dataClient = DataClients.ElementAt(index);
 
                   if(data.Length == 1){
@@ -227,20 +223,23 @@ namespace Nethostfire {
                         case 1:
                            _dataClient.Ping = ((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) - _dataClient.Time - 1000).ToString() + "ms";
                            _dataClient.Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
-                           SendOnline(_dataClient);
+                           Resources.SendPing(MyServer, new byte[]{1},_dataClient);
                         break;
                      }
                   }
                }
 
                if(data.Length > 1){
-                  (byte[], int) _data = Resources.ByteToReceive(data);
-                  string _text = Encoding.UTF8.GetString(_data.Item1);
-                  if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
-                     _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
-                     DataClients.Add(_dataClient);
-                     OnConnectedClient?.Invoke(_dataClient);
-                     SendEncryption(_dataClient);
+                  PacketsReceived += data.Length;
+                  var _data = Resources.ByteToReceive(data);
+                  if(_dataClient.PublicKeyXML == ""){
+                     string _text = Encoding.UTF8.GetString(_data.Item1);
+                     if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
+                        _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
+                        DataClients.Add(_dataClient);
+                        OnConnectedClient?.Invoke(_dataClient);
+                        SendEncryption(_dataClient);
+                     }
                   }else{
                      OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
                   }
@@ -253,21 +252,12 @@ namespace Nethostfire {
       }
       static void SendEncryption(DataClient _dataClient){
          try{
-            if(Status == ServerStatusConnection.Running && MyServer != null){
+            if(Status == ServerStatusConnection.Running){
                byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
                Resources.Send(MyServer, _byte, _byte.GetHashCode(), _dataClient);
             }
          }catch{}
       }
-      static void SendOnline(DataClient _dataClient){
-         try{
-            if(Status == ServerStatusConnection.Running && MyServer != null){
-               byte[] buffer  = new byte[] {1};
-               MyServer.Send(buffer, buffer.Length, _dataClient.IP);
-            }
-         }catch{}
-      }
-
 
       static void CheckOnline(){
          while(true){
