@@ -4,7 +4,6 @@
 
 using System.Net;
 using System.Net.Sockets;
-using System.Collections.Concurrent;
 using System.Text;
 
 namespace Nethostfire {
@@ -15,26 +14,27 @@ namespace Nethostfire {
         static long PingTmp, PingCount;
         static float PacketsReceived, PacketsSent;
         static string PublicKeyXML = "";
-        static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
         static Thread SendOnlineThread = new Thread(SendOnline), ClientReceiveUDPThread = new Thread(ClientReceiveUDP), CheckOnlineThread = new Thread(CheckOnline);
         /// <summary>
-        /// O evento é chamado quando uma string é recebido de um Client e também será retornado uma string e o endereço IP do Client no parâmetro da função.
+        /// O evento é chamado quando bytes é recebido do server.
         /// </summary>
         public static Action<byte[], int> OnReceivedNewDataServer;
         /// <summary>
-        /// O evento é chamado quando o status do client muda: Connected, Disconnected ou Connecting e também será retornado um StatusConnection no parâmetro da função.
+        /// O evento é chamado quando o status do client muda.
         /// </summary>
         public static Action<ClientStatusConnection> OnClientStatusConnection;
         /// <summary>
-        /// Estado atual do Client, Connected, Disconnected ou Connecting.
+        /// Estado atual do Client.
         /// </summary>
-
-        public static ClientStatusConnection Status = ClientStatusConnection.Disconnected;
+        public static ClientStatusConnection Status {get;set;} = ClientStatusConnection.Disconnected;
         /// <summary>
-        /// Quantidade de pacotes recebido por segundo.
+        /// Quantidade de pacotes recebido por segundo (pps).
         /// </summary>
         public static string PacketsPerSeconds {get {return PacketCount +"pps";}}
+        /// <summary>
+        /// Tamanho total de pacotes recebido.
+        /// </summary>
         public static string PacketsSizeReceived {get {
                 if(PacketsReceived > 1024000000)
                 return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
@@ -46,6 +46,9 @@ namespace Nethostfire {
                 return (PacketsReceived).ToString("0.00") + "Bytes";
                 return "";
         }}
+        /// <summary>
+        /// Tamanho total de pacotes enviado.
+        /// </summary>
         public static string PacketsSizeSent {get {
                 if(PacketsSent > 1000000000)
                 return (PacketsSent / 1000000000).ToString("0.00") + "GB";
@@ -57,11 +60,10 @@ namespace Nethostfire {
                 return (PacketsSent).ToString("0.00") + "Bytes";
                 return "";
         }}
-        public static string Ping {get {return PingCount + "ms";}}
         /// <summary>
-        /// O modo Debug gera um arquivo de log "/Nethostfire_ErrorLogs.txt" e acrescente detalhes de um erro sempre que ocorre durante a execução.
+        /// Agrupador de Pacotes da Internet, ping (ms).
         /// </summary>
-        public static bool Debug {set { Resources.SaveLogError = value;}}
+        public static string Ping {get {return PingCount + "ms";}}
         /// <summary>
         /// Conecta no servidor com um IP e Porta especifico.
         /// </summary>
@@ -104,7 +106,7 @@ namespace Nethostfire {
             }
         }
         /// <summary>
-        ///  Envia uma string para o servidor.
+        /// Envie bytes para o servidor.
         /// </summary>
         public static void SendBytes(byte[] _byte, int _hashCode){
             if(Status == ClientStatusConnection.Connected){
@@ -112,22 +114,7 @@ namespace Nethostfire {
                 PacketsSent += _byte.Length;
             }
         }
-        /// <summary>
-        ///  Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
-        /// </summary>
-        public static void RunOnMainThread(Action action){
-            ListRunOnMainThread.Enqueue(action);
-        }
-        /// <summary>
-        ///  Utilizado para definir a thread principal que irá executar as ações do RunOnMainThread(). Coloque essa ação dentro da função void Update() na Unity.
-        /// </summary>
-        public static void ThisMainThread(){
-            if (!ListRunOnMainThread.IsEmpty) {
-                while (ListRunOnMainThread.TryDequeue(out var action)){
-                    action?.Invoke();
-                }
-            }
-        }
+
         private static void ClientReceiveUDP(){
             while(true){
                 if(MyClient != null)
@@ -157,14 +144,12 @@ namespace Nethostfire {
                     if(data.Length > 1){
                         PacketsReceived += data.Length;
                         var _data = Resources.ByteToReceive(data);
-                        if(PublicKeyXML == ""){
+                        if(PublicKeyXML == "" && Status == ClientStatusConnection.Connecting){
                             string _text = Encoding.UTF8.GetString(_data.Item1);
                             if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
                                 PublicKeyXML = _text;
-                                if(Status == ClientStatusConnection.Connecting){
-                                    ChangeStatus(ClientStatusConnection.Connected);
-                                    PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                                }
+                                PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                ChangeStatus(ClientStatusConnection.Connected);
                             }
                         }else{
                             OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
@@ -180,7 +165,6 @@ namespace Nethostfire {
             while(true){
                 try{
                     if(Status == ClientStatusConnection.Connecting){
-                        string _text = Resources.PublicKeyXML;
                         byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
                         Resources.Send(MyClient, _byte, _byte.GetHashCode());   
                     }
@@ -201,7 +185,6 @@ namespace Nethostfire {
                 Thread.Sleep(1000);
             }
         }
-
         static void ChangeStatus(ClientStatusConnection _status){
             if(Status != _status){
                 Status = _status;

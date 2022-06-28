@@ -4,7 +4,6 @@
 
 using System.Net;
 using System.Net.Sockets;
-using System.Collections.Concurrent;
 using System.Text;
 
 namespace Nethostfire {
@@ -13,41 +12,40 @@ namespace Nethostfire {
       static IPEndPoint Host;
       static int PacketCount, PackTmp, TimeTmp;
       static float PacketsReceived, PacketsSent;
-      static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
       static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
+      static List<DataClient> DataClients = new List<DataClient>();
       static Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
       /// <summary>
-      /// O evento é chamado quando uma string é recebido de um Client e também será retornado uma string e o endereço IP do Client no parâmetro da função.
+      /// O evento é chamado quando bytes é recebido de um Client.
       /// </summary>
       public static Action<byte[], int, DataClient> OnReceivedNewDataClient;
-        /// <summary>
-        /// O evento é chamado quando o status do servidor muda: Stopped ou Running e também será retornado um ServerStatusConnection no parâmetro da função.
-        /// </summary>
+      /// <summary>
+      /// O evento é chamado quando o status do servidor muda.
+      /// </summary>
       public static Action<ServerStatusConnection> OnServerStatusConnection;
       /// <summary>
       /// O evento é chamado quando um Client é conectado no servidor.
       /// </summary>
       public static Action<DataClient> OnConnectedClient;
       /// <summary>
-      /// O evento é chamado quando um Client se conecta no servidor e também é retornado o endereço IP do Client.
+      /// O evento é chamado quando um Client se desconecta do servidor.
       /// </summary>
       public static Action<DataClient> OnDisconnectedClient;
       /// <summary>
-      /// Lista de todos os Clients que estão conectado no servidor.
+      /// Estado atual do Servidor.
       /// </summary>
-      static List<DataClient> DataClients = new List<DataClient>();
+      public static ServerStatusConnection Status {get;set;} = ServerStatusConnection.Stopped;
       /// <summary>
-      /// Estado atual do servidor, Connected, Disconnected ou Reconnecting.
+      /// Número total de Clients conectado.
       /// </summary>
-      public static ServerStatusConnection Status = ServerStatusConnection.Stopped;
+      public static int ClientsCount {get {return DataClients.Count;}}
       /// <summary>
-      /// Número total de Clients conectado
-      /// </summary>
-      public static int ClientsConnected {get {return DataClients.Count;}}
-      /// <summary>
-      /// Quantidade de pacotes recebido por segundo.
+      /// Quantidade de pacotes recebido por segundo (pps).
       /// </summary>
       public static string PacketsPerSeconds {get {return PackTmp +"pps";}}
+      /// <summary>
+      /// Tamanho total de pacotes recebido.
+      /// </summary>
       public static string PacketsSizeReceived {get {
             if(PacketsReceived > 1024000000)
             return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
@@ -59,6 +57,9 @@ namespace Nethostfire {
             return (PacketsReceived).ToString("0.00") + "Bytes";
             return "";
       }}
+      /// <summary>
+      /// Tamanho total de pacotes enviado.
+      /// </summary>
       public static string PacketsSizeSent {get {
             if(PacketsSent > 1000000000)
             return (PacketsSent / 1000000000).ToString("0.00") + "GB";
@@ -71,14 +72,12 @@ namespace Nethostfire {
             return "";
       }}
       /// <summary>
-      /// O modo Debug gera um arquivo de log "/Nethostfire_ErrorLogs.txt" e acrescente detalhes de um erro sempre que ocorre durante a execução.
+      /// Inicia o servidor com um IP e Porta especifico.
       /// </summary>
-      public static bool Debug {set { Resources.SaveLogError = value;}}
-      /// <summary>
-      /// Inicia o servidor com um IP e Porta especifico, em _encrypy você pode definir se a conexão é criptografado com RSA.
-      /// </summary>
-      public static void Start(IPEndPoint _host, bool _encrypt = true){
+      public static void Start(IPEndPoint _host){
          try{
+            if(Status == ServerStatusConnection.Stopped)
+               ChangeStatus(ServerStatusConnection.Initializing);
             if(MyServer is null){
                MyServer = new UdpClient();
                Resources.GenerateKeyRSA();
@@ -100,22 +99,28 @@ namespace Nethostfire {
       /// Pará o servidor. (Todos os Clients serão desconectados)
       /// </summary>
       public static void Stop(){
-         if(Status == ServerStatusConnection.Running){
+         if(Status == ServerStatusConnection.Running || Status == ServerStatusConnection.Restarting){
+            if(Status == ServerStatusConnection.Running)
+               ChangeStatus(ServerStatusConnection.Stopping);
             manualResetEvent.Reset();
             Thread.Sleep(3000);
             DataClients.Clear();
             Resources.GenerateKeyRSA();
-            ChangeStatus(ServerStatusConnection.Stopped);
+            if(Status == ServerStatusConnection.Stopping)
+               ChangeStatus(ServerStatusConnection.Stopped);
          }
       }
+      /// <summary>
       /// Reinicia o servidor. (Todos os Clients serão desconectados)
-      public static void Reset(){
+      /// </summary>
+      public static void Restart(){
+         ChangeStatus(ServerStatusConnection.Restarting);
          Stop();
          if(Host != null)
             Start(Host);
       }
       /// <summary>
-      ///  Envia uma string para o servidor.
+      ///  Envie bytes para um Client especifico.
       /// </summary>
       public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient){
          if(Status == ServerStatusConnection.Running){
@@ -124,7 +129,7 @@ namespace Nethostfire {
          }
       }
       /// <summary>
-      ///  Envie a string para um grupo de Clients conectado no servidor.
+      ///  Envie bytes para um grupo de Clients especifico.
       /// </summary>
       public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients){
          foreach(DataClient _dataClient in _dataClients){
@@ -135,7 +140,7 @@ namespace Nethostfire {
          }
       }
       /// <summary>
-      ///  Envie a string para todos os Clients conectado no servidor.
+      ///  Envie bytes para todos os Client conectado.
       /// </summary>
       public static void SendBytesAll(byte[] _byte, int _hashCode){
          foreach(DataClient _dataClient in DataClients){
@@ -178,25 +183,9 @@ namespace Nethostfire {
                }
             }catch{}
          }
-         DataClients.Clear();
          Thread.Sleep(3000);
       }
-      /// <summary>
-      ///  Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
-      /// </summary>
-      public static void RunOnMainThread(Action action){
-         ListRunOnMainThread.Enqueue(action);
-      }
-      /// <summary>
-      ///  Utilizado para definir a thread principal que irá executar as ações do RunOnMainThread(). Coloque essa ação dentro da função void Update() na Unity.
-      /// </summary>
-      public static void ThisMainThread() {
-         if (!ListRunOnMainThread.IsEmpty) {
-            while (ListRunOnMainThread.TryDequeue(out var action)) {
-               action?.Invoke();
-            }
-         }
-      }
+
       static IPEndPoint _ip = new IPEndPoint(IPAddress.Any, 0);
       static void ServerReceiveUDP(){
          if(MyServer != null)
@@ -229,7 +218,7 @@ namespace Nethostfire {
                   }
                }
 
-               if(data.Length > 1){
+               if(data.Length > 1 && Status == ServerStatusConnection.Running){
                   PacketsReceived += data.Length;
                   var _data = Resources.ByteToReceive(data);
                   if(_dataClient.PublicKeyXML == ""){
@@ -238,7 +227,8 @@ namespace Nethostfire {
                         _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
                         DataClients.Add(_dataClient);
                         OnConnectedClient?.Invoke(_dataClient);
-                        SendEncryption(_dataClient);
+                        byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
+                        Resources.Send(MyServer, _byte, _byte.GetHashCode(), _dataClient);
                      }
                   }else{
                      OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
@@ -249,14 +239,6 @@ namespace Nethostfire {
             }
             manualResetEvent.WaitOne();
          }
-      }
-      static void SendEncryption(DataClient _dataClient){
-         try{
-            if(Status == ServerStatusConnection.Running){
-               byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
-               Resources.Send(MyServer, _byte, _byte.GetHashCode(), _dataClient);
-            }
-         }catch{}
       }
 
       static void CheckOnline(){
@@ -271,6 +253,7 @@ namespace Nethostfire {
             Thread.Sleep(1000);
          }
       }
+
       static void ChangeStatus(ServerStatusConnection _status){
          if(Status != _status){
             Status = _status;

@@ -3,13 +3,14 @@
 Nethostfire é um server/client UDP criado em .NET Core com C# (netstandard2.0), é um projeto simples e de fácil entendimento, os dados são enviado e recebido por byte[] entre o servidor e o client, com ele você pode montar seu servidor de jogos, vídeos chamadas, transferencia de arquivos e entre outros.
 
 ## Recursos
-  * Envio e recebimento de dados organizados.
-  * Sistema auto detecção de clients conectados.
-  * Vários tipos de envios.
-  * Controles para gerenciar clients conectados.
-  * Criptografia RSA server/client.
+  * Envio/Recebimento de dados organizados.
+  * Vários tipos de envios (único, grupo, todos).
+  * Criptografia RSA Server/Client.
+  * Compactar/Descompactar bytes.
   * Adaptado para manipular objetos na Unity 3D.
   * Adaptado para criação de Cross-Server.
+  * Adaptado para alta performance.
+  * Sistema de auto detecção de clients conectados.
   * Sistema de Debug para monitorar erros.
 
 ![Preview](screenshots/descripton.png)

@@ -6,17 +6,33 @@ using System.Net;
 using System.Net.Sockets;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Collections.Concurrent;
 
 namespace Nethostfire {
     public class DataClient{
+        /// <summary>
+        /// IP do Client.
+        /// </summary>
         public IPEndPoint IP;
+        /// <summary>
+        /// Agrupador de Pacotes da Internet, ping (ms).
+        /// </summary>
         public string Ping;
+        /// <summary>
+        /// Ultimo tempo atualizado pelo o servidor.
+        /// </summary>
         public long Time;
+        /// <summary>
+        /// Chave publica de criptografia RSA.
+        /// </summary>
         public string PublicKeyXML = "";
     }
     public enum ServerStatusConnection{
         Stopped = 0,
-        Running = 1
+        Stopping = 1,
+        Running = 2,
+        Initializing = 3,
+        Restarting = 4
     }
     public enum ClientStatusConnection{
         Disconnected = 0,
@@ -24,7 +40,29 @@ namespace Nethostfire {
         Connected = 2,
         Connecting = 3,
     }
+
     public class Utility{
+        static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
+        /// <summary>
+        /// O modo Debug gera um arquivo de logs "/Nethostfire_ErrorLogs.txt" e acrescente detalhes de um erro sempre que ocorre durante a execução.
+        /// </summary>
+        public static bool Debug {set { Resources.SaveLogError = value;}}
+        /// <summary>
+        ///  Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
+        /// </summary>
+        public static void RunOnMainThread(Action action){
+            ListRunOnMainThread.Enqueue(action);
+        }
+        /// <summary>
+        ///  Utilizado para definir a thread principal que irá executar as ações do RunOnMainThread(). Coloque essa ação dentro da função void Update() na Unity.
+        /// </summary>
+        public static void ThisMainThread() {
+            if (!ListRunOnMainThread.IsEmpty) {
+                while (ListRunOnMainThread.TryDequeue(out var action)) {
+                action?.Invoke();
+                }
+            }
+        }
         public static byte[] EncryptRSAByte(byte[] _byte, string _publicKeyXML){
             try{
                 Resources.RSA.FromXmlString(_publicKeyXML);

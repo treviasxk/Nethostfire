@@ -3,6 +3,7 @@
 // Github:              https://github.com/treviasxk
 
 using System.Net;
+using System.Reflection;
 using System.Text;
 using Nethostfire;
 
@@ -21,7 +22,7 @@ class Program {
         Console.Title = "Nethostfire";
         Console.WriteLine(" ============== NETHOSTFIRE ==============");
         Console.WriteLine("  REDES SOCIAIS:               treviasxk");
-        Console.WriteLine("  VERSÃO:                      1.0.4.0");
+        Console.WriteLine("  VERSÃO:                      " + Assembly.GetExecutingAssembly().GetName().Version.ToString());
         Console.WriteLine("  LICENÇA:                     GPL-3.0");
         Console.WriteLine(" =========================================");
         Console.WriteLine(" 1 - Server");
@@ -29,14 +30,13 @@ class Program {
         Console.WriteLine(" 3 - Sair");
         string op = Console.ReadLine();
         Console.Clear();
+        Utility.Debug = true;
         switch(op){
             case "1":
-                Server.Debug = true;
                 Server.Start(new IPEndPoint(IPAddress.Any, 25000));
                 Console.ReadKey();
             break;
             case "2":
-                Client.Debug = true;
                 Client.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
                 Console.ReadKey();
             break;
@@ -58,7 +58,7 @@ class Program {
         }
     }
     static void OnReceivedNewDataServer(byte[] _byte, int _hashCode){
-        Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent + ")";
+        //Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent + ")";
         //Console.WriteLine("[RECEIVED] {0} - {1}", _hashCode, Encoding.UTF8.GetString(_byte));
         Client.SendBytes(_byte, _hashCode);
     }
@@ -72,13 +72,14 @@ class Program {
     }
 
     static void OnReceivedNewDataClient(byte[] _byte, int _hashCode, DataClient _dataClient){
-        //Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent + ")";
-        //Console.WriteLine("[RECEIVED] {0}", _hashCode);
+        Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent + ")";
+        //Console.WriteLine("[RECEIVED] {0} - {1}", _hashCode, Encoding.UTF8.GetString(_byte));
         Server.SendBytes(_byte, _hashCode, _dataClient);
     }
     static void OnServerStatusConnection(ServerStatusConnection _status){
-        if(_status == ServerStatusConnection.Running){
+        if(_status == ServerStatusConnection.Running)
             Console.WriteLine("[SERVER] Servidor iniciado e hospedado na porta: {0}", 25000);
-        }
+        else
+            Console.WriteLine("[STATUS] " + _status);
     }
 }
