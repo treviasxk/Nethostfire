@@ -10,12 +10,15 @@ namespace Nethostfire {
     public class Client {
         static UdpClient MyClient;
         static IPEndPoint Host;
-        static int PacketCount, PackTmp, TimeTmp;
+        static int PacketCount, PackTmp, TimeTmp, connectTimeOut = 10000;
         static long PingTmp, PingCount;
         static float PacketsReceived, PacketsSent;
-        static string PublicKeyXML = "";
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
         static Thread SendOnlineThread = new Thread(SendOnline), ClientReceiveUDPThread = new Thread(ClientReceiveUDP), CheckOnlineThread = new Thread(CheckOnline);
+        /// <summary>
+        /// Chave publica de criptografia RSA.
+        /// </summary>
+        public static string PublicKeyXML = "";
         /// <summary>
         /// O evento é chamado quando bytes é recebido do server.
         /// </summary>
@@ -32,6 +35,10 @@ namespace Nethostfire {
         /// Quantidade de pacotes recebido por segundo (pps).
         /// </summary>
         public static string PacketsPerSeconds {get {return PacketCount +"pps";}}
+        /// <summary>
+        /// Tempo limite de reconexão, depois que esgotar o Status mudará para NoConnection, o valor padrão é 10000 (ms), definir para 0 a reconexão será infinito.
+        /// </summary>
+        public static int ConnectTimeOut {get {return connectTimeOut;} set{connectTimeOut = value;}}
         /// <summary>
         /// Tamanho total de pacotes recebido.
         /// </summary>
@@ -70,6 +77,7 @@ namespace Nethostfire {
         public static void Connect(IPEndPoint _host){
             try{
                 ChangeStatus(ClientStatusConnection.Connecting);
+                PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 if(MyClient is null){
                     MyClient = new UdpClient();
                     Resources.GenerateKeyRSA();
@@ -84,9 +92,8 @@ namespace Nethostfire {
                 }else{
                     manualResetEvent.Set();
                 }
-            }catch(Exception ex){
+            }catch{
                 DisconnectServer();
-                Resources.AddLogError(ex);
             }
         }
         /// <summary>
@@ -95,15 +102,15 @@ namespace Nethostfire {
         public static void DisconnectServer(){
             if(Status == ClientStatusConnection.Connected){
                 ChangeStatus(ClientStatusConnection.Disconnecting);
-                try{
-                    manualResetEvent.Reset();
-                    PublicKeyXML = "";
-                    Resources.SendPing(MyClient, new byte[]{0});
-                }catch{
+                if(!Resources.SendPing(MyClient, new byte[]{0}))
                     Thread.Sleep(3000);
-                }
-                ChangeStatus(ClientStatusConnection.Disconnected);
             }
+            manualResetEvent.Reset();
+            PublicKeyXML = "";
+            if(Status == ClientStatusConnection.Disconnecting)
+                ChangeStatus(ClientStatusConnection.Disconnected);
+            if(Status == ClientStatusConnection.Connecting)
+                ChangeStatus(ClientStatusConnection.NoConnection);
         }
         /// <summary>
         /// Envie bytes para o servidor.
@@ -155,9 +162,7 @@ namespace Nethostfire {
                             OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
                         }
                     }
-                }catch(Exception ex){
-                    Resources.AddLogError(ex);
-                }
+                }catch{}
                 manualResetEvent.WaitOne();
             }
         }
@@ -181,8 +186,10 @@ namespace Nethostfire {
                 if((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - PingTmp - 1000) > 3000 && Status == ClientStatusConnection.Connected){
                     ChangeStatus(ClientStatusConnection.Connecting);
                 }
-                manualResetEvent.WaitOne();
+                if(Status == ClientStatusConnection.Connecting && (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - PingTmp) > 3000 + connectTimeOut && connectTimeOut != 0)
+                    DisconnectServer();
                 Thread.Sleep(1000);
+                manualResetEvent.WaitOne();
             }
         }
         static void ChangeStatus(ClientStatusConnection _status){

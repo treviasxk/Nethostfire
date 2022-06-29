@@ -39,50 +39,52 @@ namespace Nethostfire {
         Disconnecting = 1,
         Connected = 2,
         Connecting = 3,
+        NoConnection = 4
     }
 
     public class Utility{
         static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         /// <summary>
-        /// O modo Debug gera um arquivo de logs "/Nethostfire_ErrorLogs.txt" e acrescente detalhes de um erro sempre que ocorre durante a execução.
-        /// </summary>
-        public static bool Debug {set { Resources.SaveLogError = value;}}
-        /// <summary>
-        ///  Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
+        /// Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
         /// </summary>
         public static void RunOnMainThread(Action action){
             ListRunOnMainThread.Enqueue(action);
         }
         /// <summary>
-        ///  Utilizado para definir a thread principal que irá executar as ações do RunOnMainThread(). Coloque essa ação dentro da função void Update() na Unity.
+        /// Utilizado para definir a thread principal que irá executar as ações do RunOnMainThread(). Coloque essa ação dentro da função void Update() na Unity.
         /// </summary>
         public static void ThisMainThread() {
             if (!ListRunOnMainThread.IsEmpty) {
                 while (ListRunOnMainThread.TryDequeue(out var action)) {
-                action?.Invoke();
+                    action?.Invoke();
                 }
             }
         }
+        /// <summary>
+        /// Criptografar bytes com RSA.
+        /// </summary>
         public static byte[] EncryptRSAByte(byte[] _byte, string _publicKeyXML){
             try{
                 Resources.RSA.FromXmlString(_publicKeyXML);
                 return Resources.RSA.Encrypt(_byte, true);
-            }catch(Exception ex){
-                Resources.AddLogError(ex);
+            }catch{
                 return new byte[]{};
             }
         }
-        
+        /// <summary>
+        /// Descriptografar bytes com RSA.
+        /// </summary>
         public static byte[] DecryptRSAByte(byte[] _byte){
             try{
                 Resources.RSA.FromXmlString(Resources.PrivateKeyXML);
                 return Resources.RSA.Decrypt(_byte, true);
-            }catch(Exception ex){
-                Resources.AddLogError(ex);
+            }catch{
                 return new byte[]{};
             }
         }
-
+        /// <summary>
+        /// Compactar bytes.
+        /// </summary>
         public static byte[] CompressByte(byte[] _byte){
             try{
                 MemoryStream output = new MemoryStream();
@@ -90,12 +92,13 @@ namespace Nethostfire {
                     dstream.Write(_byte, 0, _byte.Length);
                 }
                 return output.ToArray();
-            }catch(Exception ex){
-                Resources.AddLogError(ex);
+            }catch{
                 return new byte[]{};
             }
         }
-        
+        /// <summary>
+        /// Descompactar bytes.
+        /// </summary>
         public static byte[] DecompressByte(byte[] data){
             try{
                 MemoryStream input = new MemoryStream(data);
@@ -104,8 +107,7 @@ namespace Nethostfire {
                     dstream.CopyTo(output);
                 }
                 return output.ToArray();
-            }catch(Exception ex){
-                Resources.AddLogError(ex);
+            }catch{
                 return new byte[]{};
             }
         }
@@ -113,19 +115,11 @@ namespace Nethostfire {
 }
 
 class Resources{
-    public static bool SaveLogError = false;
     public static string PrivateKeyXML = "", PublicKeyXML = "";
     public static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
     public static void GenerateKeyRSA(){
         PrivateKeyXML = RSA.ToXmlString(true);
         PublicKeyXML = RSA.ToXmlString(false);
-    }
-
-    public static void AddLogError(Exception ex){
-        try{
-            if(SaveLogError)
-                File.AppendAllText(Environment.CurrentDirectory + "/Nethostfire_ErrorLogs.txt", "["+ DateTime.Now +"]" + ex.StackTrace + Environment.NewLine);
-        }catch{}
     }
 
     public static (byte[], int) ByteToReceive(byte[] _byte){
@@ -135,8 +129,7 @@ class Resources{
             byte[] data = new byte[_byte.Length - type.Length - 1];
             _byte.Skip(1 + _byte[0]).ToArray().CopyTo(data,0);
             return (data, BitConverter.ToInt32(type,0));
-        }catch(Exception ex){
-            AddLogError(ex);
+        }catch{
             return (new byte[]{}, 0);
         }
     }
@@ -149,26 +142,31 @@ class Resources{
             _byte.CopyTo(data, 1 + type.Length);
             data[0] = (byte)type.Length;
             return data;
-        }catch(Exception ex){
-            AddLogError(ex);
+        }catch{
             return new byte[]{};
         }
     }
-    public static void Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient _dataClient = null){
+    public static bool Send(UdpClient _udpClient, byte[] _byte, int _hashCode, Nethostfire.DataClient _dataClient = null){
         try{
             byte[] buffer = Resources.ByteToSend(_byte, _hashCode);
             if(_dataClient == null)
                 _udpClient.Send(buffer, buffer.Length);
             else
                 _udpClient.Send(buffer, buffer.Length, _dataClient.IP);
-        }catch{}
+            return true;
+        }catch{
+            return false;
+        }
     }
-    public static void SendPing(UdpClient _udpClient, byte[] _byte, Nethostfire.DataClient _dataClient = null){
+    public static bool SendPing(UdpClient _udpClient, byte[] _byte, Nethostfire.DataClient _dataClient = null){
         try{
             if(_dataClient == null)
                 _udpClient.Send(_byte, _byte.Length);
             else
                 _udpClient.Send(_byte, _byte.Length, _dataClient.IP);
-        }catch{}
+            return true;
+        }catch{
+            return false;
+        }
     }
 }

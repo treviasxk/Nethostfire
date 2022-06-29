@@ -91,8 +91,8 @@ namespace Nethostfire {
                manualResetEvent.Set();
             }
             ChangeStatus(ServerStatusConnection.Running);
-         }catch(Exception ex){
-            Resources.AddLogError(ex);
+         }catch{
+            ChangeStatus(ServerStatusConnection.Stopped);
          }
       }
       /// <summary>
@@ -173,7 +173,7 @@ namespace Nethostfire {
          }
       }
       /// <summary>
-      /// Deconecta todos os Clients conectado no servidor.
+      /// Deconecta todos os Clients conectado do servidor.
       /// </summary>
       public static void DisconnectClientAll(){
          foreach(DataClient _dataClient in DataClients){
@@ -234,9 +234,7 @@ namespace Nethostfire {
                      OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
                   }
                }
-            }catch(Exception ex){
-               Resources.AddLogError(ex);
-            }
+            }catch{}
             manualResetEvent.WaitOne();
          }
       }

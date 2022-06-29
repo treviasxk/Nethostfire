@@ -30,7 +30,6 @@ class Program {
         Console.WriteLine(" 3 - Sair");
         string op = Console.ReadLine();
         Console.Clear();
-        Utility.Debug = true;
         switch(op){
             case "1":
                 Server.Start(new IPEndPoint(IPAddress.Any, 25000));

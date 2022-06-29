@@ -10,8 +10,7 @@ Nethostfire é um server/client UDP criado em .NET Core com C# (netstandard2.0),
   * Adaptado para manipular objetos na Unity 3D.
   * Adaptado para criação de Cross-Server.
   * Adaptado para alta performance.
-  * Sistema de auto detecção de clients conectados.
-  * Sistema de Debug para monitorar erros.
+  * Sistema de detecção de clients conectados.
 
 ![Preview](screenshots/descripton.png)
 
