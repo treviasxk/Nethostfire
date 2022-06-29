@@ -56,8 +56,23 @@ namespace Nethostfire {
         public static void ThisMainThread() {
             if (!ListRunOnMainThread.IsEmpty) {
                 while (ListRunOnMainThread.TryDequeue(out var action)) {
-                    action?.Invoke();
+                    try{
+                        action?.Invoke();
+                    }catch{
+                        throw;
+                    }
                 }
+            }
+        }
+        /// <summary>
+        /// Criptografar bytes em MD5.
+        /// </summary>
+        public static string EncryptMD5Byte(byte[] _byte){
+            try{
+                MD5 md5 = MD5.Create();
+                return BitConverter.ToString(md5.ComputeHash(_byte)).Replace("-", string.Empty);
+            }catch{
+                return "";
             }
         }
         /// <summary>

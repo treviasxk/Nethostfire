@@ -18,7 +18,7 @@ namespace Nethostfire {
         /// <summary>
         /// Chave publica de criptografia RSA.
         /// </summary>
-        public static string PublicKeyXML = "";
+        public static string PublicKeyXML {get;set;}
         /// <summary>
         /// O evento é chamado quando bytes é recebido do server.
         /// </summary>
@@ -106,7 +106,6 @@ namespace Nethostfire {
                     Thread.Sleep(3000);
             }
             manualResetEvent.Reset();
-            PublicKeyXML = "";
             if(Status == ClientStatusConnection.Disconnecting)
                 ChangeStatus(ClientStatusConnection.Disconnected);
             if(Status == ClientStatusConnection.Connecting)
@@ -138,7 +137,6 @@ namespace Nethostfire {
                         switch(data[0]){
                             case 0:
                                 manualResetEvent.Reset();
-                                PublicKeyXML = "";
                                 ChangeStatus(ClientStatusConnection.Disconnected);
                             break;
                             case 1:
@@ -151,7 +149,7 @@ namespace Nethostfire {
                     if(data.Length > 1){
                         PacketsReceived += data.Length;
                         var _data = Resources.ByteToReceive(data);
-                        if(PublicKeyXML == "" && Status == ClientStatusConnection.Connecting){
+                        if(Status == ClientStatusConnection.Connecting){
                             string _text = Encoding.UTF8.GetString(_data.Item1);
                             if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
                                 PublicKeyXML = _text;

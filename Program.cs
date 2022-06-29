@@ -22,7 +22,7 @@ class Program {
         Console.Title = "Nethostfire";
         Console.WriteLine(" ============== NETHOSTFIRE ==============");
         Console.WriteLine("  REDES SOCIAIS:               treviasxk");
-        Console.WriteLine("  VERSÃO:                      " + Assembly.GetExecutingAssembly().GetName().Version.ToString());
+        Console.WriteLine("  VERSÃO:                      {0}", Assembly.GetExecutingAssembly().GetName().Version);
         Console.WriteLine("  LICENÇA:                     GPL-3.0");
         Console.WriteLine(" =========================================");
         Console.WriteLine(" 1 - Server");
