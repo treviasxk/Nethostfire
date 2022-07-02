@@ -75,9 +75,9 @@ namespace Nethostfire {
       /// Inicia o servidor com um IP e Porta especifico.
       /// </summary>
       public static void Start(IPEndPoint _host){
+         if(Status == ServerStatusConnection.Stopped)
+            ChangeStatus(ServerStatusConnection.Initializing);
          try{
-            if(Status == ServerStatusConnection.Stopped)
-               ChangeStatus(ServerStatusConnection.Initializing);
             if(MyServer is null){
                MyServer = new UdpClient();
                Resources.GenerateKeyRSA();
@@ -90,10 +90,11 @@ namespace Nethostfire {
             }else{
                manualResetEvent.Set();
             }
-            ChangeStatus(ServerStatusConnection.Running);
          }catch{
             ChangeStatus(ServerStatusConnection.Stopped);
          }
+         if(Status == ServerStatusConnection.Initializing)
+            ChangeStatus(ServerStatusConnection.Running);
       }
       /// <summary>
       /// Pará o servidor. (Todos os Clients serão desconectados)
@@ -190,8 +191,11 @@ namespace Nethostfire {
       static void ServerReceiveUDP(){
          if(MyServer != null)
          while(true){
+            byte[] data = null;
             try{
-               byte[] data = MyServer.Receive(ref _ip);
+               data = MyServer.Receive(ref _ip);
+            }catch{}
+            if(data != null){
                PacketCount++;
                if(DateTime.Now.Second != TimeTmp){
                   TimeTmp = DateTime.Now.Second;
@@ -234,7 +238,7 @@ namespace Nethostfire {
                      OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
                   }
                }
-            }catch{}
+            }
             manualResetEvent.WaitOne();
          }
       }

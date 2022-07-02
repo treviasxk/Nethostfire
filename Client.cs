@@ -14,6 +14,7 @@ namespace Nethostfire {
         static long PingTmp, PingCount;
         static float PacketsReceived, PacketsSent;
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
+        static Dictionary<int, byte[]> ListHoldConnection = new Dictionary<int, byte[]>();
         static Thread SendOnlineThread = new Thread(SendOnline), ClientReceiveUDPThread = new Thread(ClientReceiveUDP), CheckOnlineThread = new Thread(CheckOnline);
         /// <summary>
         /// Chave publica de criptografia RSA.
@@ -75,9 +76,10 @@ namespace Nethostfire {
         /// Conecta no servidor com um IP e Porta especifico.
         /// </summary>
         public static void Connect(IPEndPoint _host){
+            ChangeStatus(ClientStatusConnection.Connecting);
+            ListHoldConnection.Clear();
+            PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
             try{
-                ChangeStatus(ClientStatusConnection.Connecting);
-                PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 if(MyClient is null){
                     MyClient = new UdpClient();
                     Resources.GenerateKeyRSA();
@@ -106,6 +108,7 @@ namespace Nethostfire {
                     Thread.Sleep(3000);
             }
             manualResetEvent.Reset();
+            ListHoldConnection.Clear();
             if(Status == ClientStatusConnection.Disconnecting)
                 ChangeStatus(ClientStatusConnection.Disconnected);
             if(Status == ClientStatusConnection.Connecting)
@@ -114,18 +117,23 @@ namespace Nethostfire {
         /// <summary>
         /// Envie bytes para o servidor.
         /// </summary>
-        public static void SendBytes(byte[] _byte, int _hashCode){
+        public static void SendBytes(byte[] _byte, int _hashCode, bool _holdConnection = false){
             if(Status == ClientStatusConnection.Connected){
+                if(_holdConnection && !ListHoldConnection.ContainsKey(_hashCode))
+                    ListHoldConnection.Add(_hashCode, _byte);
                 Resources.Send(MyClient, _byte, _hashCode);
                 PacketsSent += _byte.Length;
             }
         }
 
         private static void ClientReceiveUDP(){
+            if(MyClient != null)
             while(true){
-                if(MyClient != null)
+                byte[] data = null;
                 try{
-                    byte[] data = MyClient.Receive(ref Host);
+                    data = MyClient.Receive(ref Host);
+                }catch{}
+                if(data != null){
                     PackTmp++;
                     if(DateTime.Now.Second != TimeTmp){
                         TimeTmp = DateTime.Now.Second;
@@ -149,6 +157,8 @@ namespace Nethostfire {
                     if(data.Length > 1){
                         PacketsReceived += data.Length;
                         var _data = Resources.ByteToReceive(data);
+                        if(ListHoldConnection.ContainsKey(_data.Item2))
+                            ListHoldConnection.Remove(_data.Item2);
                         if(Status == ClientStatusConnection.Connecting){
                             string _text = Encoding.UTF8.GetString(_data.Item1);
                             if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
@@ -157,24 +167,26 @@ namespace Nethostfire {
                                 ChangeStatus(ClientStatusConnection.Connected);
                             }
                         }else{
-                            OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                            if(PublicKeyXML != "")
+                                OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
                         }
                     }
-                }catch{}
+                }
                 manualResetEvent.WaitOne();
             }
         }
         static void SendOnline(){
             while(true){
-                try{
-                    if(Status == ClientStatusConnection.Connecting){
-                        byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
-                        Resources.Send(MyClient, _byte, _byte.GetHashCode());   
-                    }
-                    if(Status == ClientStatusConnection.Connected){
-                        Resources.SendPing(MyClient, new byte[]{1});
-                    }
-                }catch{}
+                if(Status == ClientStatusConnection.Connecting){
+                    byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
+                    Resources.Send(MyClient, _byte, _byte.GetHashCode());   
+                }
+                if(Status == ClientStatusConnection.Connected){
+                    Resources.SendPing(MyClient, new byte[]{1});
+                    foreach(KeyValuePair<int, byte[]> _item in ListHoldConnection){
+                        Resources.Send(MyClient, _item.Value, _item.Key);
+                    }  
+                }
                 Thread.Sleep(1000);
                 manualResetEvent.WaitOne();
             }
@@ -183,6 +195,7 @@ namespace Nethostfire {
             while(true){
                 if((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - PingTmp - 1000) > 3000 && Status == ClientStatusConnection.Connected){
                     ChangeStatus(ClientStatusConnection.Connecting);
+                    ListHoldConnection.Clear();
                 }
                 if(Status == ClientStatusConnection.Connecting && (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - PingTmp) > 3000 + connectTimeOut && connectTimeOut != 0)
                     DisconnectServer();
