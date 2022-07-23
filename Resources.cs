@@ -40,6 +40,11 @@ namespace Nethostfire {
         NoConnection = 4
     }
 
+    class HoldConnection{
+        public byte[] Bytes {get;set;}
+        public long Time {get;set;}
+    }
+
     class Resources{
         public static string PrivateKeyXML = "", PublicKeyXML = "";
         public static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
@@ -47,6 +52,19 @@ namespace Nethostfire {
             PrivateKeyXML = RSA.ToXmlString(true);
             PublicKeyXML = RSA.ToXmlString(false);
         }
+
+        public static string BytesToString(float PacketsReceived){
+            if(PacketsReceived > 1024000000)
+            return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
+            if(PacketsReceived > 1024000)
+            return (PacketsReceived / 1024000).ToString("0.00") + "MB";
+            if(PacketsReceived > 1024)
+            return (PacketsReceived / 1024).ToString("0.00") + "KB";
+            if(PacketsReceived < 1024)
+            return PacketsReceived + "Bytes";
+            return "";
+        }
+        
 
         public static (byte[], int) ByteToReceive(byte[] _byte){
             try{

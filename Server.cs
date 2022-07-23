@@ -46,31 +46,11 @@ namespace Nethostfire {
       /// <summary>
       /// Tamanho total de pacotes recebido.
       /// </summary>
-      public static string PacketsSizeReceived {get {
-            if(PacketsReceived > 1024000000)
-            return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
-            if(PacketsReceived > 1024000)
-            return (PacketsReceived / 1024000).ToString("0.00") + "MB";
-            if(PacketsReceived > 1024)
-            return (PacketsReceived / 1024).ToString("0.00") + "KB";
-            if(PacketsReceived < 1024)
-            return (PacketsReceived).ToString("0.00") + "Bytes";
-            return "";
-      }}
+      public static string PacketsSizeReceived {get {return Resources.BytesToString(PacketsReceived);}}
       /// <summary>
       /// Tamanho total de pacotes enviado.
       /// </summary>
-      public static string PacketsSizeSent {get {
-            if(PacketsSent > 1000000000)
-            return (PacketsSent / 1000000000).ToString("0.00") + "GB";
-            if(PacketsSent > 1000000)
-            return (PacketsSent / 1000000).ToString("0.00") + "MB";
-            if(PacketsSent > 1000)
-            return (PacketsSent / 1000).ToString("0.00") + "KB";
-            if(PacketsSent < 1000)
-            return (PacketsSent).ToString("0.00") + "Bytes";
-            return "";
-      }}
+      public static string PacketsSizeSent {get {return Resources.BytesToString(PacketsSent);}}
       /// <summary>
       /// Inicia o servidor com um IP e Porta especifico.
       /// </summary>

@@ -10,11 +10,11 @@ namespace Nethostfire {
     public class Client {
         static UdpClient MyClient;
         static IPEndPoint Host;
-        static int PacketCount, PackTmp, TimeTmp, connectTimeOut = 10000;
+        static int PacketCount, PackTmp, TimeTmp, connectTimeOut = 10000, waitConnectionHold = 1000;
         static long PingTmp, PingCount;
         static float PacketsReceived, PacketsSent;
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
-        static Dictionary<int, byte[]> ListHoldConnection = new Dictionary<int, byte[]>();
+        static Dictionary<int, HoldConnection> ListHoldConnection = new Dictionary<int, HoldConnection>();
         static Thread SendOnlineThread = new Thread(SendOnline), ClientReceiveUDPThread = new Thread(ClientReceiveUDP), CheckOnlineThread = new Thread(CheckOnline);
         /// <summary>
         /// Chave publica de criptografia RSA.
@@ -41,33 +41,17 @@ namespace Nethostfire {
         /// </summary>
         public static int ConnectTimeOut {get {return connectTimeOut;} set{connectTimeOut = value;}}
         /// <summary>
+        /// Tempo de bloqueio para evitar duplos bytes recebidos do mesmo hashcode durante um pacote com o HoldConnection ligado. O valor padrão é 1000 (ms).
+        /// </summary>
+        public static int WaitConnectionHold {get {return waitConnectionHold;} set{waitConnectionHold = value;}}
+        /// <summary>
         /// Tamanho total de pacotes recebido.
         /// </summary>
-        public static string PacketsSizeReceived {get {
-                if(PacketsReceived > 1024000000)
-                return (PacketsReceived / 1024000000).ToString("0.00") + "GB";
-                if(PacketsReceived > 1024000)
-                return (PacketsReceived / 1024000).ToString("0.00") + "MB";
-                if(PacketsReceived > 1024)
-                return (PacketsReceived / 1024).ToString("0.00") + "KB";
-                if(PacketsReceived < 1024)
-                return (PacketsReceived).ToString("0.00") + "Bytes";
-                return "";
-        }}
+        public static string PacketsSizeReceived {get {return Resources.BytesToString(PacketsReceived);}}
         /// <summary>
         /// Tamanho total de pacotes enviado.
         /// </summary>
-        public static string PacketsSizeSent {get {
-                if(PacketsSent > 1000000000)
-                return (PacketsSent / 1000000000).ToString("0.00") + "GB";
-                if(PacketsSent > 1000000)
-                return (PacketsSent / 1000000).ToString("0.00") + "MB";
-                if(PacketsSent > 1000)
-                return (PacketsSent / 1000).ToString("0.00") + "KB";
-                if(PacketsSent < 1000)
-                return (PacketsSent).ToString("0.00") + "Bytes";
-                return "";
-        }}
+        public static string PacketsSizeSent {get {return Resources.BytesToString(PacketsSent);}}
         /// <summary>
         /// Agrupador de Pacotes da Internet, ping (ms).
         /// </summary>
@@ -120,7 +104,7 @@ namespace Nethostfire {
         public static void SendBytes(byte[] _byte, int _hashCode, bool _holdConnection = false){
             if(Status == ClientStatusConnection.Connected){
                 if(_holdConnection && !ListHoldConnection.ContainsKey(_hashCode))
-                    ListHoldConnection.Add(_hashCode, _byte);
+                    ListHoldConnection.Add(_hashCode, new HoldConnection{Bytes = _byte, Time = 0});
                 Resources.Send(MyClient, _byte, _hashCode);
                 PacketsSent += _byte.Length;
             }
@@ -157,8 +141,6 @@ namespace Nethostfire {
                     if(data.Length > 1){
                         PacketsReceived += data.Length;
                         var _data = Resources.ByteToReceive(data);
-                        if(ListHoldConnection.ContainsKey(_data.Item2))
-                            ListHoldConnection.Remove(_data.Item2);
                         if(Status == ClientStatusConnection.Connecting){
                             string _text = Encoding.UTF8.GetString(_data.Item1);
                             if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
@@ -167,8 +149,20 @@ namespace Nethostfire {
                                 ChangeStatus(ClientStatusConnection.Connected);
                             }
                         }else{
-                            if(PublicKeyXML != "")
-                                OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                            if(ListHoldConnection.ContainsKey(_data.Item2)){
+                                if(ListHoldConnection[_data.Item2].Time == 0){
+                                    ListHoldConnection[_data.Item2].Time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + waitConnectionHold;
+                                    if(PublicKeyXML != "")
+                                        OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                                }else{
+                                    if(ListHoldConnection[_data.Item2].Time < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
+                                        ListHoldConnection.Remove(_data.Item2);
+                                    }
+                                }
+                            }else{
+                                if(PublicKeyXML != "")
+                                    OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                            }
                         }
                     }
                 }
@@ -183,8 +177,8 @@ namespace Nethostfire {
                 }
                 if(Status == ClientStatusConnection.Connected){
                     Resources.SendPing(MyClient, new byte[]{1});
-                    foreach(KeyValuePair<int, byte[]> _item in ListHoldConnection){
-                        Resources.Send(MyClient, _item.Value, _item.Key);
+                    foreach(KeyValuePair<int, HoldConnection> _item in ListHoldConnection){
+                        Resources.Send(MyClient, _item.Value.Bytes, _item.Key);
                     }  
                 }
                 Thread.Sleep(1000);

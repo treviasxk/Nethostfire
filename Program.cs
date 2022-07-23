@@ -53,7 +53,7 @@ class Program {
         Console.WriteLine("[STATUS] {0}", _status);
         if(_status == ClientStatusConnection.Connected){
             var _text = Encoding.UTF8.GetBytes("Hello world");
-            Client.SendBytes(_text, _text.GetHashCode());
+            Client.SendBytes(_text, _text.GetHashCode(), true);
         }
     }
     static void OnReceivedNewDataServer(byte[] _byte, int _hashCode){
