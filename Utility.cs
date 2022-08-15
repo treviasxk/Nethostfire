@@ -2,32 +2,35 @@
 // Redes sociais:       treviasxk
 // Github:              https://github.com/treviasxk
 
-using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Nethostfire{
         public class Utility{
-        static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
+        static readonly List<Action> ListRunOnMainThread = new List<Action>();
         /// <summary>
         /// Executa ações dentro da thread principal do software, é utilizado para manipular objetos 3D na Unity.
         /// </summary>
         public static void RunOnMainThread(Action action){
-            ListRunOnMainThread.Enqueue(action);
+            ListRunOnMainThread.Add(action);
         }
         /// <summary>
         /// Utilizado para definir a thread principal que irá executar as ações do RunOnMainThread(). Coloque essa ação dentro da função void Update() na Unity.
         /// </summary>
         public static void ThisMainThread() {
-            if (!ListRunOnMainThread.IsEmpty) {
+            if (ListRunOnMainThread.Count > 0) {
+                Parallel.ForEach(ListRunOnMainThread, item => {
+                    item?.Invoke();
+                    ListRunOnMainThread.Remove(item);
+                });
+                /*
                 while (ListRunOnMainThread.TryDequeue(out var action)) {
                     try{
                         action?.Invoke();
                     }catch{
                         throw;
                     }
-                }
+                }*/
             }
         }
         /// <summary>

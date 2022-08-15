@@ -105,7 +105,7 @@ namespace Nethostfire {
             if(Status == ClientStatusConnection.Connected){
                 if(_holdConnection && !ListHoldConnection.ContainsKey(_hashCode))
                     ListHoldConnection.Add(_hashCode, new HoldConnection{Bytes = _byte, Time = 0});
-                Resources.Send(MyClient, _byte, _hashCode);
+                Resources.Send(MyClient, _byte, _hashCode, _holdConnection);
                 PacketsSent += _byte.Length;
             }
         }
@@ -117,54 +117,63 @@ namespace Nethostfire {
                 try{
                     data = MyClient.Receive(ref Host);
                 }catch{}
+
                 if(data != null){
-                    PackTmp++;
-                    if(DateTime.Now.Second != TimeTmp){
-                        TimeTmp = DateTime.Now.Second;
-                        PacketCount = PackTmp;
-                        PackTmp = 0;
-                    }
-
-                    if(data.Length == 1){
-                        switch(data[0]){
-                            case 0:
-                                manualResetEvent.Reset();
-                                ChangeStatus(ClientStatusConnection.Disconnected);
-                            break;
-                            case 1:
-                                PingCount = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - PingTmp - 1000;
-                                PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                            break;
+                    Parallel.Invoke(()=>{
+                        PackTmp++;
+                        if(DateTime.Now.Second != TimeTmp){
+                            TimeTmp = DateTime.Now.Second;
+                            PacketCount = PackTmp;
+                            PackTmp = 0;
                         }
-                    }
 
-                    if(data.Length > 1){
-                        PacketsReceived += data.Length;
-                        var _data = Resources.ByteToReceive(data);
-                        if(Status == ClientStatusConnection.Connecting){
-                            string _text = Encoding.UTF8.GetString(_data.Item1);
-                            if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
-                                PublicKeyXML = _text;
-                                PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                                ChangeStatus(ClientStatusConnection.Connected);
+                        if(data.Length == 1){
+                            switch(data[0]){
+                                case 0:
+                                    manualResetEvent.Reset();
+                                    ChangeStatus(ClientStatusConnection.Disconnected);
+                                break;
+                                case 1:
+                                    PingCount = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - PingTmp - 1000;
+                                    PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                break;
                             }
-                        }else{
-                            if(ListHoldConnection.ContainsKey(_data.Item2)){
-                                if(ListHoldConnection[_data.Item2].Time == 0){
-                                    ListHoldConnection[_data.Item2].Time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + waitConnectionHold;
-                                    if(PublicKeyXML != "")
-                                        OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
-                                }else{
-                                    if(ListHoldConnection[_data.Item2].Time < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
-                                        ListHoldConnection.Remove(_data.Item2);
-                                    }
+                        }
+
+
+                        if(data.Length > 1){
+                            PacketsReceived += data.Length;
+                            var _data = Resources.ByteToReceive(data, MyClient);
+                            if(_data.Item3){
+                                ListHoldConnection.Remove(_data.Item2);
+                            }
+                            else
+                            if(Status == ClientStatusConnection.Connecting){
+                                string _text = Encoding.UTF8.GetString(_data.Item1);
+                                if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
+                                    PublicKeyXML = _text;
+                                    PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                    ChangeStatus(ClientStatusConnection.Connected);
                                 }
                             }else{
-                                if(PublicKeyXML != "")
-                                    OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                                if(ListHoldConnection.ContainsKey(_data.Item2)){
+                                    if(ListHoldConnection[_data.Item2].Time == 0){
+                                        ListHoldConnection[_data.Item2].Time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + waitConnectionHold;
+                                        if(PublicKeyXML != "")
+                                            OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                                    }else{
+                                        if(ListHoldConnection[_data.Item2].Time < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
+                                            ListHoldConnection.Remove(_data.Item2);
+                                        }
+                                    }
+                                }else{
+                                    if(PublicKeyXML != "")
+                                        OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
+                                }
                             }
                         }
-                    }
+                    });
+
                 }
                 manualResetEvent.WaitOne();
             }
@@ -173,13 +182,14 @@ namespace Nethostfire {
             while(true){
                 if(Status == ClientStatusConnection.Connecting){
                     byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
-                    Resources.Send(MyClient, _byte, _byte.GetHashCode());   
+                    Resources.Send(MyClient, _byte, _byte.GetHashCode(), false);   
                 }
                 if(Status == ClientStatusConnection.Connected){
                     Resources.SendPing(MyClient, new byte[]{1});
-                    foreach(KeyValuePair<int, HoldConnection> _item in ListHoldConnection){
-                        Resources.Send(MyClient, _item.Value.Bytes, _item.Key);
-                    }  
+                    Dictionary<int, HoldConnection> x = new Dictionary<int, HoldConnection>();
+                    Parallel.ForEach(ListHoldConnection.ToArray(), item => {
+                        Resources.Send(MyClient, item.Value.Bytes, item.Key, false);
+                    });
                 }
                 Thread.Sleep(1000);
                 manualResetEvent.WaitOne();

@@ -14,6 +14,7 @@ namespace Nethostfire {
       static float PacketsReceived, PacketsSent;
       static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
       static List<DataClient> DataClients = new List<DataClient>();
+      static Dictionary<int, HoldConnection> ListHoldConnection = new Dictionary<int, HoldConnection>();
       static Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
       /// <summary>
       /// O evento é chamado quando bytes é recebido de um Client.
@@ -55,9 +56,9 @@ namespace Nethostfire {
       /// Inicia o servidor com um IP e Porta especifico.
       /// </summary>
       public static void Start(IPEndPoint _host){
-         if(Status == ServerStatusConnection.Stopped)
-            ChangeStatus(ServerStatusConnection.Initializing);
          try{
+            if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting)
+               ChangeStatus(ServerStatusConnection.Initializing);
             if(MyServer is null){
                MyServer = new UdpClient();
                Resources.GenerateKeyRSA();
@@ -71,7 +72,7 @@ namespace Nethostfire {
                manualResetEvent.Set();
             }
          }catch{
-            ChangeStatus(ServerStatusConnection.Stopped);
+            ChangeStatus(ServerStatusConnection.FailedInitialize);
          }
          if(Status == ServerStatusConnection.Initializing)
             ChangeStatus(ServerStatusConnection.Running);
@@ -103,33 +104,33 @@ namespace Nethostfire {
       /// <summary>
       ///  Envie bytes para um Client especifico.
       /// </summary>
-      public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient){
+      public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient, bool _holdConnection = false){
          if(Status == ServerStatusConnection.Running){
-            Resources.Send(MyServer, _byte, _hashCode, _dataClient);
+            Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
             PacketsSent += _byte.Length;
          }
       }
       /// <summary>
       ///  Envie bytes para um grupo de Clients especifico.
       /// </summary>
-      public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients){
-         foreach(DataClient _dataClient in _dataClients){
+      public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients, bool _holdConnection = false){
+         Parallel.ForEach(_dataClients, _dataClient => {
             if(Status == ServerStatusConnection.Running){
-               Resources.Send(MyServer, _byte, _hashCode, _dataClient);
+               Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
                PacketsSent += _byte.Length;
             }
-         }
+         });
       }
       /// <summary>
       ///  Envie bytes para todos os Client conectado.
       /// </summary>
-      public static void SendBytesAll(byte[] _byte, int _hashCode){
-         foreach(DataClient _dataClient in DataClients){
+      public static void SendBytesAll(byte[] _byte, int _hashCode, bool _holdConnection = false){
+         Parallel.ForEach(DataClients, _dataClient => {
             if(Status == ServerStatusConnection.Running){
-               Resources.Send(MyServer, _byte, _hashCode, _dataClient);
+               Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
                PacketsSent += _byte.Length;
             }
-         }
+         });
       }
       /// <summary>
       /// Deconecta um Client especifico do servidor.
@@ -145,25 +146,25 @@ namespace Nethostfire {
       /// Deconecta um grupo de Clients do servidor.
       /// </summary>
       public static void DisconnectClientGroup(List<DataClient> _DataClients){
-         foreach(DataClient _dataClient in _DataClients){
+         Parallel.ForEach(_DataClients, _dataClient => {
             try{
                if(Status == ServerStatusConnection.Running){
-                  Resources.SendPing(MyServer, new byte[]{0},_dataClient);
+                  Resources.SendPing(MyServer, new byte[]{0}, _dataClient);
                }
             }catch{}
-         }
+         });
       }
       /// <summary>
       /// Deconecta todos os Clients conectado do servidor.
       /// </summary>
       public static void DisconnectClientAll(){
-         foreach(DataClient _dataClient in DataClients){
+         Parallel.ForEach(DataClients, _dataClient => {
             try{
                if(Status == ServerStatusConnection.Running){
                   Resources.SendPing(MyServer, new byte[]{0},_dataClient);
                }
             }catch{}
-         }
+         });
          Thread.Sleep(3000);
       }
 
@@ -175,49 +176,52 @@ namespace Nethostfire {
             try{
                data = MyServer.Receive(ref _ip);
             }catch{}
+            
             if(data != null){
-               PacketCount++;
-               if(DateTime.Now.Second != TimeTmp){
-                  TimeTmp = DateTime.Now.Second;
-                  PackTmp = PacketCount;
-                  PacketCount = 0;
-               }
-               DataClient _dataClient = new DataClient();
-               if(DataClients.Any(DataClient => DataClient.IP.ToString() == _ip.ToString())){
-                  int index = DataClients.FindIndex(DataClient => DataClient.IP.ToString() == _ip.ToString());
-                  _dataClient = DataClients.ElementAt(index);
+               Parallel.Invoke(()=>{
+                  PacketCount++;
+                  if(DateTime.Now.Second != TimeTmp){
+                     TimeTmp = DateTime.Now.Second;
+                     PackTmp = PacketCount;
+                     PacketCount = 0;
+                  }
+                  DataClient _dataClient = new DataClient();
+                  if(DataClients.Any(DataClient => DataClient.IP.ToString() == _ip.ToString())){
+                     int index = DataClients.FindIndex(DataClient => DataClient.IP.ToString() == _ip.ToString());
+                     _dataClient = DataClients.ElementAt(index);
 
-                  if(data.Length == 1){
-                     switch(data[0]){
-                        case 0:
-                           OnDisconnectedClient?.Invoke(_dataClient);
-                           DataClients.Remove(_dataClient);
-                        break;
-                        case 1:
-                           _dataClient.Ping = ((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) - _dataClient.Time - 1000).ToString() + "ms";
-                           _dataClient.Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
-                           Resources.SendPing(MyServer, new byte[]{1},_dataClient);
-                        break;
+                     if(data.Length == 1){
+                        switch(data[0]){
+                           case 0:
+                              OnDisconnectedClient?.Invoke(_dataClient);
+                              DataClients.Remove(_dataClient);
+                           break;
+                           case 1:
+                              _dataClient.Ping = ((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) - _dataClient.Time - 1000).ToString() + "ms";
+                              _dataClient.Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+                              Resources.SendPing(MyServer, new byte[]{1},_dataClient);
+                           break;
+                        }
                      }
                   }
-               }
 
-               if(data.Length > 1 && Status == ServerStatusConnection.Running){
-                  PacketsReceived += data.Length;
-                  var _data = Resources.ByteToReceive(data);
-                  if(_dataClient.PublicKeyXML == ""){
-                     string _text = Encoding.UTF8.GetString(_data.Item1);
-                     if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
-                        _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
-                        DataClients.Add(_dataClient);
-                        OnConnectedClient?.Invoke(_dataClient);
-                        byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
-                        Resources.Send(MyServer, _byte, _byte.GetHashCode(), _dataClient);
+                  if(data.Length > 1 && Status == ServerStatusConnection.Running){
+                     PacketsReceived += data.Length;
+                     var _data = Resources.ByteToReceive(data, MyServer, _dataClient);
+                     if(_dataClient.PublicKeyXML == ""){
+                        string _text = Encoding.UTF8.GetString(_data.Item1);
+                        if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
+                           _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
+                           DataClients.Add(_dataClient);
+                           OnConnectedClient?.Invoke(_dataClient);
+                           byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
+                           Resources.Send(MyServer, _byte, _byte.GetHashCode(), false, _dataClient);
+                        }
+                     }else{
+                        OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
                      }
-                  }else{
-                     OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
                   }
-               }
+               });
             }
             manualResetEvent.WaitOne();
          }
@@ -225,13 +229,13 @@ namespace Nethostfire {
 
       static void CheckOnline(){
          while(true){
-            for(int i = 0; i < DataClients.Count; i++){
-               if(DataClients.ElementAt(i).Time + 3000 < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
-                  OnDisconnectedClient?.Invoke(DataClients.ElementAt(i));
-                  DataClients.RemoveAt(i);
+            Parallel.ForEach(DataClients, _dataClient =>{
+               if(_dataClient.Time + 3000 < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
+                  OnDisconnectedClient?.Invoke(_dataClient);
+                  DataClients.Remove(_dataClient);
                }
                manualResetEvent.WaitOne();
-            }
+            });
             Thread.Sleep(1000);
          }
       }
