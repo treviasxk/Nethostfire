@@ -10,11 +10,11 @@ namespace Nethostfire {
    public class Server {
       static UdpClient MyServer;
       static IPEndPoint Host;
-      static int PacketCount, PackTmp, TimeTmp;
+      static int PacketCount, PackTmp, TimeTmp, waitConnectionHold = 1000;
       static float PacketsReceived, PacketsSent;
       static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
       static List<DataClient> DataClients = new List<DataClient>();
-      static Dictionary<int, HoldConnection> ListHoldConnection = new Dictionary<int, HoldConnection>();
+      static Dictionary<DataClient, HoldConnectionServer> ListHoldConnection = new Dictionary<DataClient, HoldConnectionServer>();
       static Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
       /// <summary>
       /// O evento é chamado quando bytes é recebido de um Client.
@@ -37,6 +37,10 @@ namespace Nethostfire {
       /// </summary>
       public static ServerStatusConnection Status {get;set;} = ServerStatusConnection.Stopped;
       /// <summary>
+      /// Tempo de bloqueio para evitar duplos bytes recebidos do mesmo hashcode durante um pacote com o HoldConnection ligado. O valor padrão é 1000 (ms).
+      /// </summary>
+      public static int WaitConnectionHold {get {return waitConnectionHold;} set{waitConnectionHold = value;}}
+      /// <summary>
       /// Número total de Clients conectado.
       /// </summary>
       public static int ClientsCount {get {return DataClients.Count;}}
@@ -55,11 +59,11 @@ namespace Nethostfire {
       /// <summary>
       /// Inicia o servidor com um IP e Porta especifico.
       /// </summary>
-      public static void Start(IPEndPoint _host){
+      public static void Start(IPEndPoint _host = null){
+         if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting || Status == ServerStatusConnection.FailedInitialize)
+            ChangeStatus(ServerStatusConnection.Initializing);
          try{
-            if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting)
-               ChangeStatus(ServerStatusConnection.Initializing);
-            if(MyServer is null){
+            if(MyServer is null && _host is not null){
                MyServer = new UdpClient();
                Resources.GenerateKeyRSA();
                Host = _host;
@@ -72,6 +76,8 @@ namespace Nethostfire {
                manualResetEvent.Set();
             }
          }catch{
+            if(_host is not null)
+               Host = _host;
             ChangeStatus(ServerStatusConnection.FailedInitialize);
          }
          if(Status == ServerStatusConnection.Initializing)
@@ -86,6 +92,7 @@ namespace Nethostfire {
                ChangeStatus(ServerStatusConnection.Stopping);
             manualResetEvent.Reset();
             Thread.Sleep(3000);
+            ListHoldConnection.Clear();
             DataClients.Clear();
             Resources.GenerateKeyRSA();
             if(Status == ServerStatusConnection.Stopping)
@@ -106,6 +113,15 @@ namespace Nethostfire {
       /// </summary>
       public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient, bool _holdConnection = false){
          if(Status == ServerStatusConnection.Running){
+            if(_holdConnection){
+               if(!ListHoldConnection.ContainsKey(_dataClient))
+                  ListHoldConnection.Add(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<long>{0}, HashCode = new List<int>{_hashCode}});
+               else{
+                  ListHoldConnection[_dataClient].Time.Add(0);
+                  ListHoldConnection[_dataClient].Bytes.Add(_byte);
+                  ListHoldConnection[_dataClient].HashCode.Add(_hashCode);
+               }
+            }
             Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
             PacketsSent += _byte.Length;
          }
@@ -116,6 +132,15 @@ namespace Nethostfire {
       public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients, bool _holdConnection = false){
          Parallel.ForEach(_dataClients, _dataClient => {
             if(Status == ServerStatusConnection.Running){
+               if(_holdConnection){
+                  if(!ListHoldConnection.ContainsKey(_dataClient))
+                     ListHoldConnection.Add(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<long>{0}, HashCode = new List<int>{_hashCode}});
+                  else{
+                     ListHoldConnection[_dataClient].Time.Add(0);
+                     ListHoldConnection[_dataClient].Bytes.Add(_byte);
+                     ListHoldConnection[_dataClient].HashCode.Add(_hashCode);
+                  }
+               }
                Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
                PacketsSent += _byte.Length;
             }
@@ -127,6 +152,15 @@ namespace Nethostfire {
       public static void SendBytesAll(byte[] _byte, int _hashCode, bool _holdConnection = false){
          Parallel.ForEach(DataClients, _dataClient => {
             if(Status == ServerStatusConnection.Running){
+               if(_holdConnection){
+                  if(!ListHoldConnection.ContainsKey(_dataClient))
+                     ListHoldConnection.Add(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<long>{0}, HashCode = new List<int>{_hashCode}});
+                  else{
+                     ListHoldConnection[_dataClient].Time.Add(0);
+                     ListHoldConnection[_dataClient].Bytes.Add(_byte);
+                     ListHoldConnection[_dataClient].HashCode.Add(_hashCode);
+                  }
+               }
                Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
                PacketsSent += _byte.Length;
             }
@@ -193,6 +227,8 @@ namespace Nethostfire {
                      if(data.Length == 1){
                         switch(data[0]){
                            case 0:
+                              if(ListHoldConnection.ContainsKey(_dataClient))
+                                 ListHoldConnection.Remove(_dataClient);
                               OnDisconnectedClient?.Invoke(_dataClient);
                               DataClients.Remove(_dataClient);
                            break;
@@ -206,8 +242,14 @@ namespace Nethostfire {
                   }
 
                   if(data.Length > 1 && Status == ServerStatusConnection.Running){
-                     PacketsReceived += data.Length;
                      var _data = Resources.ByteToReceive(data, MyServer, _dataClient);
+                     if(_data.Item3 && ListHoldConnection.ContainsKey(_dataClient) && ListHoldConnection[_dataClient].HashCode.Contains(_data.Item2)){
+                        var index = ListHoldConnection[_dataClient].HashCode.IndexOf(_data.Item2);
+                        ListHoldConnection[_dataClient].Bytes.RemoveAt(index);
+                        ListHoldConnection[_dataClient].Time.RemoveAt(index);
+                        ListHoldConnection[_dataClient].HashCode.RemoveAt(index);
+                     }
+                     else
                      if(_dataClient.PublicKeyXML == ""){
                         string _text = Encoding.UTF8.GetString(_data.Item1);
                         if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
@@ -218,7 +260,20 @@ namespace Nethostfire {
                            Resources.Send(MyServer, _byte, _byte.GetHashCode(), false, _dataClient);
                         }
                      }else{
-                        OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
+                        PacketsReceived += _data.Item1.Length;
+                        if(ListHoldConnection.ContainsKey(_dataClient) && ListHoldConnection[_dataClient].HashCode.Contains(_data.Item2)){
+                           var index = ListHoldConnection[_dataClient].HashCode.IndexOf(_data.Item2);
+                           if(ListHoldConnection[_dataClient].Time[index] == 0){
+                              ListHoldConnection[_dataClient].Time[index] = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + waitConnectionHold;
+                              OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
+                           }else{
+                              if(ListHoldConnection[_dataClient].Time[index] < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
+                                 ListHoldConnection.Remove(_dataClient);
+                              }
+                           }
+                        }else{
+                           OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient);
+                        }
                      }
                   }
                });
@@ -230,10 +285,23 @@ namespace Nethostfire {
       static void CheckOnline(){
          while(true){
             Parallel.ForEach(DataClients, _dataClient =>{
-               if(_dataClient.Time + 3000 < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
-                  OnDisconnectedClient?.Invoke(_dataClient);
-                  DataClients.Remove(_dataClient);
-               }
+               try{
+                  if(_dataClient.Time + 3000 < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
+                     if(ListHoldConnection.ContainsKey(_dataClient))
+                        ListHoldConnection.Remove(_dataClient);
+                     OnDisconnectedClient?.Invoke(_dataClient);
+                     DataClients.Remove(_dataClient);
+                  }
+               }catch{}
+                if(Status == ServerStatusConnection.Running){
+                    try{
+                        foreach(var item in ListHoldConnection.ToArray()){
+                           for(int i = 0; i < item.Value.HashCode.Count; i++){
+                              Resources.Send(MyServer, item.Value.Bytes[i], item.Value.HashCode[i], true);
+                           }
+                        };
+                    }catch{}
+                }
                manualResetEvent.WaitOne();
             });
             Thread.Sleep(1000);

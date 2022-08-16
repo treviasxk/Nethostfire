@@ -57,9 +57,9 @@ class Program {
         }
     }
     static void OnReceivedNewDataServer(byte[] _byte, int _hashCode){
-        //Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent + ")";
-        //Console.WriteLine("[RECEIVED] {0} - {1}", _hashCode, Encoding.UTF8.GetString(_byte));
-        Client.SendBytes(_byte, _hashCode);
+        Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent + ")";
+        //Console.WriteLine("[RECEIVED] {0} - {1} | {2}", _hashCode, Encoding.UTF8.GetString(_byte), _byte.Length);
+        Client.SendBytes(_byte, _hashCode); // se o pactore for perdido será disconnectado.
     }
     
     //========================= Events Server =========================
@@ -71,8 +71,8 @@ class Program {
     }
 
     static void OnReceivedNewDataClient(byte[] _byte, int _hashCode, DataClient _dataClient){
-        Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent + ")";
-       //Console.WriteLine("[RECEIVED] {0} - {1}", _hashCode, Encoding.UTF8.GetString(_byte));
+        //Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent + ")";
+        //Console.WriteLine("[RECEIVED] {0} - {1} | {2}", _hashCode, Encoding.UTF8.GetString(_byte), _byte.Length);
         Server.SendBytes(_byte, _hashCode, _dataClient);
     }
     static void OnServerStatusConnection(ServerStatusConnection _status){

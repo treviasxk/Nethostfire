@@ -41,11 +41,15 @@ namespace Nethostfire {
         NoConnection = 4
     }
 
-    class HoldConnection{
+    class HoldConnectionServer{
+        public List<int> HashCode {get;set;}
+        public List<byte[]> Bytes {get;set;}
+        public List<long> Time {get;set;}
+    }
+    class HoldConnectionClient{
         public byte[] Bytes {get;set;}
         public long Time {get;set;}
     }
-
     class Resources{
         public static string PrivateKeyXML = "", PublicKeyXML = "";
         public static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
@@ -106,13 +110,11 @@ namespace Nethostfire {
         }
         public static bool Send(UdpClient _udpClient, byte[] _byte, int _hashCode, bool _holdConnection, Nethostfire.DataClient _dataClient = null){
             try{
-                Parallel.Invoke(()=>{
-                    byte[] buffer = Resources.ByteToSend(_byte, _hashCode, _holdConnection);
-                    if(_dataClient == null)
-                        _udpClient.Send(buffer, buffer.Length);
-                    else
-                        _udpClient.Send(buffer, buffer.Length, _dataClient.IP);
-                });
+                byte[] buffer = Resources.ByteToSend(_byte, _hashCode, _holdConnection);
+                if(_dataClient == null)
+                    _udpClient.Send(buffer, buffer.Length);
+                else
+                    _udpClient.Send(buffer, buffer.Length, _dataClient.IP);
                 return true;
             }catch{
                 return false;
@@ -120,12 +122,10 @@ namespace Nethostfire {
         }
         public static bool SendPing(UdpClient _udpClient, byte[] _byte, Nethostfire.DataClient _dataClient = null){
             try{
-                Parallel.Invoke(()=>{
-                    if(_dataClient == null)
-                        _udpClient.Send(_byte, _byte.Length);
-                    else
-                        _udpClient.Send(_byte, _byte.Length, _dataClient.IP);
-                });
+                if(_dataClient == null)
+                    _udpClient.Send(_byte, _byte.Length);
+                else
+                    _udpClient.Send(_byte, _byte.Length, _dataClient.IP);
                 return true;
             }catch{
                 return false;
