@@ -14,6 +14,7 @@ namespace Nethostfire {
       static float PacketsReceived, PacketsSent;
       static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
       static List<DataClient> DataClients = new List<DataClient>();
+      static Dictionary<IPEndPoint, long> BlockedIPs = new Dictionary<IPEndPoint, long>();
       static Dictionary<DataClient, HoldConnectionServer> ListHoldConnection = new Dictionary<DataClient, HoldConnectionServer>();
       static Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
       /// <summary>
@@ -199,7 +200,48 @@ namespace Nethostfire {
                }
             }catch{}
          });
+         DataClients.Clear();
          Thread.Sleep(3000);
+      }
+
+      /// <summary>
+      /// Adiciona um IP na lista de bloqueio do servidor por tempo. (o tempo é definido por milisegundos).
+      /// </summary>
+      public static bool AddBlockerIP(IPEndPoint _ip, int _time){
+         if(!BlockedIPs.ContainsKey(_ip)){            
+            BlockedIPs.Add(_ip, _time + (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond));
+            return true;
+         }else
+            return false;
+      }
+
+      /// <summary>
+      /// Cheque se um IP está bloqueado pelo o servidor.
+      /// </summary>
+      public static bool CheckBlockerIP(IPEndPoint _ip){
+         if(BlockedIPs.ContainsKey(_ip)){
+            if(BlockedIPs[_ip] < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
+               BlockedIPs.Remove(_ip);
+               return false;
+            }
+            else{
+               if(DataClients.Any(DataClient => DataClient.IP.ToString() == _ip.ToString()))
+                  DataClients.RemoveAt(DataClients.FindIndex(DataClient => DataClient.IP.ToString() == _ip.ToString()));
+               return true;
+            } 
+         }else
+            return false;
+      }
+
+      /// <summary>
+      /// Remova um IP da lista de bloqueio do servidor.
+      /// </summary>
+      public static bool RemoveBlockerIP(IPEndPoint _ip){
+         if(BlockedIPs.ContainsKey(_ip)){            
+            BlockedIPs.Remove(_ip);
+            return true;
+         }else
+            return false;
       }
 
       static IPEndPoint _ip = new IPEndPoint(IPAddress.Any, 0);
@@ -211,7 +253,7 @@ namespace Nethostfire {
                data = MyServer.Receive(ref _ip);
             }catch{}
             
-            if(data != null){
+            if(data != null && !CheckBlockerIP(_ip)){
                Parallel.Invoke(()=>{
                   PacketCount++;
                   if(DateTime.Now.Second != TimeTmp){
