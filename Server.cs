@@ -61,9 +61,9 @@ namespace Nethostfire {
       /// Inicia o servidor com um IP e Porta especifico.
       /// </summary>
       public static void Start(IPEndPoint _host = null){
-         if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting || Status == ServerStatusConnection.FailedInitialize)
+         //throw new InvalidOperationException("Logfile cannot be read-only");
+         if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting)
             ChangeStatus(ServerStatusConnection.Initializing);
-         try{
             if(MyServer is null && _host is not null){
                MyServer = new UdpClient();
                Resources.GenerateKeyRSA();
@@ -76,11 +76,6 @@ namespace Nethostfire {
             }else{
                manualResetEvent.Set();
             }
-         }catch{
-            if(_host is not null)
-               Host = _host;
-            ChangeStatus(ServerStatusConnection.FailedInitialize);
-         }
          if(Status == ServerStatusConnection.Initializing)
             ChangeStatus(ServerStatusConnection.Running);
       }
@@ -112,7 +107,7 @@ namespace Nethostfire {
       /// <summary>
       ///  Envie bytes para um Client especifico.
       /// </summary>
-      public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient, bool _holdConnection = false){
+      public static void SendBytes(byte[] _byte, int _hashCode, DataClient _dataClient, TypeEncrypt _typeEncrypt = TypeEncrypt.None, bool _holdConnection = false){
          if(Status == ServerStatusConnection.Running){
             if(_holdConnection){
                if(!ListHoldConnection.ContainsKey(_dataClient))
@@ -123,14 +118,14 @@ namespace Nethostfire {
                   ListHoldConnection[_dataClient].HashCode.Add(_hashCode);
                }
             }
-            Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
+            Resources.Send(MyServer, _byte, _hashCode, _typeEncrypt, _holdConnection, TypeContent.Foreground, _dataClient);
             PacketsSent += _byte.Length;
          }
       }
       /// <summary>
       ///  Envie bytes para um grupo de Clients especifico.
       /// </summary>
-      public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients, bool _holdConnection = false){
+      public static void SendBytesGroup(byte[] _byte, int _hashCode, List<DataClient> _dataClients,  TypeEncrypt _typeEncrypt, bool _holdConnection = false){
          Parallel.ForEach(_dataClients, _dataClient => {
             if(Status == ServerStatusConnection.Running){
                if(_holdConnection){
@@ -142,7 +137,7 @@ namespace Nethostfire {
                      ListHoldConnection[_dataClient].HashCode.Add(_hashCode);
                   }
                }
-               Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
+               Resources.Send(MyServer, _byte, _hashCode, _typeEncrypt, _holdConnection, TypeContent.Foreground, _dataClient);
                PacketsSent += _byte.Length;
             }
          });
@@ -150,7 +145,7 @@ namespace Nethostfire {
       /// <summary>
       ///  Envie bytes para todos os Client conectado.
       /// </summary>
-      public static void SendBytesAll(byte[] _byte, int _hashCode, bool _holdConnection = false){
+      public static void SendBytesAll(byte[] _byte, int _hashCode, TypeEncrypt _typeEncrypt, bool _holdConnection = false){
          Parallel.ForEach(DataClients, _dataClient => {
             if(Status == ServerStatusConnection.Running){
                if(_holdConnection){
@@ -162,7 +157,7 @@ namespace Nethostfire {
                      ListHoldConnection[_dataClient].HashCode.Add(_hashCode);
                   }
                }
-               Resources.Send(MyServer, _byte, _hashCode, _holdConnection, _dataClient);
+               Resources.Send(MyServer, _byte, _hashCode, _typeEncrypt, _holdConnection, TypeContent.Foreground, _dataClient);
                PacketsSent += _byte.Length;
             }
          });
@@ -292,14 +287,18 @@ namespace Nethostfire {
                         ListHoldConnection[_dataClient].HashCode.RemoveAt(index);
                      }
                      else
-                     if(_dataClient.PublicKeyXML == ""){
-                        string _text = Encoding.UTF8.GetString(_data.Item1);
-                        if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
-                           _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyXML = _text};
-                           DataClients.Add(_dataClient);
-                           OnConnectedClient?.Invoke(_dataClient);
-                           byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
-                           Resources.Send(MyServer, _byte, _byte.GetHashCode(), false, _dataClient);
+                     if(_data.Item4 == TypeContent.Background){
+                        switch(_data.Item5){
+                           case TypeEncrypt.RSA:
+                              _dataClient = new DataClient() {IP = _ip, Time = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
+                              DataClients.Add(_dataClient);
+                              Resources.Send(MyServer, Encoding.ASCII.GetBytes(Resources.PublicKeyRSA), 0, TypeEncrypt.RSA, false, TypeContent.Background, _dataClient);
+                           break;
+                           case TypeEncrypt.AES:
+                              _dataClient.PrivateKeyAES = _data.Item1;
+                              Resources.Send(MyServer, Resources.KeyAES, 0, TypeEncrypt.AES, false, TypeContent.Background, _dataClient);
+                              OnConnectedClient?.Invoke(_dataClient);
+                           break;
                         }
                      }else{
                         PacketsReceived += _data.Item1.Length;
@@ -339,7 +338,7 @@ namespace Nethostfire {
                     try{
                         foreach(var item in ListHoldConnection.ToArray()){
                            for(int i = 0; i < item.Value.HashCode.Count; i++){
-                              Resources.Send(MyServer, item.Value.Bytes[i], item.Value.HashCode[i], true);
+                              Resources.Send(MyServer, item.Value.Bytes[i], item.Value.HashCode[i], TypeEncrypt.None, true, TypeContent.Foreground, item.Key);
                            }
                         };
                     }catch{}

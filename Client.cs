@@ -19,7 +19,11 @@ namespace Nethostfire {
         /// <summary>
         /// Chave publica de criptografia RSA.
         /// </summary>
-        public static string PublicKeyXML {get;set;}
+        public static string PublicKeyRSA {get;set;}
+        /// <summary>
+        /// Chave privada de criptografia AES.
+        /// </summary>
+        public static byte[] PrivateKeyAES {get;set;}
         /// <summary>
         /// O evento é chamado quando bytes é recebido do server.
         /// </summary>
@@ -60,7 +64,8 @@ namespace Nethostfire {
         /// Conecta no servidor com um IP e Porta especifico.
         /// </summary>
         public static void Connect(IPEndPoint _host){
-            ChangeStatus(ClientStatusConnection.Connecting);
+            if(Status !=ClientStatusConnection.Connected)
+                ChangeStatus(ClientStatusConnection.Connecting);
             ListHoldConnection.Clear();
             PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
             try{
@@ -101,11 +106,11 @@ namespace Nethostfire {
         /// <summary>
         /// Envie bytes para o servidor.
         /// </summary>
-        public static void SendBytes(byte[] _byte, int _hashCode, bool _holdConnection = false){
+        public static void SendBytes(byte[] _byte, int _hashCode, TypeEncrypt _typeEncrypt = TypeEncrypt.None, bool _holdConnection = false){
             if(Status == ClientStatusConnection.Connected){
                 if(_holdConnection && !ListHoldConnection.ContainsKey(_hashCode))
                     ListHoldConnection.Add(_hashCode, new HoldConnectionClient{Bytes = _byte, Time = 0});
-                Resources.Send(MyClient, _byte, _hashCode, _holdConnection);
+                Resources.Send(MyClient, _byte, _hashCode, _typeEncrypt, _holdConnection, TypeContent.Foreground);
                 PacketsSent += _byte.Length;
             }
         }
@@ -147,18 +152,25 @@ namespace Nethostfire {
                             }
                             else
                             if(Status == ClientStatusConnection.Connecting){
-                                string _text = Encoding.UTF8.GetString(_data.Item1);
-                                if(_text.StartsWith("<RSAKeyValue>") && _text.EndsWith("</RSAKeyValue>")){
-                                    PublicKeyXML = _text;
-                                    PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                                    ChangeStatus(ClientStatusConnection.Connected);
+                                if(_data.Item4 == TypeContent.Background){
+                                    switch(_data.Item5){
+                                        case TypeEncrypt.RSA:
+                                            PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
+                                            Resources.Send(MyClient, Resources.KeyAES, 0, TypeEncrypt.AES, false, TypeContent.Background);
+                                        break;
+                                        case TypeEncrypt.AES:
+                                            PrivateKeyAES = _data.Item1;
+                                            PingTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                            ChangeStatus(ClientStatusConnection.Connected);
+                                        break;
+                                    }
                                 }
                             }else{
                                 PacketsReceived += _data.Item1.Length;
                                 if(ListHoldConnection.ContainsKey(_data.Item2)){
                                     if(ListHoldConnection[_data.Item2].Time == 0){
                                         ListHoldConnection[_data.Item2].Time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + waitConnectionHold;
-                                        if(PublicKeyXML != "")
+                                        if(PublicKeyRSA != "")
                                             OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
                                     }else{
                                         if(ListHoldConnection[_data.Item2].Time < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
@@ -166,7 +178,7 @@ namespace Nethostfire {
                                         }
                                     }
                                 }else{
-                                    if(PublicKeyXML != "")
+                                    if(PublicKeyRSA != "")
                                         OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2);
                                 }
                             }
@@ -180,8 +192,7 @@ namespace Nethostfire {
         static void SendOnline(){
             while(true){
                 if(Status == ClientStatusConnection.Connecting){
-                    byte[] _byte  = Encoding.UTF8.GetBytes(Resources.PublicKeyXML);
-                    Resources.Send(MyClient, _byte, _byte.GetHashCode(), false);   
+                    Resources.Send(MyClient, Encoding.ASCII.GetBytes(Resources.PublicKeyRSA), 0, TypeEncrypt.RSA, false, TypeContent.Background);
                 }
                 if(Status == ClientStatusConnection.Connected){
                     Resources.SendPing(MyClient, new byte[]{1});
@@ -202,7 +213,7 @@ namespace Nethostfire {
                 if(Status == ClientStatusConnection.Connected){
                     try{
                         foreach(var item in ListHoldConnection.ToArray()){
-                            Resources.Send(MyClient, item.Value.Bytes, item.Key, true);
+                            Resources.Send(MyClient, item.Value.Bytes, item.Key, TypeEncrypt.None, true, TypeContent.Foreground);
                         };
                     }catch{}
                 }

@@ -3,9 +3,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <Version>1.1.1.0</Version>
-    <AssemblyVersion>1.1.1.0</AssemblyVersion>
-    <FileVersion>1.1.1.0</FileVersion>
+    <Version>1.1.2.0</Version>
+    <AssemblyVersion>1.1.2.0</AssemblyVersion>
+    <FileVersion>1.1.2.0</FileVersion>
     <Company>Trevias Xk</Company>
     <Authors>Trevias Xk</Authors>
     <Product>Nethostfire</Product>
@@ -14,5 +14,6 @@
     <RootNamespace>Nethostfire</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 </Project>

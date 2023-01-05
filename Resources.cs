@@ -23,7 +23,8 @@ namespace Nethostfire {
         /// <summary>
         /// Chave publica de criptografia RSA.
         /// </summary>
-        public string PublicKeyXML = "";
+        public string PublicKeyRSA = "";
+        public byte[] PrivateKeyAES = null;
     }
     public enum ServerStatusConnection{
         Stopped = 0,
@@ -31,8 +32,19 @@ namespace Nethostfire {
         Running = 2,
         Initializing = 3,
         Restarting = 4,
-        FailedInitialize = 5
     }
+    public enum TypeContent{
+        Background = 0,
+        Foreground = 1,
+    }
+    public enum TypeEncrypt{
+        None = 0,
+        AES = 1,
+        RSA = 2,
+        Base64 = 3,
+        Compress = 4,
+    }
+
     public enum ClientStatusConnection{
         Disconnected = 0,
         Disconnecting = 1,
@@ -51,11 +63,13 @@ namespace Nethostfire {
         public long Time {get;set;}
     }
     class Resources{
-        public static string PrivateKeyXML = "", PublicKeyXML = "";
+        public static string PrivateKeyRSA = "", PublicKeyRSA = "";
+        public static byte[] KeyAES;
         public static RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
         public static void GenerateKeyRSA(){
-            PrivateKeyXML = RSA.ToXmlString(true);
-            PublicKeyXML = RSA.ToXmlString(false);
+            PrivateKeyRSA = RSA.ToXmlString(true);
+            PublicKeyRSA = RSA.ToXmlString(false);
+            KeyAES = Utility.GetHashMD5(System.Text.Encoding.ASCII.GetBytes(PrivateKeyRSA));
         }
 
         public static string BytesToString(float PacketsReceived){
@@ -69,48 +83,103 @@ namespace Nethostfire {
             return PacketsReceived + "Bytes";
             return "";
         }
-        
 
-        public static (byte[], int, bool) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
+        public static (byte[], int, bool, TypeContent, TypeEncrypt) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
             try{
                 bool _holdConnection = false;
-                byte[] type = new byte[_byte[1]]; // 0
-                type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray(); // 1 0
-                byte[] data = new byte[_byte.Length - type.Length - 2]; // 1
-                _byte.Skip(2 + _byte[1]).ToArray().CopyTo(data,0); // 1 0 0
+                byte[] hascode = new byte[_byte[3]];
+                hascode = _byte.Skip(4).ToArray().Take(_byte[3]).ToArray();
+                byte[] data = new byte[_byte.Length - hascode.Length - 4];
+                _byte.Skip(4 + _byte[3]).ToArray().CopyTo(data,0);
+
+                TypeEncrypt _typeEncrypt = (TypeEncrypt)_byte[2];
+                TypeContent _typeContent = (TypeContent)_byte[1];
+
+                if(_typeContent == TypeContent.Background)
+                    switch(_typeEncrypt){
+                        case TypeEncrypt.AES:
+                            data = DecryptRSA(data);
+                        break;
+                    }
+
+                if(_typeContent == TypeContent.Foreground)
+                    switch(_typeEncrypt){
+                        case TypeEncrypt.AES:
+                            data = DecryptAES(data, _dataClient);
+                        break;
+                        case TypeEncrypt.RSA:
+                            data = DecryptRSA(data);
+                        break;
+                        case TypeEncrypt.Base64:
+                            data = Utility.DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
+                        break;
+                        case TypeEncrypt.Compress:
+                            data = Utility.Decompress(data);
+                        break;
+                    }
 
                 if(_byte[0] == 1){
-                    byte[] data2 = new byte[_byte[1] + 2];
+                    byte[] data2 = new byte[_byte[3] + 4];
                     data2[0] = 2;
-                    data2[1] = _byte[1];
-                    type.CopyTo(data2, 2); // 1
+                    data2[1] = 0;
+                    data2[2] = 0;
+                    data2[3] = _byte[3];
+                    hascode.CopyTo(data2, 4);
                     SendPing(_udpClient, data2, _dataClient);
                 }
-                if(_byte[0] == 2){
+                if(_byte[0] == 2)
                     _holdConnection = true;
-                }
-                return (data, BitConverter.ToInt32(type,0), _holdConnection);
+
+                return (data, BitConverter.ToInt32(hascode,0), _holdConnection, _typeContent, _typeEncrypt);
             }catch{
-                return (new byte[]{}, 0, false);
+                return (new byte[]{}, 0, false, TypeContent.Foreground, TypeEncrypt.None);
             }
         }
         
-        public static byte[] ByteToSend(byte[] _byte, int _hashCode, bool _holdConnection){
+        public static byte[] ByteToSend(byte[] _byte, int _hashCode, TypeEncrypt _typeEncrypt, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
             try{
-                byte[] type = BitConverter.GetBytes(_hashCode);
-                byte[] data = new byte[_byte.Length + type.Length + 2]; // 1
-                type.CopyTo(data, 2); // 1
-                _byte.CopyTo(data, 2 + type.Length); // 1
-                data[1] = (byte)type.Length; // 0
-                data[0] = (byte)(_holdConnection ? 1 : 0);
+                if(_typeContent == TypeContent.Background)
+                    switch(_typeEncrypt){
+                        case TypeEncrypt.AES:
+                            _byte = EncryptRSA(_byte, _dataClient);
+                        break;
+                    }
+
+                if(_typeContent == TypeContent.Foreground)
+                switch(_typeEncrypt){
+                    case TypeEncrypt.AES:
+                        _byte = EncryptAES(_byte, _dataClient);
+                    break;
+                    case TypeEncrypt.RSA:
+                        _byte = EncryptRSA(_byte, _dataClient);
+                    break;
+                    case TypeEncrypt.Base64:
+                        _byte = System.Text.Encoding.ASCII.GetBytes(Utility.EncryptBase64(_byte));
+                    break;
+                    case TypeEncrypt.Compress:
+                        _byte = Utility.Compress(_byte);
+                    break;
+                }
+
+                byte[] hascode = BitConverter.GetBytes(_hashCode);
+                byte[] data = new byte[_byte.Length + hascode.Length + 4];
+
+                data[0] = (byte)(_holdConnection ? 1 : 0);          // Se é um Hold Connection
+                data[1] = (byte)_typeContent;                       // O tipo de conteúdo
+                data[2] = (byte)_typeEncrypt;                       // O tipo de criptografia
+                data[3] = (byte)hascode.Length;                     // O tamanho do hascode
+
+                hascode.CopyTo(data, 4);
+                _byte.CopyTo(data, 4 + hascode.Length);
+
                 return data;
             }catch{
                 return new byte[]{};
             }
         }
-        public static bool Send(UdpClient _udpClient, byte[] _byte, int _hashCode, bool _holdConnection, Nethostfire.DataClient _dataClient = null){
+        public static bool Send(UdpClient _udpClient, byte[] _byte, int _hashCode, TypeEncrypt _typeEncrypt, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
             try{
-                byte[] buffer = Resources.ByteToSend(_byte, _hashCode, _holdConnection);
+                byte[] buffer = Resources.ByteToSend(_byte, _hashCode, _typeEncrypt, _holdConnection, _typeContent, _dataClient);
                 if(_dataClient == null)
                     _udpClient.Send(buffer, buffer.Length);
                 else
@@ -130,6 +199,35 @@ namespace Nethostfire {
             }catch{
                 return false;
             }
+        }
+        public static byte[] EncryptRSA(byte[] _byte, DataClient _dataClient){
+            try{
+                Resources.RSA.FromXmlString(_dataClient != null ? _dataClient.PublicKeyRSA : Client.PublicKeyRSA);
+                return Resources.RSA.Encrypt(_byte, true);
+            }catch{
+                Console.WriteLine("oiiii");
+                return new byte[]{};
+            }
+        }
+        public static byte[] DecryptRSA(byte[] _byte){
+            try{
+                Resources.RSA.FromXmlString(Resources.PrivateKeyRSA);
+                return Resources.RSA.Decrypt(_byte, true);
+            }catch{
+                return new byte[]{};
+            }
+        }
+        public static byte[] EncryptAES(byte[] _byte, DataClient _dataClient = null){
+            var key = _dataClient != null ? _dataClient.PrivateKeyAES : Resources.KeyAES;
+            using (var aes = Aes.Create())
+            using (var encryptor = aes.CreateEncryptor(key, key))
+                return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
+        }
+        public static byte[] DecryptAES(byte[] _byte, DataClient _dataClient = null){
+            var key = _dataClient != null ? _dataClient.PrivateKeyAES : Resources.KeyAES;
+            using (var aes = Aes.Create())
+            using (var encryptor = aes.CreateDecryptor(key, key))
+                return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
         }
     }
 }

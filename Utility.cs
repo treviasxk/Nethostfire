@@ -5,6 +5,7 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Nethostfire{
         public class Utility{
@@ -30,6 +31,17 @@ namespace Nethostfire{
             }
         }
         /// <summary>
+        /// Computar o valor hash MD5 de bytes.
+        /// </summary>
+        public static byte[] GetHashMD5(byte[] _byte){
+            try{
+                MD5 md5 = MD5.Create();
+                return md5.ComputeHash(_byte);
+            }catch{
+                return new byte[]{};
+            }
+        }
+        /// <summary>
         /// Criptografar bytes em MD5.
         /// </summary>
         public static string EncryptMD5(byte[] _byte){
@@ -52,28 +64,7 @@ namespace Nethostfire{
         public static byte[] DecryptBase64(string _text){
             return Convert.FromBase64String(_text);
         }
-        /// <summary>
-        /// Criptografar bytes com RSA.
-        /// </summary>
-        public static byte[] EncryptRSA(byte[] _byte, string _publicKeyXML){
-            try{
-                Resources.RSA.FromXmlString(_publicKeyXML);
-                return Resources.RSA.Encrypt(_byte, true);
-            }catch{
-                return new byte[]{};
-            }
-        }
-        /// <summary>
-        /// Descriptografar bytes com RSA.
-        /// </summary>
-        public static byte[] DecryptRSA(byte[] _byte){
-            try{
-                Resources.RSA.FromXmlString(Resources.PrivateKeyXML);
-                return Resources.RSA.Decrypt(_byte, true);
-            }catch{
-                return new byte[]{};
-            }
-        }
+
         /// <summary>
         /// Compactar bytes.
         /// </summary>
