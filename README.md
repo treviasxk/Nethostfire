@@ -31,7 +31,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
 
 2 - Move the file to the Assets folder of your Unity project **Assets/bin/debug/Nethostfire.dll**.
 
-3 - Then import the library ``'using NetworkUDP;'`` in your scripts.
+3 - Then import the library `'using Nethostfire;'` in your scripts.
 
 ## .NET | VB.Net Project Installation
 1 - Download the library **Nethostfire.dll** in [Releases](https://github.com/treviasxk/Nethostfire/releases)
@@ -51,7 +51,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
  ...
 </Project>
 ```
-4 - Then import the library ``'using NetworkUDP;'`` into your scripts and then restore the project with ``'dotnet restore'``.
+4 - Then import the library `'using Nethostfire;'` into your scripts and then restore the project with `'dotnet restore'`.
 
 # Documentation
 - Server
