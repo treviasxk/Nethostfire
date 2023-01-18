@@ -1,6 +1,7 @@
-﻿// Software desenvolvido por Trevias Xk
-// Redes sociais:       treviasxk
+﻿// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
+// Paypal:              trevias@live.com
 
 using System.Net;
 using System.Reflection;
@@ -9,33 +10,28 @@ using Nethostfire;
 
 class Program {
     static void Main(string[] args){
-        Server.OnConnectedClient += OnConnectedClient;
-        Server.OnDisconnectedClient += OnDisconnectedClient;
         Server.OnReceivedNewDataClient += OnReceivedNewDataClient;
-        Server.OnServerStatusConnection += OnServerStatusConnection;
         Client.OnReceivedNewDataServer += OnReceivedNewDataServer;
         Client.OnClientStatusConnection += OnClientStatusConnection;
         Menu();
     }
 
-
     static void Menu(){
         Console.Title = "Nethostfire";
         Console.WriteLine(" ============== NETHOSTFIRE ==============");
-        Console.WriteLine("  REDES SOCIAIS:               treviasxk");
-        Console.WriteLine("  VERSÃO:                      {0}", Assembly.GetExecutingAssembly().GetName().Version);
-        Console.WriteLine("  LICENÇA:                     GPL-3.0");
+        Console.WriteLine("  Social Networks:               treviasxk");
+        Console.WriteLine("  VERSION:                       {0}", Assembly.GetExecutingAssembly().GetName().Version);
+        Console.WriteLine("  LICENSE:                       GPL-3.0");
         Console.WriteLine(" =========================================");
         Console.WriteLine(" 1 - Server");
         Console.WriteLine(" 2 - Client");
-        Console.WriteLine(" 3 - Sair");
+        Console.WriteLine(" 3 - Server & Client");
+        Console.WriteLine(" 4 - Sair");
         string op = Console.ReadLine();
         Console.Clear();
         switch(op){
             case "1":
                 Server.Start(new IPEndPoint(IPAddress.Any, 25000));
-                Client.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
-
                 Console.ReadKey();
             break;
             case "2":
@@ -43,6 +39,11 @@ class Program {
                 Console.ReadKey();
             break;
             case "3":
+                Server.Start(new IPEndPoint(IPAddress.Any, 25000));
+                Client.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
+                Console.ReadKey();
+            break;
+            case "4":
                 Client.DisconnectServer();
             break;
             default:
@@ -53,35 +54,24 @@ class Program {
 
     //========================= Events Client =========================
     static void OnClientStatusConnection(ClientStatusConnection _status){
-        Console.WriteLine("[STATUS] {0}", _status);
         if(_status == ClientStatusConnection.Connected){
-            var _text =  Encoding.ASCII.GetBytes("Hello world");
-            Client.SendBytes(_text, 11, TypeEncrypt.RSA);
+            var _text =  Encoding.ASCII.GetBytes("Hello world!");
+            Client.SendBytes(_text, 11, TypeEncrypt.None);
         }
     }
-    static void OnReceivedNewDataServer(byte[] _byte, int _hashCode){
-        Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Size Received: " + Client.PacketsSizeReceived + " - Packets Size Sent: " + Client.PacketsSizeSent + ")";
-        Console.WriteLine("[RECEIVED] {0} - {1} | {2}", _hashCode, Encoding.ASCII.GetString(_byte), _byte.Length);
-        //Client.SendBytes(_byte, _hashCode, TypeEncrypt.RSA);
+
+    static void OnReceivedNewDataServer(byte[] _byte, int _groupID){
+        //Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Bytes Received: " + Client.PacketsBytesReceived + " - Packets Bytes Sent: " + Client.PacketsBytesSent + ")";
+        Console.WriteLine("[RECEIVED] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
+        //Client.SendBytes(_byte, _groupID, TypeEncrypt.Compress);
     }
     
     //========================= Events Server =========================
-    static void OnConnectedClient(DataClient _dataClient){
-        Console.WriteLine("[CLIENT] {0} conectou no servidor.", _dataClient.IP);
-    }
-    static void OnDisconnectedClient(DataClient _dataClient){
-        Console.WriteLine("[CLIENT] {0} desconectou do servidor.", _dataClient.IP);
-    }
 
-    static void OnReceivedNewDataClient(byte[] _byte, int _hashCode, DataClient _dataClient){
-        Console.Title = "Server - (Ping: " + _dataClient.Ping + " Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Size Received: " + Server.PacketsSizeReceived + " - Packets Size Sent: " + Server.PacketsSizeSent + ")";
-        Console.WriteLine("[RECEIVED] {0} - {1} | {2}", _hashCode, Encoding.ASCII.GetString(_byte), _byte.Length);
-        Server.SendBytes(_byte, _hashCode, _dataClient, TypeEncrypt.RSA);
-    }
-    static void OnServerStatusConnection(ServerStatusConnection _status){
-        if(_status == ServerStatusConnection.Running)
-            Console.WriteLine("[SERVER] Servidor iniciado e hospedado na porta: {0}", 25000);
-        else
-            Console.WriteLine("[STATUS] " + _status);
+    static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
+        Console.Title = "Server - (Status: " + Server.Status + " - Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Bytes Received: " + Server.PacketsBytesReceived + " - Packets Bytes Sent: " + Server.PacketsBytesSent + ")";
+        Console.WriteLine("[RECEIVED] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
+        Server.SendBytes(_byte, _groupID, _dataClient, TypeEncrypt.Compress);
+        //Server.SendBytesAll(_byte, _groupID, _skipDataClient: _dataClient);
     }
 }
