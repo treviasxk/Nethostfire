@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Security.Cryptography;
 
 namespace Nethostfire {
@@ -77,7 +76,7 @@ namespace Nethostfire {
     class Utility {
         public static string PrivateKeyRSA = "", PublicKeyRSA = "";
         public static byte[] PrivateKeyAES;
-        public static bool RunningInUnity = false, ShowDebugConsole = true, SaveLogs = false;
+        public static bool RunningInUnity = false, ShowDebugConsole = true;
         public static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static RSACryptoServiceProvider RSA;
         static Aes AES; 
@@ -92,12 +91,8 @@ namespace Nethostfire {
         }
 
         public static void ThisMainThread() {
-            if(ListRunOnMainThread.Count > 0) {
-                while (ListRunOnMainThread.TryDequeue(out var action)) {
-                    try{
-                        action?.Invoke();
-                    }catch{}
-                }
+            while(ListRunOnMainThread.TryDequeue(out var action)) {
+                action?.Invoke();
             }
         }
 
@@ -282,9 +277,8 @@ namespace Nethostfire {
             }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
                 if(b < _byte.Length)
-                    throw new Exception(Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes."));
-                else
-                    throw new Exception(Utility.ShowLog("Error encrypting bytes with RSA."));
+                    Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
+                return new byte[]{};
             }
         }
         private static byte[] DecryptRSA(byte[] _byte){
@@ -294,9 +288,8 @@ namespace Nethostfire {
             }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
                 if(b < _byte.Length)
-                    throw new Exception(Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes."));
-                else
-                    throw new Exception(Utility.ShowLog("Error encrypting bytes with RSA."));
+                    Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
+                return new byte[]{};
             }
         }
         private static byte[] EncryptAES(byte[] _byte, DataClient _dataClient = null){
@@ -305,7 +298,7 @@ namespace Nethostfire {
                 using (var encryptor = AES.CreateEncryptor(key, key))
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
             }catch{
-                throw new Exception(Utility.ShowLog("Error encrypting bytes with AES."));
+                return new byte[]{};
             }
         }
         private static byte[] DecryptAES(byte[] _byte, DataClient _dataClient = null){
@@ -314,7 +307,7 @@ namespace Nethostfire {
                 using (var encryptor = AES.CreateDecryptor(key, key))
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
             }catch{
-                throw new Exception(Utility.ShowLog("Error decrypting bytes with AES."));
+                return new byte[]{};
             }
         }
         private static string EncryptBase64(byte[] _byte){
@@ -354,9 +347,7 @@ namespace Nethostfire {
                 return new byte[]{};
             }
         }
-        public static bool IsAssemblyDebugBuild(Assembly assembly){
-            return assembly.GetCustomAttributes(false).OfType<DebuggableAttribute>().Any(da => da.IsJITTrackingEnabled);
-        }
+
 
         public static string ShowLog(string Message){
             if(ShowDebugConsole)
@@ -369,20 +360,8 @@ namespace Nethostfire {
                     Console.Write(DateTime.Now + " ");
                     Console.ForegroundColor = ConsoleColor.White;
                     Console.WriteLine(Message);
-                    SaveLog(DateTime.Now + " " + Message);
                 }
             return Message;
-        }
-
-        public static void SaveLog(string Message){
-            if(SaveLogs)
-            try{
-                string filename = "Nethostfire_logs.txt";
-                string text = "";
-                if(System.IO.File.Exists(filename))
-                    text = System.IO.File.ReadAllText("Nethostfire_logs.txt");
-                System.IO.File.WriteAllText("Nethostfire_logs.txt", text + Message + Environment.NewLine);
-            }catch{}
         }
 
         //================= Funções com dll da Unity =================

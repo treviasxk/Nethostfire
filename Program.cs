@@ -63,7 +63,7 @@ class Program {
     static void OnReceivedNewDataServer(byte[] _byte, int _groupID){
         //Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Bytes Received: " + Client.PacketsBytesReceived + " - Packets Bytes Sent: " + Client.PacketsBytesSent + ")";
         Console.WriteLine("[RECEIVED] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        //Client.SendBytes(_byte, _groupID, TypeEncrypt.Compress);
+        Client.SendBytes(_byte, _groupID);
     }
     
     //========================= Events Server =========================
@@ -71,7 +71,7 @@ class Program {
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
         Console.Title = "Server - (Status: " + Server.Status + " - Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Bytes Received: " + Server.PacketsBytesReceived + " - Packets Bytes Sent: " + Server.PacketsBytesSent + ")";
         Console.WriteLine("[RECEIVED] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        Server.SendBytes(_byte, _groupID, _dataClient, TypeEncrypt.Compress);
+        //Server.SendBytes(_byte, _groupID, _dataClient);
         //Server.SendBytesAll(_byte, _groupID, _skipDataClient: _dataClient);
     }
 }

@@ -116,7 +116,7 @@ public class ServiceNetwork : MonoBehaviour{
 
 
             float max = graph.values.Max() + 1;
-            float min = graph.values.Min() - 1;
+            float min = graph.values.Min();
 
             for(int i = 0; i < graph.values.Count; i++){
                 if(i > 1){

@@ -6,6 +6,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Collections.Concurrent;
 
 namespace Nethostfire {
     public class Client {
@@ -17,7 +18,7 @@ namespace Nethostfire {
         static string publicKeyRSA = null;
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
-        static Dictionary<int, HoldConnectionClient> listHoldConnection = new Dictionary<int, HoldConnectionClient>();
+        static ConcurrentDictionary<int, HoldConnectionClient> listHoldConnection = new ConcurrentDictionary<int, HoldConnectionClient>();
         static Thread SendOnlineThread = new Thread(SendOnline), clientReceiveUDPThread = new Thread(ClientReceiveUDP);
         /// <summary>
         /// OnReceivedNewDataServer an event that returns bytes received and GroupID whenever the received bytes by clients, with it you can manipulate the bytes received.
@@ -71,10 +72,6 @@ namespace Nethostfire {
         /// When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on the connection between the client and the server will be displayed during game execution.
         /// </summary>
         public static bool ShowUnityNetworkStatistics {get {return showUnityNetworkStatistics;} set {showUnityNetworkStatistics = value;}}
-        /// <summary>
-        /// If running on software other than Unity 3D, a log file "Nethostfire_logs.txt" will be generated in the root folder of the application. The default value is false.
-        /// </summary>
-        public static bool SaveLog {get {return Utility.SaveLogs;} set{Utility.SaveLogs = value;}}
         /// <summary>
         /// Ping returns an integer value, this value is per milliseconds
         /// </summary>
@@ -131,7 +128,7 @@ namespace Nethostfire {
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_holdConnection){
                     if(!listHoldConnection.ContainsKey(_groupID))
-                        listHoldConnection.Add(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeEncrypt = _typeEncrypt, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
+                        listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeEncrypt = _typeEncrypt, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
                     else{
                         listHoldConnection[_groupID].Time = 0;
                         listHoldConnection[_groupID].Bytes = _byte;
@@ -185,8 +182,7 @@ namespace Nethostfire {
 
                         if(data.Length > 1){
                             var _data = Utility.ByteToReceive(data, MyClient);
-                            if(listHoldConnection.ContainsKey(_data.Item2))
-                                listHoldConnection.Remove(_data.Item2);
+                            listHoldConnection.TryRemove(_data.Item2, out _);
                             if(_data.Item1 != null){
                                 if(Status == ClientStatusConnection.Connecting){
                                     if(_data.Item3 == TypeContent.Background)
@@ -210,7 +206,7 @@ namespace Nethostfire {
                                                 Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
                                         }else
                                             if(listHoldConnection[_data.Item2].Time < Utility.Timer.ElapsedMilliseconds)
-                                                listHoldConnection.Remove(_data.Item2);
+                                                listHoldConnection.TryRemove(_data.Item2, out _);
                                     }else
                                         Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
                                 }

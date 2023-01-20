@@ -78,7 +78,6 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
     - [Server.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
     - [Server.ClientsCount](#ClientsCount)
     - [Server.ShowDebugConsole](#ShowDebugConsole)
-    - [Server.SaveLog](#SaveLog)
     - [Server.OnConnectedClient](#OnConnectedClient)
     - [Server.OnDisconnectedClient](#OnDisconnectedClient)
     - [Server.OnServerStatusConnection](#OnServerStatusConnection)
@@ -96,7 +95,6 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
     - [Client.ConnectTimeOut](#ConnectTimeOut)
     - [Client.ShowUnityNetworkStatistics](#ShowUnityNetworkStatistics)
     - [Client.ShowDebugConsole](#ShowDebugConsole)
-    - [Client.SaveLog](#SaveLog)
     - [Client.Ping](#Ping)
     - [Client.OnReceivedNewDataServer](#OnReceivedNewDataServer)
     - [Client.OnClientStatusConnection](#OnClientStatusConnection)
@@ -390,18 +388,6 @@ Client.ShowDebugConsole = false;
 ![Preview](screenshots/DebugConsole.png)
 
 The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
-
------
-
-<a name="SaveLog"></a>
-### Server.SaveLog or Client.SaveLog
-`Write/Read Variable`
-```cs
-Server.SaveLog = true;
-// Or
-Client.SaveLog = true;
-```
-If running on software other than Unity 3D, a log file "Nethostfire_logs.txt" will be generated in the root folder of the application. The default value is false.
 
 -----
 
