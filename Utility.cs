@@ -38,14 +38,37 @@ namespace Nethostfire {
         Foreground = 1,
     }
     /// <summary>
-    /// The TypeEncrypt is used to define the type of encryption of the bytes when being sent.
+    /// The TypeShipping is used to define the type of encryption of the bytes when being sent.
     /// </summary>
-    public enum TypeEncrypt{
+    public enum TypeShipping {
+        /// <summary>
+        /// The bytes will not be modified when sent.
+        /// </summary>
         None = 0,
+        /// <summary>
+        /// The bytes will be sent encrypted in AES and then automatically decrypted after reaching their destination.
+        /// </summary>
         AES = 1,
+        /// <summary>
+        /// The bytes will be sent encrypted in RSA and then automatically decrypted after reaching their destination.
+        /// </summary>
         RSA = 2,
+        /// <summary>
+        /// The bytes will be sent encrypted in Base64 and then automatically decrypted after reaching their destination.
+        /// </summary>
         Base64 = 3,
+        /// <summary>
+        /// The bytes will be sent compress and then automatically decompress after reaching their destination.
+        /// </summary>
         Compress = 4,
+        /// <summary>
+        /// The bytes will be sent encrypted in Base64 and if your destination is a client, they will be automatically decrypted when you reach your destination, but if the destination is a server the bytes will not be decrypted.
+        /// </summary>
+        OnlyBase64 = 5,
+        /// <summary>
+        /// The bytes will be sent compress and if your destination is a client, they will be automatically decompress when you reach your destination, but if the destination is a server the bytes will not be decompress.
+        /// </summary>
+        OnlyCompress = 6,
     }
     /// <summary>
     /// The ClientStatusConnection is used to define client states. The ClientStatusConnection can be obtained by the Client.Status variable or with the event Client.OnClientStatusConnection
@@ -69,7 +92,7 @@ namespace Nethostfire {
     class HoldConnectionClient{
         public byte[] Bytes {get;set;}
         public int Time {get;set;}
-        public TypeEncrypt TypeEncrypt {get;set;}
+        public TypeShipping TypeShipping {get;set;}
         public TypeContent TypeContent {get;set;}
     }
 
@@ -80,7 +103,6 @@ namespace Nethostfire {
         public static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static RSACryptoServiceProvider RSA;
         static Aes AES; 
-        public static Stopwatch Timer = new Stopwatch();
         public static Process Process = Process.GetCurrentProcess();
 
         public static void RunOnMainThread(Action action){
@@ -127,8 +149,8 @@ namespace Nethostfire {
                 throw new Exception(Utility.ShowLog("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6)));
         }
 
-        public static (byte[], int, TypeContent, TypeEncrypt) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
-            TypeEncrypt _typeEncrypt;
+        public static (byte[], int, TypeContent, TypeShipping) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
+            TypeShipping _TypeShipping;
             TypeContent _typeContent;
             byte[] data;
             byte[] type;
@@ -137,7 +159,7 @@ namespace Nethostfire {
                 if(_byte[0] == 2){
                     type = new byte[_byte[1]];
                     type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
-                    return (null, BitConverter.ToInt32(type, 0), TypeContent.Background, TypeEncrypt.None);
+                    return (new byte[]{}, BitConverter.ToInt32(type, 0), TypeContent.Background, TypeShipping.None);
                 }
 
                 type = new byte[_byte[3]];
@@ -146,35 +168,45 @@ namespace Nethostfire {
                 _byte.Skip(4 + _byte[3]).ToArray().CopyTo(data,0);
 
                 hascode = BitConverter.ToInt32(type, 0);
-                _typeEncrypt = (TypeEncrypt)_byte[2];
+                _TypeShipping = (TypeShipping)_byte[2];
                 _typeContent = (TypeContent)_byte[1];
             }catch{
-                return (null, -1, TypeContent.Foreground, TypeEncrypt.None);
+                return (new byte[]{}, -1, TypeContent.Foreground, TypeShipping.None);
             }
 
             if(_typeContent == TypeContent.Background)
-                switch(_typeEncrypt){
-                    case TypeEncrypt.RSA:
+                switch(_TypeShipping){
+                    case TypeShipping.RSA:
                         data = Decompress(data);
                     break;
-                    case TypeEncrypt.AES:
+                    case TypeShipping.AES:
                         data = DecryptRSA(data);
                     break;
                 }
 
+
+
             if(_typeContent == TypeContent.Foreground)
-                switch(_typeEncrypt){
-                    case TypeEncrypt.AES:
+                switch(_TypeShipping){
+                    case TypeShipping.AES:
                         data = DecryptAES(data, _dataClient);
                     break;
-                    case TypeEncrypt.RSA:
+                    case TypeShipping.RSA:
                         data = DecryptRSA(data);
                     break;
-                    case TypeEncrypt.Base64:
+                    case TypeShipping.Base64:
                         data = DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
                     break;
-                    case TypeEncrypt.Compress:
+                    case TypeShipping.Compress:
                         data = Decompress(data);
+                    break;
+                    case TypeShipping.OnlyBase64:
+                        if(_dataClient == null)
+                            data = DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
+                    break;
+                    case TypeShipping.OnlyCompress:
+                        if(_dataClient == null)
+                            data = Decompress(data);
                     break;
                 }
 
@@ -186,37 +218,44 @@ namespace Nethostfire {
                     type.CopyTo(data2, 2);
                     SendPing(_udpClient, data2, _dataClient);
                 }
-                
-                return (data, hascode, _typeContent, _typeEncrypt);
+                return (data, hascode, _typeContent, _TypeShipping);
             }catch{
-                return (null, -1, TypeContent.Foreground, TypeEncrypt.None);
+                return (new byte[]{}, -1, TypeContent.Foreground, TypeShipping.None);
             }
         }
         
-        public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeEncrypt _typeEncrypt, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
+        public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
             if(_typeContent == TypeContent.Background)
-                switch(_typeEncrypt){
-                    case TypeEncrypt.RSA:
+                switch(_TypeShipping){
+                    case TypeShipping.RSA:
                         _byte = Compress(_byte);
                     break;
-                    case TypeEncrypt.AES:
+                    case TypeShipping.AES:
                         _byte = EncryptRSA(_byte, _dataClient);
                     break;
                 }
 
             if(_typeContent == TypeContent.Foreground)
-            switch(_typeEncrypt){
-                case TypeEncrypt.AES:
+            switch(_TypeShipping){
+                case TypeShipping.AES:
                     _byte = EncryptAES(_byte, _dataClient);
                 break;
-                case TypeEncrypt.RSA:
+                case TypeShipping.RSA:
                     _byte = EncryptRSA(_byte, _dataClient);
                 break;
-                case TypeEncrypt.Base64:
-                    _byte = System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                case TypeShipping.Base64:
+                    _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
                 break;
-                case TypeEncrypt.Compress:
+                case TypeShipping.Compress:
                     _byte = Compress(_byte);
+                break;
+                case TypeShipping.OnlyBase64:
+                    if(_dataClient == null)
+                       _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                break;
+                case TypeShipping.OnlyCompress:
+                    if(_dataClient == null)
+                        _byte = Compress(_byte);
                 break;
             }   
            
@@ -226,7 +265,7 @@ namespace Nethostfire {
 
                 data[0] = (byte)(_holdConnection ? 1 : 0);          // Se é um Hold Connection
                 data[1] = (byte)_typeContent;                       // O tipo de conteúdo
-                data[2] = (byte)_typeEncrypt;                       // O tipo de criptografia
+                data[2] = (byte)_TypeShipping;                       // O tipo de criptografia
                 data[3] = (byte)hascode.Length;                     // O tamanho do hascode
 
                 hascode.CopyTo(data, 4);
@@ -235,14 +274,14 @@ namespace Nethostfire {
                 return data;
             }
             catch{
-                return null;
+                return new byte[]{};
             }
         }
 
-        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeEncrypt _typeEncrypt, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
-            byte[] buffer = ByteToSend(_byte, _groupID, _typeEncrypt, _holdConnection, _typeContent, _dataClient);
+        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _TypeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
+            byte[] buffer = ByteToSend(_byte, _groupID, _TypeShipping, _holdConnection, _typeContent, _dataClient);
             try{
-                if(buffer != null){
+                if(buffer.Length != 0){
                     if(_dataClient == null)
                         _udpClient.Send(buffer, buffer.Length);
                     else
@@ -311,10 +350,18 @@ namespace Nethostfire {
             }
         }
         private static string EncryptBase64(byte[] _byte){
-            return Convert.ToBase64String(_byte);
+            try{
+                return Convert.ToBase64String(_byte);
+            }catch{
+                return "";
+            }
         }
         private static byte[] DecryptBase64(string _text){
-            return Convert.FromBase64String(_text);
+            try{
+                return Convert.FromBase64String(_text);
+            }catch{
+                return new byte[]{};
+            }
         }
         private static byte[] Compress(byte[] _byte){
             try{

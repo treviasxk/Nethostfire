@@ -17,8 +17,8 @@ public class ServiceNetwork : MonoBehaviour{
     void Start(){
         DontDestroyOnLoad(gameObject);
         mat = new Material(Shader.Find("Hidden/Internal-Colored"));
-        Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 30));
-        FPS = CreateGraph(500, "FPS", new Rect(170, 39, 100, 30));
+        Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
+        FPS = CreateGraph(500, "FPS", new Rect(170, 46, 100, 37));
         TextStyle.fontSize = 10;
         TextStyle.alignment = TextAnchor.UpperLeft;
         TextStyle.padding.left = 3;
@@ -40,6 +40,7 @@ public class ServiceNetwork : MonoBehaviour{
         if(Client.ShowUnityNetworkStatistics){
             GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
             GUILayout.Label("<color=white>Status: " + Client.Status + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Lost Packets: " + Client.LostPackets + "</color>", TextStyle);
             GUILayout.Label("<color=white>Packets Peer Seconds: " + Client.PacketsPerSeconds + "</color>", TextStyle);
             GUILayout.Label("<color=white>Packets Size Received: " + Client.PacketsBytesReceived + "</color>", TextStyle);
             GUILayout.Label("<color=white>Packets Size Sent: " + Client.PacketsBytesSent + "</color>", TextStyle);

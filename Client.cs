@@ -12,8 +12,8 @@ namespace Nethostfire {
     public class Client {
         static UdpClient MyClient;
         static IPEndPoint host;
-        static int packetsCount, pingCount, packetsTmp, timeTmp, connectTimeOut = 10000, receiveAndSendTimeOut = 1000, lostpacketsSent;
-        static long pingTmp, timeLastPacket;
+        static int packetsCount, pingCount, packetsTmp, timeTmp, connectTimeOut = 10000, receiveAndSendTimeOut = 1000, lostPackets, pingTmp;
+        static long timeLastPacket;
         static bool showUnityNetworkStatistics = false;
         static string publicKeyRSA = null;
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
@@ -61,9 +61,9 @@ namespace Nethostfire {
         /// </summary>
         public static string PacketsBytesSent {get {return Utility.BytesToString(packetsSent2);}}
         /// <summary>
-        /// LostPacketsSent is the number of packets lost with the HoldConnection feature.
+        /// LostPackets is the number of packets lost.
         /// </summary>
-        public static int LostPacketsSent {get {return lostpacketsSent;}}
+        public static int LostPackets {get {return lostPackets;}}
         /// <summary>
         /// The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
         /// </summary>
@@ -81,7 +81,6 @@ namespace Nethostfire {
         /// </summary>
         public static void Connect(IPEndPoint _host, int _symmetricSizeRSA = 86){
             if(MyClient is null){
-                Utility.Timer.Start();
                 MyClient = new UdpClient();
                 MyClient.Client.SendTimeout = receiveAndSendTimeOut;
                 MyClient.Client.ReceiveTimeout = receiveAndSendTimeOut;
@@ -92,7 +91,7 @@ namespace Nethostfire {
                 }catch{
                     throw new Exception(Utility.ShowLog("Unable to connect to the server."));
                 }
-                timeLastPacket = Utility.Timer.ElapsedMilliseconds;
+                timeLastPacket = Environment.TickCount;
                 clientReceiveUDPThread.IsBackground = true;
                 SendOnlineThread.IsBackground = true;
                 clientReceiveUDPThread.Start();
@@ -122,21 +121,22 @@ namespace Nethostfire {
                 ChangeStatus(ClientStatusConnection.ConnectionFail);
         }
         /// <summary>
-        /// To send bytes to server, it is necessary to define the bytes and GroupID, the other sending resources such as TypeEncrypt and HoldConnection are optional.
+        /// To send bytes to server, it is necessary to define the bytes and GroupID, the other sending resources such as TypeShipping and HoldConnection are optional.
         /// </summary>
-        public static void SendBytes(byte[] _byte, int _groupID, TypeEncrypt _typeEncrypt = TypeEncrypt.None, bool _holdConnection = false){
+        public static void SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false){
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_holdConnection){
                     if(!listHoldConnection.ContainsKey(_groupID))
-                        listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeEncrypt = _typeEncrypt, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
+                        listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
                     else{
-                        listHoldConnection[_groupID].Time = 0;
+                        listHoldConnection[_groupID].Time = Environment.TickCount + receiveAndSendTimeOut;
                         listHoldConnection[_groupID].Bytes = _byte;
-                        listHoldConnection[_groupID].TypeEncrypt = _typeEncrypt;
+                        listHoldConnection[_groupID].TypeShipping = _typeShipping;
                         listHoldConnection[_groupID].TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
                     }
-                }else
-                    Utility.Send(MyClient, _byte, _groupID, _typeEncrypt, _holdConnection, TypeContent.Foreground);
+                }
+                if(!Utility.Send(MyClient, _byte, _groupID, _typeShipping, _holdConnection, (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background)))
+                    lostPackets++;
                 packetsSent += _byte.Length;
                 packetsTmp++;
             }
@@ -153,7 +153,7 @@ namespace Nethostfire {
 
                 if(data != null && _host.Equals(host)){
                     Parallel.Invoke(()=>{
-                        timeLastPacket = Utility.Timer.ElapsedMilliseconds;
+                        timeLastPacket = Environment.TickCount;
                         packetsTmp++;
                         if(DateTime.Now.Second != timeTmp){
                             timeTmp = DateTime.Now.Second;
@@ -169,7 +169,7 @@ namespace Nethostfire {
                                     ChangeStatus(ClientStatusConnection.Disconnected);
                                 break;
                                 case 1:
-                                    pingCount = Convert.ToInt16(Utility.Timer.ElapsedMilliseconds - pingTmp);
+                                    pingCount = Environment.TickCount - pingTmp;
                                 break;
                                 case 2:
                                     ChangeStatus(ClientStatusConnection.IpBlocked);
@@ -182,16 +182,17 @@ namespace Nethostfire {
 
                         if(data.Length > 1){
                             var _data = Utility.ByteToReceive(data, MyClient);
-                            listHoldConnection.TryRemove(_data.Item2, out _);
-                            if(_data.Item1 != null){
+                            if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
+                                lostPackets++;
+                            if(_data.Item1.Length != 0){
                                 if(Status == ClientStatusConnection.Connecting){
                                     if(_data.Item3 == TypeContent.Background)
                                         switch(_data.Item4){
-                                            case TypeEncrypt.RSA:
+                                            case TypeShipping.RSA:
                                                 publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
-                                                SendBytes(Utility.PrivateKeyAES, 1, TypeEncrypt.AES, true);
+                                                SendBytes(Utility.PrivateKeyAES, 1, TypeShipping.AES, true);
                                             break;
-                                            case TypeEncrypt.AES:
+                                            case TypeShipping.AES:
                                                 PrivateKeyAES = _data.Item1;
                                                 if(publicKeyRSA != null)
                                                     ChangeStatus(ClientStatusConnection.Connected);
@@ -199,16 +200,7 @@ namespace Nethostfire {
                                         }
                                 }else{
                                     packetsReceived += _data.Item1.Length;
-                                    if(listHoldConnection.ContainsKey(_data.Item2)){
-                                        if(listHoldConnection[_data.Item2].Time == 0){
-                                            listHoldConnection[_data.Item2].Time = Convert.ToInt32(Utility.Timer.ElapsedMilliseconds + receiveAndSendTimeOut);
-                                            if(publicKeyRSA != null && PrivateKeyAES != null)
-                                                Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
-                                        }else
-                                            if(listHoldConnection[_data.Item2].Time < Utility.Timer.ElapsedMilliseconds)
-                                                listHoldConnection.TryRemove(_data.Item2, out _);
-                                    }else
-                                        Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
+                                    Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
                                 }
                             }
                         }
@@ -221,27 +213,32 @@ namespace Nethostfire {
             while(true){
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
-                    pingTmp = Utility.Timer.ElapsedMilliseconds;
+                    pingTmp = Environment.TickCount;
                     Utility.SendPing(MyClient, new byte[]{1});
                 }
 
                 // Verificando se o ultimo ping com o server é de 3000ms
-                if(Utility.Timer.ElapsedMilliseconds - timeLastPacket > 3000 && Status == ClientStatusConnection.Connected)
+                if(Environment.TickCount - timeLastPacket > 3000 && Status == ClientStatusConnection.Connected)
                     ChangeStatus(ClientStatusConnection.Connecting);
 
                 // Verificando o tempo de reconexão (connectTimeOut) se esgotou.
-                if(Status == ClientStatusConnection.Connecting && Utility.Timer.ElapsedMilliseconds - timeLastPacket > 3000 + connectTimeOut && connectTimeOut != 0)
+                if(Status == ClientStatusConnection.Connecting && Environment.TickCount - timeLastPacket > 3000 + connectTimeOut && connectTimeOut != 0)
                     DisconnectServer();
 
                 // Enviando bytes que estão em listHoldConnection
                 if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
                     try{
                         foreach(var item in listHoldConnection.ToArray()){
-                            Utility.Send(MyClient, item.Value.Bytes, item.Key, item.Value.TypeEncrypt, true, item.Value.TypeContent);
-                            lostpacketsSent++;
+                            if(item.Value.Time < Environment.TickCount){
+                                item.Value.Time = Environment.TickCount + receiveAndSendTimeOut;
+                                if(!Utility.Send(MyClient, item.Value.Bytes, item.Key, item.Value.TypeShipping, true, item.Value.TypeContent))
+                                    lostPackets++;
+                                lostPackets++;
+                            }
                         }
                     }catch{}
-
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
                 Thread.Sleep(1000);
                 manualResetEvent.WaitOne();
             }
@@ -258,7 +255,7 @@ namespace Nethostfire {
                     packetsReceived2 = 0;
                     packetsSent = 0;
                     packetsSent2 = 0;
-                    lostpacketsSent = 0;
+                    lostPackets = 0;
                 }
                 Thread t = new Thread(new ThreadStart(NewThreadStatus));
                 t.Start();
@@ -267,8 +264,8 @@ namespace Nethostfire {
                         publicKeyRSA = null;
                         PrivateKeyAES = null;
                         listHoldConnection.Clear();
-                        timeLastPacket = Utility.Timer.ElapsedMilliseconds;
-                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSA), 0, TypeEncrypt.RSA, true);
+                        timeLastPacket = Environment.TickCount;
+                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSA), 0, TypeShipping.RSA, true);
                         Utility.ShowLog("Connecting on " + host);
                     break;
                     case ClientStatusConnection.Connected:

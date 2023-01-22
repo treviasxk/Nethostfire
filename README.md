@@ -70,7 +70,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
     - [Server.LimitMaxByteReceive](#LimitMaxByteReceive)
     - [Server.LimitMaxPacketsPerSeconds](#LimitMaxPacketsPerSeconds)
     - [Server.Status](#Status)
-    - [Server.LostPacketsSent](#LostPacketsSent)
+    - [Server.LostPackets](#LostPackets)
     - [Server.MaxClients](#MaxClients)
     - [Server.PacketsPerSeconds](#PacketsPerSeconds)
     - [Server.PacketsBytesReceived](#PacketsBytesReceived)
@@ -87,7 +87,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
     - [Client.SendBytes](#ClientSendBytes)
     - [Client.DisconnectServer](#DisconnectServer)
     - [Client.Status](#ClientStatus)
-    - [Client.LostPacketsSent](#ClientLostPacketsSent)
+    - [Client.LostPackets](#ClientLostPackets)
     - [Client.PacketsPerSeconds](#ClientPacketsPerSeconds)
     - [Client.PacketsBytesReceived](#ClientPacketsBytesReceived)
     - [Client.PacketsBytesSent](#ClientPacketsBytesSent)
@@ -105,7 +105,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
     - [ServerStatusConnection](#ServerStatusConnection)
     - [ClientStatusConnection](#ClientStatusConnection)
     - [DataClient](#DataClient)
-    - [TypeEncrypt](#TypeEncrypt)
+    - [TypeShipping](#TypeShipping)
 - FAQ
     - [GroupID](#GroupID)
     - [HoldConnection](#HoldConnection)
@@ -144,7 +144,7 @@ If the server is running, you can stop it, all connected clients will be disconn
 
 <a name="ServerSendBytes"></a>
 ### Server.SendBytes
-`Server.SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeEncrypt _typeEncrypt = TypeEncrypt.None, bool _holdConnection = false)`
+`Server.SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
 ```cs
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
@@ -153,19 +153,19 @@ static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _data
    Server.SendBytes(_byte, 4, _dataClient);
 
    // Sending bytes with groupID 4 to client, with encryption AES and without HoldConnection
-   Server.SendBytes(_byte, 4, _dataClient, TypeEncrypt.AES);
+   Server.SendBytes(_byte, 4, _dataClient, TypeShipping.AES);
 
    // Sending bytes with groupID 4 to client, with encryption RSA and with HoldConnection
-   Server.SendBytes(_byte, 4, _dataClient, TypeEncrypt.RSA, true);
+   Server.SendBytes(_byte, 4, _dataClient, TypeShipping.RSA, true);
 }
 ```
-To send bytes to a client, it is necessary to define the bytes, [GroupID](#GroupID) and [DataClient](#DataClient), the other sending resources such as [TypeEncrypt](#TypeEncrypt) and [HoldConnection](#HoldConnection) are optional.
+To send bytes to a client, it is necessary to define the bytes, [GroupID](#GroupID) and [DataClient](#DataClient), the other sending resources such as [TypeShipping](#TypeShipping) and [HoldConnection](#HoldConnection) are optional.
 
 -----
 
 <a name="SendBytesGroup"></a>
 ### Server.SendBytesGroup
-`Server.SendBytesGroup(byte[] _byte, int _groupID, List<DataClient> _dataClients, TypeEncrypt _typeEncrypt = TypeEncrypt.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
+`Server.SendBytesGroup(byte[] _byte, int _groupID, List<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
 ```cs
 static List<DataClient> PlayersLobby = new List<DataClient>();
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
@@ -178,13 +178,13 @@ static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _data
    Server.SendBytesGroup(_byte, 2, PlayersLobby, _skipDataClient: _dataClient);
 }
 ```
-To send bytes to a group client, it is necessary to define the bytes, [GroupID](#GroupID) and [List DataClient](#DataClient), the other sending resources such as [TypeEncrypt](#TypeEncrypt), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
+To send bytes to a group client, it is necessary to define the bytes, [GroupID](#GroupID) and [List DataClient](#DataClient), the other sending resources such as [TypeShipping](#TypeShipping), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
 
 -----
 
 <a name="SendBytesAll"></a>
 ### Server.SendBytesAll
-`Server.SendBytesAll(byte[] _byte, int _groupID, TypeEncrypt _typeEncrypt = TypeEncrypt.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
+`Server.SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
 ```cs
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Play Game");
@@ -196,7 +196,7 @@ static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _data
    Server.SendBytesGroup(_byte, 2, PlayersLobby, _skipDataClient: _dataClient);
 }
 ```
-To send bytes to all clients, it is necessary to define the bytes, [GroupID](#GroupID), the other sending resources such as [TypeEncrypt](#TypeEncrypt), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
+To send bytes to all clients, it is necessary to define the bytes, [GroupID](#GroupID), the other sending resources such as [TypeShipping](#TypeShipping), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
 
 -----
 
@@ -305,16 +305,16 @@ The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per secon
 
 -----
 
-<a name="LostPacketsSent"></a>
-### Server.LostPacketsSent
+<a name="LostPackets"></a>
+### Server.LostPackets
 `Read-Only Variable`
 ```cs
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  int lostPacketsSent = Server.LostPacketsSent;
-  Console.WriteLine("{0} packets lost", lostPacketsSent);
+  int LostPackets = Server.LostPackets;
+  Console.WriteLine("{0} packets lost", LostPackets);
 }
 ```
-LostPacketsSent is the number of packets lost with the [HoldConnection](#HoldConnection) feature.
+LostPackets is the number of packets lost.
 
 -----
 
@@ -482,7 +482,7 @@ Connect to a server with IP, Port and sets the size of [SymmetricSizeRSA](#Symme
 
 <a name="ClientSendBytes"></a>
 ### Client.SendBytes
-`SendBytes(byte[] _byte, int _groupID, TypeEncrypt _typeEncrypt = TypeEncrypt.None, bool _holdConnection = false)`
+`SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
 ```cs
 var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
 
@@ -490,12 +490,12 @@ var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
 Client.SendBytes(_byte, 4);
 
 // Sending bytes with groupID 4 to server, with encryption AES and without HoldConnection
-Client.SendBytes(_byte, 4, TypeEncrypt.AES);
+Client.SendBytes(_byte, 4, TypeShipping.AES);
 
 // Sending bytes with groupID 4 to server, with encryption RSA and with HoldConnection
-Client.SendBytes(_byte, 4, TypeEncrypt.RSA, true);
+Client.SendBytes(_byte, 4, TypeShipping.RSA, true);
 ```
-To send bytes to server, it is necessary to define the bytes and [GroupID](#GroupID), the other sending resources such as [TypeEncrypt](#TypeEncrypt) and [HoldConnection](#HoldConnection) are optional.
+To send bytes to server, it is necessary to define the bytes and [GroupID](#GroupID), the other sending resources such as [TypeShipping](#TypeShipping) and [HoldConnection](#HoldConnection) are optional.
 
 -----
 
@@ -509,16 +509,16 @@ With DisconnectServer the client will be disconnected from the server.
 
 -----
 
-<a name="ClientLostPacketsSent"></a>
-### Client.LostPacketsSent
+<a name="ClientLostPackets"></a>
+### Client.LostPackets
 `Read-Only Variable`
 ```cs
 static void OnReceivedNewDataServer(byte[] _byte, int _groupID, DataClient _dataClient){
-  int lostPacketsSent = Client.LostPacketsSent;
-  Console.WriteLine("{0} packets lost", lostPacketsSent);
+  int LostPackets = Client.LostPackets;
+  Console.WriteLine("{0} packets lost", LostPackets);
 }
 ```
-LostPacketsSent is the number of packets lost with the [HoldConnection](#HoldConnection) feature.
+LostPackets is the number of packets lost.
 
 -----
 
@@ -731,25 +731,30 @@ The ServerStatusConnection is used to define server states. The ServerStatusConn
 
 -----
 
-<a name="TypeEncrypt"></a>
-### TypeEncrypt
+<a name="TypeShipping"></a>
+### TypeShipping
 ```cs
-public enum TypeEncrypt{
+public enum TypeShipping{
     None = 0,
     AES = 1,
     RSA = 2,
     Base64 = 3,
     Compress = 4,
+    SkipDecodeBase64 = 5,
+    SkipDecompress = 6,
 }
 ```
-The TypeEncrypt is used to define the type of encryption of the bytes when being sent. Below is some information about using each of them.
-| TypeEncrypt | Encryption/Decryption Speed | Security | Shipping Size | Recommended Use |
+The TypeShipping is used to define the type of encryption of the bytes when being sent, Encryptions are automatically decrypted whenever it reaches its destination, to prevent it from being automatically decrypted when it arrives at the server, just select the option that begins with Skip.. Below is some information about using each of them.
+
+| TypeShipping | Encryption/Decryption Speed | Security | Shipping Size | Recommended Use |
 |:---:|:---|:---|:---:|:---|
 | None  | 37000pps Extremely Fast  | Not Safe | Very Little | Argument/Command Line |
 | AES  | 31000pps Fast | Moderate  | Little | Coordinates/Actions of a player (game) | 
 | RSA  | 1000ps Extremely Slow  | Extremely safe | Big | Login/Messages |
 | Base64  | 36000pps Very Fast  | Not Safe | Little | Infos/Status simples |
 | Compress  | 30000pps Fast  | Not Safe | Extremely Little | Video/Voice Call |
+| OnlyBase64  | 36500pps Very Fast  | Not Safe | Little | Infos/Status simples |
+| OnlyCompress  | 33000pps Fast  | Not Safe | Extremely Little | Video/Voice Call |
 
 _Encryption/Decryprion Speed may vary depending on your machine's performance._
 

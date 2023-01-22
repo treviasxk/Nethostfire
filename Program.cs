@@ -35,7 +35,7 @@ class Program {
                 Console.ReadKey();
             break;
             case "2":
-                Client.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
+                Client.Connect(new IPEndPoint(IPAddress.Parse("144.22.219.177"), 25000));
                 Console.ReadKey();
             break;
             case "3":
@@ -56,22 +56,21 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         if(_status == ClientStatusConnection.Connected){
             var _text =  Encoding.ASCII.GetBytes("Hello world!");
-            Client.SendBytes(_text, 11, TypeEncrypt.None);
+            Client.SendBytes(_text, 11, TypeShipping.AES);
         }
     }
 
     static void OnReceivedNewDataServer(byte[] _byte, int _groupID){
-        //Console.Title = "Client - (Ping: " + Client.Ping + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Bytes Received: " + Client.PacketsBytesReceived + " - Packets Bytes Sent: " + Client.PacketsBytesSent + ")";
-        Console.WriteLine("[RECEIVED] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        Client.SendBytes(_byte, _groupID);
+        Console.Title = "Client - (Ping: " + Client.Ping + " Lost Packets: " + Client.LostPackets + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Bytes Received: " + Client.PacketsBytesReceived + " - Packets Bytes Sent: " + Client.PacketsBytesSent + ")";
+        Console.WriteLine("[CLIENT] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
+        //Client.SendBytes(_byte, _groupID);
     }
     
     //========================= Events Server =========================
-
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
-        Console.Title = "Server - (Status: " + Server.Status + " - Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Bytes Received: " + Server.PacketsBytesReceived + " - Packets Bytes Sent: " + Server.PacketsBytesSent + ")";
-        Console.WriteLine("[RECEIVED] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        //Server.SendBytes(_byte, _groupID, _dataClient);
+        Console.Title = "Server - (Status: " + Server.Status + " - Lost Packets: " + Server.LostPackets + " - Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Bytes Received: " + Server.PacketsBytesReceived + " - Packets Bytes Sent: " + Server.PacketsBytesSent + ")";
+        Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
+        Server.SendBytes(_byte, _groupID, _dataClient, TypeShipping.AES, true);
         //Server.SendBytesAll(_byte, _groupID, _skipDataClient: _dataClient);
     }
 }
