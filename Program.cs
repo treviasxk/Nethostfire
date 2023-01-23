@@ -9,6 +9,7 @@ using System.Text;
 using Nethostfire;
 
 class Program {
+
     static void Main(string[] args){
         Server.OnReceivedNewDataClient += OnReceivedNewDataClient;
         Client.OnReceivedNewDataServer += OnReceivedNewDataServer;
@@ -70,7 +71,6 @@ class Program {
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
         Console.Title = "Server - (Status: " + Server.Status + " - Lost Packets: " + Server.LostPackets + " - Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Bytes Received: " + Server.PacketsBytesReceived + " - Packets Bytes Sent: " + Server.PacketsBytesSent + ")";
         Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        Server.SendBytes(_byte, _groupID, _dataClient, TypeShipping.AES, true);
-        //Server.SendBytesAll(_byte, _groupID, _skipDataClient: _dataClient);
+        Server.SendBytes(_byte, _groupID, _dataClient, TypeShipping.AES);
     }
 }
