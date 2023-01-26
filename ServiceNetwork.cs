@@ -14,6 +14,13 @@ public class ServiceNetwork : MonoBehaviour{
     ChartGraph Latency, FPS;
     float tmp, count;
 
+    void Awake(){
+        if(Utility.UnityBatchMode){
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = Server.UnityBatchModeFrameRate;
+        }
+    }
+
     void Start(){
         DontDestroyOnLoad(gameObject);
         mat = new Material(Shader.Find("Hidden/Internal-Colored"));
@@ -26,6 +33,7 @@ public class ServiceNetwork : MonoBehaviour{
     }
 
     void Update() {
+        Utility.LastTimeUnity = Environment.TickCount + 1000;
         if(tmp + 1 < Time.time){
             tmp = Time.time;
             AddValueGraph(count, FPS);

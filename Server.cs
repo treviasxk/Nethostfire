@@ -12,9 +12,9 @@ using System.Runtime.InteropServices;
 
 namespace Nethostfire {
    public class Server {
+      static IPEndPoint host;
       static UdpClient MyServer;
-      static IPEndPoint host = null;
-      static int packetsCount, packetsTmp, timeTmp, receiveAndSendTimeOut = 1000, symmetricSizeRSA, limitMaxPPS = 0, maxClients = 32, lostPackets, limitMaxByteSize = 0;
+      static int packetsCount, packetsTmp, timeTmp, receiveAndSendTimeOut = 1000, symmetricSizeRSA, limitMaxPPS = 0, maxClients = 32, lostPackets, limitMaxByteSize = 0, unityBatchModeFrameRate = 60;
       static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
       static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
       static ConcurrentDictionary<int, int> ListLimitMaxByteSizeGroupID = new ConcurrentDictionary<int, int>();
@@ -23,7 +23,7 @@ namespace Nethostfire {
       static ConcurrentDictionary<IPEndPoint, DataClient> WaitDataClients = new ConcurrentDictionary<IPEndPoint, DataClient>();
       static ConcurrentDictionary<IPEndPoint, long> ListBlockedIPs = new ConcurrentDictionary<IPEndPoint, long>();
       static ConcurrentDictionary<DataClient, HoldConnectionServer> listHoldConnection = new ConcurrentDictionary<DataClient, HoldConnectionServer>();
-      static Thread CheckOnlineThread = new Thread(CheckOnline), ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
+      static Thread CheckOnlineThread, ServerReceiveUDPThread;
       /// <summary>
       /// OnReceivedNewDataClient an event that returns bytes received, GroupID and DataClient whenever the received bytes by clients, with it you can manipulate the bytes received.
       /// </summary>
@@ -64,10 +64,10 @@ namespace Nethostfire {
       /// MaxClients is the maximum number of clients that can connect to the server. If you have many connected clients and you change the value below the number of connected clients, they will not be disconnected, the server will block new connections until the number of connected clients is below or equal to the limit.
       /// </summary>
       public static int MaxClients {get {return maxClients;} set{maxClients = value;}}
-        /// <summary>
-        /// LostPackets is the number of packets lost.
-        /// </summary>
-        public static int LostPackets {get {return lostPackets;}}
+      /// <summary>
+      /// LostPackets is the number of packets lost.
+      /// </summary>
+      public static int LostPackets {get {return lostPackets;}}
       /// <summary>
       /// PacketsPerSeconds is the amount of packets per second that happen when the server is sending and receiving.
       /// </summary>
@@ -76,6 +76,10 @@ namespace Nethostfire {
       /// PacketsBytesReceived is the amount of bytes received by the server.
       /// </summary>
       public static string PacketsBytesReceived {get {return Utility.BytesToString(packetsReceived2);}}
+      /// <summary>
+      /// The UnityBatchModeFrameRate limits the fps at which the dedicated server build (batchmode) will run, it is recommended to limit it to prevent the CPU from being used to the maximum. The default value is 60.
+      /// </summary>
+      public static int UnityBatchModeFrameRate {get {return unityBatchModeFrameRate;} set { unityBatchModeFrameRate = value;}}
       /// <summary>
       /// The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
       /// </summary>
@@ -100,22 +104,27 @@ namespace Nethostfire {
             Utility.GenerateKeyRSA(_symmetricSizeRSA);
             host = _host;
             try{
-               MyServer.Client.Bind(host);
+               MyServer.Client.Bind(_host);
             }catch{
                throw new Exception(Utility.ShowLog("Could not start the server, check that the port "+ _host.Port + " is not blocked, or that you have other software using that port."));
             }
-            ServerReceiveUDPThread.Priority = ThreadPriority.Highest;
-            ServerReceiveUDPThread.IsBackground = true;
-            CheckOnlineThread.IsBackground = true;
-            ServerReceiveUDPThread.Start();
-            CheckOnlineThread.Start();
-         }else{
+            if(ServerReceiveUDPThread == null){
+               ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
+               ServerReceiveUDPThread.IsBackground = true;
+               ServerReceiveUDPThread.Start();
+            }
+            if(CheckOnlineThread == null){
+               CheckOnlineThread = new Thread(CheckOnline);
+               CheckOnlineThread.IsBackground = true;
+               CheckOnlineThread.Start();
+            }
+         }else
             if(_host is null)
                throw new Exception(Utility.ShowLog("It is not possible to start the server, without the _host having been configured beforehand."));
-            manualResetEvent.Set();
-         }
          if(Status == ServerStatusConnection.Initializing)
             ChangeStatus(ServerStatusConnection.Running);
+         else
+            Utility.StartUnity();
       }
       /// <summary>
       /// If the server is running, you can stop it, all connected clients will be disconnected from the server and if you start the server again new RSA and AES keys will be generated.
@@ -124,16 +133,20 @@ namespace Nethostfire {
          if(Status == ServerStatusConnection.Running || Status == ServerStatusConnection.Restarting){
             if(Status == ServerStatusConnection.Running)
                ChangeStatus(ServerStatusConnection.Stopping);
-            manualResetEvent.Reset();
-            Thread.Sleep(3000);
+            MyServer.Close();
+            MyServer = null;
+            ServerReceiveUDPThread = null;
+            CheckOnlineThread = null;
+            OnConnectedClient = null;
+            OnDisconnectedClient = null;
+            OnReceivedNewDataClient = null;
             listHoldConnection.Clear();
             DataClients.Clear();
             WaitDataClients.Clear();
             Utility.GenerateKeyRSA(symmetricSizeRSA);
             if(Status == ServerStatusConnection.Stopping)
                ChangeStatus(ServerStatusConnection.Stopped);
-         }else
-            throw new Exception(Utility.ShowLog("It is not possible to stop the server if it is not running."));
+         }
       }
       /// <summary>
       /// If the server is running, you can restart it, all connected clients will be disconnected from the server and new RSA and AES keys will be generated again.
@@ -142,8 +155,7 @@ namespace Nethostfire {
          if(Status == ServerStatusConnection.Running){
             ChangeStatus(ServerStatusConnection.Restarting);
             Stop();
-            if(host != null)
-               Start(host);
+            Start(host);
          }else
             throw new Exception(Utility.ShowLog("It is not possible to restart the server if it is not running."));
       }
@@ -224,7 +236,7 @@ namespace Nethostfire {
       /// <summary>
       /// To disconnect a group clients from server, it is necessary to inform the List DataClient.
       /// </summary>
-      public static void DisconnectClientGroup(List<DataClient> _dataClients){
+      public static void DisconnectClientGroup(ConcurrentQueue<DataClient> _dataClients){
          Parallel.ForEach(_dataClients, dataClient => {
             if(Status == ServerStatusConnection.Running)
                Utility.SendPing(MyServer, new byte[]{0}, dataClient);
@@ -307,8 +319,7 @@ namespace Nethostfire {
 
 
       static void ServerReceiveUDP(){
-         if(MyServer != null)
-         while(true){
+         while(MyServer != null){
             byte[] data = null;
             IPEndPoint _ip = null;
             try{
@@ -416,7 +427,9 @@ namespace Nethostfire {
       }
 
       static void CheckOnline(){
-         while(true){
+         while(MyServer != null){
+            Utility.StopThreadUnity();
+
             Parallel.ForEach(DataClients, item =>{
                item.Value.PPS = 0;
                if(item.Value.TimeLastPacket + 3000 < Environment.TickCount){
@@ -445,6 +458,7 @@ namespace Nethostfire {
       }
 
       static void ChangeStatus(ServerStatusConnection _status){
+         Utility.StartUnity();
          if(Status != _status){
             Status = _status;
             Thread t = new Thread(new ThreadStart(NewThreadStatus));
@@ -462,7 +476,7 @@ namespace Nethostfire {
                   Utility.ShowLog("Initializing server...");
                break;
                case ServerStatusConnection.Running:
-                  Utility.ShowLog("Server initialized and hosted on " + host);
+                  Utility.ShowLog("Server initialized and hosted on: " + host.ToString());
                break;
                case ServerStatusConnection.Restarting:
                   Utility.ShowLog("Restarting server...");

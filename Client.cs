@@ -19,7 +19,7 @@ namespace Nethostfire {
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
         static ConcurrentDictionary<int, HoldConnectionClient> listHoldConnection = new ConcurrentDictionary<int, HoldConnectionClient>();
-        static Thread SendOnlineThread = new Thread(SendOnline), clientReceiveUDPThread = new Thread(ClientReceiveUDP);
+        static Thread SendOnlineThread, ClientReceiveUDPThread;
         /// <summary>
         /// OnReceivedNewDataServer an event that returns bytes received and GroupID whenever the received bytes by clients, with it you can manipulate the bytes received.
         /// </summary>
@@ -92,13 +92,19 @@ namespace Nethostfire {
                     throw new Exception(Utility.ShowLog("Unable to connect to the server."));
                 }
                 timeLastPacket = Environment.TickCount;
-                clientReceiveUDPThread.IsBackground = true;
-                SendOnlineThread.IsBackground = true;
-                clientReceiveUDPThread.Start();
-                SendOnlineThread.Start();
-            }else{
-                manualResetEvent.Set();
+
+                if(ClientReceiveUDPThread == null){
+                    ClientReceiveUDPThread = new Thread(ClientReceiveUDP);
+                    ClientReceiveUDPThread.IsBackground = true;
+                    ClientReceiveUDPThread.Start();
+                }
+                if(SendOnlineThread == null){
+                    SendOnlineThread = new Thread(SendOnline);
+                    SendOnlineThread.IsBackground = true;
+                    SendOnlineThread.Start();
+                }                    
             }
+            //manualResetEvent.Set();
             if(Status != ClientStatusConnection.Connected)
                 ChangeStatus(ClientStatusConnection.Connecting);
             else
@@ -108,17 +114,24 @@ namespace Nethostfire {
         /// With DisconnectServer the client will be disconnected from the server.
         /// </summary>
         public static void DisconnectServer(){
-            if(Status == ClientStatusConnection.Connected){
-                ChangeStatus(ClientStatusConnection.Disconnecting);
-                if(!Utility.SendPing(MyClient, new byte[]{0}))
-                    Thread.Sleep(3000);
+            if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
+                if(Status == ClientStatusConnection.Connected)
+                    ChangeStatus(ClientStatusConnection.Disconnecting);
+                Utility.SendPing(MyClient, new byte[]{0});
+                MyClient.Close();
+                MyClient = null;
+                SendOnlineThread = null;
+                ClientReceiveUDPThread = null;
+                OnClientStatusConnection = null;
+                OnReceivedNewDataServer = null;
+                publicKeyRSA = null;
+                PrivateKeyAES = null;
+                listHoldConnection.Clear();
+                if(Status == ClientStatusConnection.Disconnecting)
+                    ChangeStatus(ClientStatusConnection.Disconnected);
+                if(Status == ClientStatusConnection.Connecting)
+                    ChangeStatus(ClientStatusConnection.ConnectionFail);
             }
-            manualResetEvent.Reset();
-            listHoldConnection.Clear();
-            if(Status == ClientStatusConnection.Disconnecting)
-                ChangeStatus(ClientStatusConnection.Disconnected);
-            if(Status == ClientStatusConnection.Connecting){}
-                ChangeStatus(ClientStatusConnection.ConnectionFail);
         }
         /// <summary>
         /// To send bytes to server, it is necessary to define the bytes and GroupID, the other sending resources such as TypeShipping and HoldConnection are optional.
@@ -126,14 +139,13 @@ namespace Nethostfire {
         public static void SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false){
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_holdConnection){
-                    if(!listHoldConnection.ContainsKey(_groupID))
+                    if(listHoldConnection.TryGetValue(_groupID, out var HoldConnection)){
+                        HoldConnection.Time = Environment.TickCount + receiveAndSendTimeOut;
+                        HoldConnection.Bytes = _byte;
+                        HoldConnection.TypeShipping = _typeShipping;
+                        HoldConnection.TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
+                    }else
                         listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
-                    else{
-                        listHoldConnection[_groupID].Time = Environment.TickCount + receiveAndSendTimeOut;
-                        listHoldConnection[_groupID].Bytes = _byte;
-                        listHoldConnection[_groupID].TypeShipping = _typeShipping;
-                        listHoldConnection[_groupID].TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
-                    }
                 }
                 if(!Utility.Send(MyClient, _byte, _groupID, _typeShipping, _holdConnection, (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background)))
                     lostPackets++;
@@ -143,8 +155,7 @@ namespace Nethostfire {
         }
 
         private static void ClientReceiveUDP(){
-            if(MyClient != null)
-            while(true){
+            while(MyClient != null){
                 byte[] data = null;
                 IPEndPoint _host = null;
                 try{
@@ -184,7 +195,7 @@ namespace Nethostfire {
                             var _data = Utility.ByteToReceive(data, MyClient);
                             if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
                                 lostPackets++;
-                            if(_data.Item1.Length != 0){
+                            if(_data.Item1.Length > 0){
                                 if(Status == ClientStatusConnection.Connecting){
                                     if(_data.Item3 == TypeContent.Background)
                                         switch(_data.Item4){
@@ -210,7 +221,9 @@ namespace Nethostfire {
             }
         }
         static void SendOnline(){
-            while(true){
+            while(MyClient != null){
+                Utility.StopThreadUnity();
+            
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
                     pingTmp = Environment.TickCount;

@@ -99,12 +99,12 @@ namespace Nethostfire {
     class Utility {
         public static string PrivateKeyRSA = "", PublicKeyRSA = "";
         public static byte[] PrivateKeyAES;
-        public static bool RunningInUnity = false, ShowDebugConsole = true;
+        public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
         public static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static RSACryptoServiceProvider RSA;
-        static Aes AES; 
+        static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
-
+        public static long LastTimeUnity;
         public static void RunOnMainThread(Action action){
             if(RunningInUnity)
                 ListRunOnMainThread.Enqueue(action);
@@ -398,7 +398,7 @@ namespace Nethostfire {
 
         public static string ShowLog(string Message){
             if(ShowDebugConsole)
-                if(RunningInUnity)
+                if(RunningInUnity && !UnityBatchMode)
                     ShowUnityLog(Message);
                 else{
                     Console.ForegroundColor = ConsoleColor.DarkRed;
@@ -411,13 +411,23 @@ namespace Nethostfire {
             return Message;
         }
 
+        public static void StopThreadUnity(){
+            if(Utility.UnityEditorMode && Utility.LastTimeUnity < Environment.TickCount){
+               Server.Stop();
+               Client.DisconnectServer();
+            }
+        }
+
         //================= Funções com dll da Unity =================
         static void ShowUnityLog(string Message){
             UnityEngine.Debug.unityLogger.logEnabled = ShowDebugConsole; 
             UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
         }
 
-        static void LoadUnity(){
+        public static void LoadUnity(){
+            LastTimeUnity = Environment.TickCount + 10000;
+            UnityBatchMode = UnityEngine.Application.isBatchMode;
+            UnityEditorMode = UnityEngine.Application.isEditor;
             if(!UnityEngine.GameObject.Find("Nethostfire")){
                 UnityEngine.GameObject runThreadUnity = new UnityEngine.GameObject("Nethostfire");
                 runThreadUnity.AddComponent<ServiceNetwork>(); 

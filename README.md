@@ -76,6 +76,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
     - [Server.PacketsBytesReceived](#PacketsBytesReceived)
     - [Server.PacketsBytesSent](#PacketsBytesSent)
     - [Server.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
+    - [Server.UnityBatchModeFrameRate](#UnityBatchModeFrameRate)
     - [Server.ClientsCount](#ClientsCount)
     - [Server.ShowDebugConsole](#ShowDebugConsole)
     - [Server.OnConnectedClient](#OnConnectedClient)
@@ -388,6 +389,17 @@ Client.ShowDebugConsole = false;
 ![Preview](screenshots/DebugConsole.png)
 
 The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
+
+-----
+
+<a name="UnityBatchModeFrameRate"></a>
+### Server.UnityBatchModeFrameRate
+`Write/Read Variable`
+```cs
+Server.UnityBatchModeFrameRate = 30;
+```
+
+The UnityBatchModeFrameRate limits the fps at which the dedicated server build (batchmode) will run, it is recommended to limit it to prevent the CPU from being used to the maximum. The default value is 60.
 
 -----
 
