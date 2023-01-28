@@ -9,8 +9,8 @@ using System.Text;
 using System.Collections.Concurrent;
 
 namespace Nethostfire {
-    public class Client {
-        static UdpClient MyClient;
+    public class UDpClient {
+        public static UdpClient Socket;
         static IPEndPoint host;
         static int packetsCount, pingCount, packetsTmp, timeTmp, connectTimeOut = 10000, receiveAndSendTimeOut = 1000, lostPackets, pingTmp;
         static long timeLastPacket;
@@ -51,7 +51,7 @@ namespace Nethostfire {
         /// <summary>
         /// ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiving, if any packet exceeds that sending the client will ignore the receiving or sending. The default and recommended value is 1000.
         /// </summary>
-        public static int ReceiveAndSendTimeOut {get {return receiveAndSendTimeOut;} set{if(MyClient != null){MyClient.Client.ReceiveTimeout = value; MyClient.Client.SendTimeout = value;} receiveAndSendTimeOut = value > 0 ? value : 1000;}}
+        public static int ReceiveAndSendTimeOut {get {return receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} receiveAndSendTimeOut = value > 0 ? value : 1000;}}
         /// <summary>
         /// PacketsBytesReceived is the amount of bytes received by the client.
         /// </summary>
@@ -80,14 +80,14 @@ namespace Nethostfire {
         /// Connect to a server with IP, Port and sets the size of SymmetricSizeRSA if needed.
         /// </summary>
         public static void Connect(IPEndPoint _host, int _symmetricSizeRSA = 86){
-            if(MyClient is null){
-                MyClient = new UdpClient();
-                MyClient.Client.SendTimeout = receiveAndSendTimeOut;
-                MyClient.Client.ReceiveTimeout = receiveAndSendTimeOut;
+            if(Socket is null){
+                Socket = new UdpClient();
+                Socket.Client.SendTimeout = receiveAndSendTimeOut;
+                Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
                 Utility.GenerateKeyRSA(_symmetricSizeRSA);
                 host = _host;
                 try{
-                    MyClient.Connect(_host);
+                    Socket.Connect(_host);
                 }catch{
                     throw new Exception(Utility.ShowLog("Unable to connect to the server."));
                 }
@@ -117,9 +117,9 @@ namespace Nethostfire {
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(Status == ClientStatusConnection.Connected)
                     ChangeStatus(ClientStatusConnection.Disconnecting);
-                Utility.SendPing(MyClient, new byte[]{0});
-                MyClient.Close();
-                MyClient = null;
+                Utility.SendPing(Socket, new byte[]{0});
+                Socket.Close();
+                Socket = null;
                 SendOnlineThread = null;
                 ClientReceiveUDPThread = null;
                 OnClientStatusConnection = null;
@@ -147,7 +147,7 @@ namespace Nethostfire {
                     }else
                         listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
                 }
-                if(!Utility.Send(MyClient, _byte, _groupID, _typeShipping, _holdConnection, (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background)))
+                if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background)))
                     lostPackets++;
                 packetsSent += _byte.Length;
                 packetsTmp++;
@@ -155,11 +155,11 @@ namespace Nethostfire {
         }
 
         private static void ClientReceiveUDP(){
-            while(MyClient != null){
+            while(Socket != null){
                 byte[] data = null;
                 IPEndPoint _host = null;
                 try{
-                    data = MyClient.Receive(ref _host);
+                    data = Socket.Receive(ref _host);
                 }catch{}
 
                 if(data != null && _host.Equals(host)){
@@ -192,7 +192,7 @@ namespace Nethostfire {
                         }
 
                         if(data.Length > 1){
-                            var _data = Utility.ByteToReceive(data, MyClient);
+                            var _data = Utility.ByteToReceive(data, Socket);
                             if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
                                 lostPackets++;
                             if(_data.Item1.Length > 0){
@@ -221,13 +221,11 @@ namespace Nethostfire {
             }
         }
         static void SendOnline(){
-            while(MyClient != null){
-                Utility.StopThreadUnity();
-            
+            while(Socket != null){
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
                     pingTmp = Environment.TickCount;
-                    Utility.SendPing(MyClient, new byte[]{1});
+                    Utility.SendPing(Socket, new byte[]{1});
                 }
 
                 // Verificando se o ultimo ping com o server é de 3000ms
@@ -244,7 +242,7 @@ namespace Nethostfire {
                         foreach(var item in listHoldConnection.ToArray()){
                             if(item.Value.Time < Environment.TickCount){
                                 item.Value.Time = Environment.TickCount + receiveAndSendTimeOut;
-                                if(!Utility.Send(MyClient, item.Value.Bytes, item.Key, item.Value.TypeShipping, true, item.Value.TypeContent))
+                                if(!Utility.Send(Socket, item.Value.Bytes, item.Key, item.Value.TypeShipping, true, item.Value.TypeContent))
                                     lostPackets++;
                                 lostPackets++;
                             }

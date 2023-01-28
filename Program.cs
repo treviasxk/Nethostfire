@@ -7,20 +7,19 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using Nethostfire;
-
 class Program {
 
     static void Main(string[] args){
-        Server.OnReceivedNewDataClient += OnReceivedNewDataClient;
-        Client.OnReceivedNewDataServer += OnReceivedNewDataServer;
-        Client.OnClientStatusConnection += OnClientStatusConnection;
+        UDpServer.OnReceivedNewDataClient += OnReceivedNewDataClient;
+        UDpClient.OnReceivedNewDataServer += OnReceivedNewDataServer;
+        UDpClient.OnClientStatusConnection += OnClientStatusConnection;
         Menu();
     }
 
     static void Menu(){
-        Console.Title = "Nethostfire";
+        Console.Title = Assembly.GetExecutingAssembly().GetName().Name;
         Console.WriteLine(" ============== NETHOSTFIRE ==============");
-        Console.WriteLine("  Social Networks:               treviasxk");
+        Console.WriteLine("  SOCIAL NETWORKS:               treviasxk");
         Console.WriteLine("  VERSION:                       {0}", Assembly.GetExecutingAssembly().GetName().Version);
         Console.WriteLine("  LICENSE:                       GPL-3.0");
         Console.WriteLine(" =========================================");
@@ -32,20 +31,20 @@ class Program {
         Console.Clear();
         switch(op){
             case "1":
-                Server.Start(new IPEndPoint(IPAddress.Any, 25000));
+                UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
                 Console.ReadKey();
             break;
             case "2":
-                Client.Connect(new IPEndPoint(IPAddress.Parse("144.22.219.177"), 25000));
+                UDpClient.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
                 Console.ReadKey();
             break;
             case "3":
-                Server.Start(new IPEndPoint(IPAddress.Any, 25000));
-                Client.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
+                UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
+                UDpClient.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
                 Console.ReadKey();
             break;
             case "4":
-                Client.DisconnectServer();
+                UDpClient.DisconnectServer();
             break;
             default:
                 Menu();
@@ -57,20 +56,20 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         if(_status == ClientStatusConnection.Connected){
             var _text =  Encoding.ASCII.GetBytes("Hello world!");
-            Client.SendBytes(_text, 11, TypeShipping.AES);
+            UDpClient.SendBytes(_text, 11, TypeShipping.AES);
         }
     }
 
     static void OnReceivedNewDataServer(byte[] _byte, int _groupID){
-        Console.Title = "Client - (Ping: " + Client.Ping + " Lost Packets: " + Client.LostPackets + " Packets Per Seconds: " + Client.PacketsPerSeconds + " - Packets Bytes Received: " + Client.PacketsBytesReceived + " - Packets Bytes Sent: " + Client.PacketsBytesSent + ")";
+        Console.Title = "Client - (Ping: " + UDpClient.Ping + " Lost Packets: " + UDpClient.LostPackets + " Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
         Console.WriteLine("[CLIENT] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        //Client.SendBytes(_byte, _groupID);
+        //UDpClient.SendBytes(_byte, _groupID);
     }
     
     //========================= Events Server =========================
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
-        Console.Title = "Server - (Status: " + Server.Status + " - Lost Packets: " + Server.LostPackets + " - Packets Per Seconds: " + Server.PacketsPerSeconds + " - Packets Bytes Received: " + Server.PacketsBytesReceived + " - Packets Bytes Sent: " + Server.PacketsBytesSent + ")";
+        Console.Title = "Server - (Status: " + UDpServer.Status + " - Lost Packets: " + UDpServer.LostPackets + " - Packets Per Seconds: " + UDpServer.PacketsPerSeconds + " - Packets Bytes Received: " + UDpServer.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpServer.PacketsBytesSent + ")";
         Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        Server.SendBytes(_byte, _groupID, _dataClient, TypeShipping.AES);
+        UDpServer.SendBytes(_byte, _groupID, _dataClient, TypeShipping.AES);
     }
 }

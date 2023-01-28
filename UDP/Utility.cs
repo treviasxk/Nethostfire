@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 
 namespace Nethostfire {
     /// <summary>
-    /// The DataClient class is used to store data from a client on the server. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events Server.OnReceivedNewDataClient, Client.OnReceivedNewDataServer, Server.OnConnectedClient and Server.OnDisconnectedClient
+    /// The DataClient class is used to store data from a client on the UDpServer. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events UDpServer.OnReceivedNewDataClient, Client.OnReceivedNewDataServer, UDpServer.OnConnectedClient and UDpServer.OnDisconnectedClient
     /// </summary>
     public class DataClient{
         public IPEndPoint IP;
@@ -24,7 +24,7 @@ namespace Nethostfire {
         public byte[] PrivateKeyAES = null;
     }
     /// <summary>
-    /// The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the Server.Status variable or with the event OnServerStatusConnection
+    /// The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the UDpServer.Status variable or with the event OnServerStatusConnection
     /// </summary>
     public enum ServerStatusConnection{
         Stopped = 0,
@@ -104,7 +104,6 @@ namespace Nethostfire {
         static RSACryptoServiceProvider RSA;
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
-        public static long LastTimeUnity;
         public static void RunOnMainThread(Action action){
             if(RunningInUnity)
                 ListRunOnMainThread.Enqueue(action);
@@ -218,7 +217,7 @@ namespace Nethostfire {
                     type.CopyTo(data2, 2);
                     SendPing(_udpClient, data2, _dataClient);
                 }
-                return (data, hascode, _typeContent, _TypeShipping);
+                return (data.Length > 1 ? data : new byte[]{}, hascode, _typeContent, _TypeShipping);
             }catch{
                 return (new byte[]{}, -1, TypeContent.Foreground, TypeShipping.None);
             }
@@ -311,7 +310,7 @@ namespace Nethostfire {
         }
         private static byte[] EncryptRSA(byte[] _byte, DataClient _dataClient){
             try{
-                RSA.FromXmlString(_dataClient != null ? _dataClient.PublicKeyRSA : Client.PublicKeyRSA);
+                RSA.FromXmlString(_dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
                 return RSA.Encrypt(_byte, true);
             }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
@@ -411,13 +410,6 @@ namespace Nethostfire {
             return Message;
         }
 
-        public static void StopThreadUnity(){
-            if(Utility.UnityEditorMode && Utility.LastTimeUnity < Environment.TickCount){
-               Server.Stop();
-               Client.DisconnectServer();
-            }
-        }
-
         //================= Funções com dll da Unity =================
         static void ShowUnityLog(string Message){
             UnityEngine.Debug.unityLogger.logEnabled = ShowDebugConsole; 
@@ -425,7 +417,6 @@ namespace Nethostfire {
         }
 
         public static void LoadUnity(){
-            LastTimeUnity = Environment.TickCount + 10000;
             UnityBatchMode = UnityEngine.Application.isBatchMode;
             UnityEditorMode = UnityEngine.Application.isEditor;
             if(!UnityEngine.GameObject.Find("Nethostfire")){

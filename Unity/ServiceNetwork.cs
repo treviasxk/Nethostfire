@@ -14,10 +14,19 @@ public class ServiceNetwork : MonoBehaviour{
     ChartGraph Latency, FPS;
     float tmp, count;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void Init(){
+        bool ShowDebug = UDpClient.ShowDebugConsole;
+        UDpClient.ShowDebugConsole = false;
+        UDpClient.DisconnectServer();
+        UDpServer.Stop();
+        UDpClient.ShowDebugConsole = ShowDebug;
+    }
+
     void Awake(){
         if(Utility.UnityBatchMode){
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = Server.UnityBatchModeFrameRate;
+            Application.targetFrameRate = UDpServer.UnityBatchModeFrameRate;
         }
     }
 
@@ -33,11 +42,10 @@ public class ServiceNetwork : MonoBehaviour{
     }
 
     void Update() {
-        Utility.LastTimeUnity = Environment.TickCount + 1000;
         if(tmp + 1 < Time.time){
             tmp = Time.time;
             AddValueGraph(count, FPS);
-            AddValueGraph(Client.Ping, Latency);
+            AddValueGraph(UDpClient.Ping, Latency);
             count = 0;
         }
         count++;
@@ -45,13 +53,13 @@ public class ServiceNetwork : MonoBehaviour{
     }
 
     void OnGUI(){
-        if(Client.ShowUnityNetworkStatistics){
+        if(UDpClient.ShowUnityNetworkStatistics){
             GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
-            GUILayout.Label("<color=white>Status: " + Client.Status + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Lost Packets: " + Client.LostPackets + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Peer Seconds: " + Client.PacketsPerSeconds + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Size Received: " + Client.PacketsBytesReceived + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Size Sent: " + Client.PacketsBytesSent + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Size Received: " + UDpClient.PacketsBytesReceived + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Size Sent: " + UDpClient.PacketsBytesSent + "</color>", TextStyle);
             for(int i = 0; i < ListGraph.Count; i++)
                 ShowGraph(ListGraph[i]);
         }
@@ -67,7 +75,7 @@ public class ServiceNetwork : MonoBehaviour{
     }
 
     void AddValueGraph(float value, ChartGraph graph){
-        if(Client.ShowUnityNetworkStatistics){
+        if(UDpClient.ShowUnityNetworkStatistics){
             graph.value = value;
             float b = graph.windowRect.height / graph.maxValue;
             value = b*value;
