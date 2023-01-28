@@ -334,7 +334,7 @@ UDpServer.ShowDebugConsole = false;
 // Or
 UDpClient.ShowDebugConsole = false;
 ```
-![Preview](screenshots/DebugConsole.png)
+![Preview](/screenshots/DebugConsole.png)
 
 The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
 
@@ -645,7 +645,7 @@ ConnectTimeOut is the time the client will be reconnecting with the server, the 
 UDpClient.ShowUnityNetworkStatistics = true;
 ```
 
-![Preview](screenshots/NetworkStatistics.png)
+![Preview](/screenshots/NetworkStatistics.png)
 
 When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on the connection between the client and the server will be displayed during game execution.
 
