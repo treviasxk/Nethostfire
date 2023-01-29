@@ -33,9 +33,13 @@ namespace Nethostfire {
         Initializing = 3,
         Restarting = 4,
     }
-    public enum TypeContent{
+    enum TypeContent{
         Background = 0,
         Foreground = 1,
+    }
+    enum TypeUDP{
+        Server = 0,
+        Client = 1,
     }
     /// <summary>
     /// The TypeShipping is used to define the type of encryption of the bytes when being sent.
@@ -97,11 +101,10 @@ namespace Nethostfire {
     }
 
     class Utility {
-        public static string PrivateKeyRSA = "", PublicKeyRSA = "";
-        public static byte[] PrivateKeyAES;
+        public static string PublicKeyRSAClient, PrivateKeyRSAClient, PublicKeyRSAServer, PrivateKeyRSAServer;
+        public static byte[] PrivateKeyAESClient, PrivateKeyAESServer;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
         public static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
-        static RSACryptoServiceProvider RSA;
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
         public static void RunOnMainThread(Action action){
@@ -136,16 +139,32 @@ namespace Nethostfire {
             }catch{}
         }
 
-        public static void GenerateKeyRSA(int SymmetricSize){
-            AES = Aes.Create();
+        public static void GenerateKey(TypeUDP typeUDP,int SymmetricSize){
+            string publicKeyRSA, privateKeyRSA;
+            byte[] privateKeyAES;
+            AES = AES == null ? Aes.Create() : AES;
             int value = (SymmetricSize - 6) * 8 + 384;
             if(value >= 464 && value <= 4096){
-                RSA = new RSACryptoServiceProvider(value);
-                PrivateKeyRSA = RSA.ToXmlString(true);
-                PublicKeyRSA = RSA.ToXmlString(false);
-                PrivateKeyAES = GetHashMD5(System.Text.Encoding.ASCII.GetBytes(PrivateKeyRSA));
+                using(var RSA = new RSACryptoServiceProvider(value)){
+                    privateKeyRSA = RSA.ToXmlString(true);
+                    publicKeyRSA = RSA.ToXmlString(false);
+                }
+                privateKeyAES = GetHashMD5(System.Text.Encoding.ASCII.GetBytes(privateKeyRSA));
             }else
                 throw new Exception(Utility.ShowLog("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6)));
+           
+            switch(typeUDP){
+                case TypeUDP.Server:
+                    PrivateKeyRSAServer = privateKeyRSA;
+                    PublicKeyRSAServer = publicKeyRSA;
+                    PrivateKeyAESServer = privateKeyAES;
+                break;
+                case TypeUDP.Client:
+                    PrivateKeyRSAClient = privateKeyRSA;
+                    PublicKeyRSAClient = publicKeyRSA;
+                    PrivateKeyAESClient = privateKeyAES;
+                break;
+            }
         }
 
         public static (byte[], int, TypeContent, TypeShipping) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
@@ -179,19 +198,18 @@ namespace Nethostfire {
                         data = Decompress(data);
                     break;
                     case TypeShipping.AES:
-                        data = DecryptRSA(data);
+                        data = DecryptRSA(data, _dataClient != null ? PrivateKeyRSAServer : PrivateKeyRSAClient);
                     break;
                 }
-
 
 
             if(_typeContent == TypeContent.Foreground)
                 switch(_TypeShipping){
                     case TypeShipping.AES:
-                        data = DecryptAES(data, _dataClient);
+                        data = DecryptAES(data, _dataClient != null ? _dataClient.PrivateKeyAES : PrivateKeyAESClient);
                     break;
                     case TypeShipping.RSA:
-                        data = DecryptRSA(data);
+                        data = DecryptRSA(data, _dataClient != null ? PrivateKeyRSAServer : PrivateKeyRSAClient);
                     break;
                     case TypeShipping.Base64:
                         data = DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
@@ -230,17 +248,17 @@ namespace Nethostfire {
                         _byte = Compress(_byte);
                     break;
                     case TypeShipping.AES:
-                        _byte = EncryptRSA(_byte, _dataClient);
+                        _byte = EncryptRSA(_byte, _dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
                     break;
                 }
 
             if(_typeContent == TypeContent.Foreground)
             switch(_TypeShipping){
                 case TypeShipping.AES:
-                    _byte = EncryptAES(_byte, _dataClient);
+                    _byte = EncryptAES(_byte, _dataClient != null ? _dataClient.PrivateKeyAES : PrivateKeyAESClient);
                 break;
                 case TypeShipping.RSA:
-                    _byte = EncryptRSA(_byte, _dataClient);
+                    _byte = EncryptRSA(_byte, _dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
                 break;
                 case TypeShipping.Base64:
                     _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
@@ -277,8 +295,8 @@ namespace Nethostfire {
             }
         }
 
-        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _TypeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
-            byte[] buffer = ByteToSend(_byte, _groupID, _TypeShipping, _holdConnection, _typeContent, _dataClient);
+        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _typeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
+            byte[] buffer = ByteToSend(_byte, _groupID, _typeShipping, _holdConnection, _typeContent, _dataClient);
             try{
                 if(buffer.Length != 0){
                     if(_dataClient == null)
@@ -308,9 +326,10 @@ namespace Nethostfire {
                 return false;
             }
         }
-        private static byte[] EncryptRSA(byte[] _byte, DataClient _dataClient){
+        private static byte[] EncryptRSA(byte[] _byte, string _publicKeyRSA){
+            using(var RSA = new RSACryptoServiceProvider())
             try{
-                RSA.FromXmlString(_dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
+                RSA.FromXmlString(_publicKeyRSA);
                 return RSA.Encrypt(_byte, true);
             }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
@@ -319,30 +338,29 @@ namespace Nethostfire {
                 return new byte[]{};
             }
         }
-        private static byte[] DecryptRSA(byte[] _byte){
+        private static byte[] DecryptRSA(byte[] _byte, string _privateKeyRSA){
+            using(var RSA = new RSACryptoServiceProvider())
             try{
-                RSA.FromXmlString(PrivateKeyRSA);
+                RSA.FromXmlString(_privateKeyRSA);
                 return RSA.Decrypt(_byte, true);
             }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
                 if(b < _byte.Length)
-                    Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
+                    Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes.");
                 return new byte[]{};
             }
         }
-        private static byte[] EncryptAES(byte[] _byte, DataClient _dataClient = null){
+        private static byte[] EncryptAES(byte[] _byte, byte[] _privateKeyAES){
             try{
-                var key = _dataClient != null ? _dataClient.PrivateKeyAES : PrivateKeyAES;
-                using (var encryptor = AES.CreateEncryptor(key, key))
+                using (var encryptor = AES.CreateEncryptor(_privateKeyAES, _privateKeyAES))
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
             }catch{
                 return new byte[]{};
             }
         }
-        private static byte[] DecryptAES(byte[] _byte, DataClient _dataClient = null){
+        private static byte[] DecryptAES(byte[] _byte, byte[] _privateKeyAES){
             try{
-                var key = _dataClient != null ? _dataClient.PrivateKeyAES : PrivateKeyAES;
-                using (var encryptor = AES.CreateDecryptor(key, key))
+                using (var encryptor = AES.CreateDecryptor(_privateKeyAES, _privateKeyAES))
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
             }catch{
                 return new byte[]{};
