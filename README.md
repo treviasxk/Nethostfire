@@ -1,10 +1,10 @@
 # Nethostfire
 
-![Preview](screenshots/Banner.png)
+![Preview](/Images/Banner.png)
 
 Nethostfire is a library (netstandard2.0) to create UDP server and client in C#, with encryption support, Unity 3D integration and several other advanced features to facilitate communication between client and server.
 
-![Preview](screenshots/Sample.gif)
+![Preview](/Images/Sample.gif)
 
 ## Donate
  - Brazil
@@ -15,6 +15,8 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
 ## Main features
  - PPS bandwidth control for each connected client.
  - PPS bandwidth control for each groupID of shipments.
+ - Bytes bandwidth control for each connected client.
+ - Bytes bandwidth control for each groupID of shipments.
  - Connected client detection system.
  - Manage all connected clients with server resources.
  - Various types of submissions (single, group, all).
@@ -24,6 +26,8 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
  - Adapted to manipulate objects in Unity 3D.
  - Adapted for Cross-Server creation.
  - Adapted for high performance.
+ - Adapted for Enter Play Mode on Unity.
+ - Adapted for dedicated Unity build server.
  - Connection statistics interface in Unity for the client.
    
 ## Unity installation
@@ -31,7 +35,7 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
 
 2 - Move the file to the Assets folder of your Unity project **Assets/bin/debug/Nethostfire.dll**.
 
-3 - Then import the library `'using Nethostfire;'` in your scripts.
+3 - Then import the namespace `'using Nethostfire;'` in your scripts.
 
 ## .NET | VB.Net Project Installation
 1 - Download the library **Nethostfire.dll** in [Releases](https://github.com/treviasxk/Nethostfire/releases)
@@ -44,14 +48,13 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <Reference Include="Nethostfire.dll">
-      <HintPath>Nethostfire.dll</HintPath>
       <SpecificVersion>False</SpecificVersion> 
     </Reference>
   </ItemGroup>
  ...
 </Project>
 ```
-4 - Then import the library `'using Nethostfire;'` into your scripts and then restore the project with `'dotnet restore'`.
+4 - Then import the namespace `'using Nethostfire;'` into your scripts and then restore the project with `'dotnet restore'`.
 
 ## Documentation
   - [Server and Client - UDP](UDP/README.md)

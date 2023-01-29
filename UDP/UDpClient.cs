@@ -12,10 +12,11 @@ namespace Nethostfire {
     public class UDpClient {
         public static UdpClient Socket;
         static IPEndPoint host;
-        static int packetsCount, pingCount, packetsTmp, timeTmp, connectTimeOut = 10000, receiveAndSendTimeOut = 1000, lostPackets, pingTmp;
+        static int packetsCount, pingCount, packetsTmp, timeTmp, symmetricSizeRSA, connectTimeOut = 10000, receiveAndSendTimeOut = 1000, lostPackets, pingTmp;
         static long timeLastPacket;
         static bool showUnityNetworkStatistics = false;
         static string publicKeyRSA = null;
+        static byte[] privateKeyAES = null;
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
         static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
         static ConcurrentDictionary<int, HoldConnectionClient> listHoldConnection = new ConcurrentDictionary<int, HoldConnectionClient>();
@@ -35,7 +36,7 @@ namespace Nethostfire {
         /// <summary>
         /// PrivateKeyAES returns the AES private key obtained by the server after connecting.
         /// </summary>
-        public static byte[] PrivateKeyAES {get;set;}
+        public static byte[] PrivateKeyAES {get {return privateKeyAES;}set{privateKeyAES = value;}}
         /// <summary>
         /// The Status is an enum Client.ClientStatusConnection with it you can know the current state of the client.
         /// </summary>
@@ -84,7 +85,8 @@ namespace Nethostfire {
                 Socket = new UdpClient();
                 Socket.Client.SendTimeout = receiveAndSendTimeOut;
                 Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
-                Utility.GenerateKeyRSA(_symmetricSizeRSA);
+                symmetricSizeRSA = _symmetricSizeRSA;
+                Utility.GenerateKey(TypeUDP.Client, _symmetricSizeRSA);
                 host = _host;
                 try{
                     Socket.Connect(_host);
@@ -122,11 +124,10 @@ namespace Nethostfire {
                 Socket = null;
                 SendOnlineThread = null;
                 ClientReceiveUDPThread = null;
-                OnClientStatusConnection = null;
-                OnReceivedNewDataServer = null;
                 publicKeyRSA = null;
-                PrivateKeyAES = null;
+                privateKeyAES = null;
                 listHoldConnection.Clear();
+                Utility.GenerateKey(TypeUDP.Client, symmetricSizeRSA);
                 if(Status == ClientStatusConnection.Disconnecting)
                     ChangeStatus(ClientStatusConnection.Disconnected);
                 if(Status == ClientStatusConnection.Connecting)
@@ -147,7 +148,7 @@ namespace Nethostfire {
                     }else
                         listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
                 }
-                if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background)))
+                if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
                     lostPackets++;
                 packetsSent += _byte.Length;
                 packetsTmp++;
@@ -196,22 +197,27 @@ namespace Nethostfire {
                             if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
                                 lostPackets++;
                             if(_data.Item1.Length > 0){
-                                if(Status == ClientStatusConnection.Connecting){
-                                    if(_data.Item3 == TypeContent.Background)
-                                        switch(_data.Item4){
-                                            case TypeShipping.RSA:
-                                                publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
-                                                SendBytes(Utility.PrivateKeyAES, 1, TypeShipping.AES, true);
-                                            break;
-                                            case TypeShipping.AES:
-                                                PrivateKeyAES = _data.Item1;
-                                                if(publicKeyRSA != null)
-                                                    ChangeStatus(ClientStatusConnection.Connected);
-                                            break;
+                                switch(Status){
+                                    case ClientStatusConnection.Connected:
+                                        if(_data.Item3 == TypeContent.Foreground){
+                                            packetsReceived += _data.Item1.Length;
+                                            Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
                                         }
-                                }else{
-                                    packetsReceived += _data.Item1.Length;
-                                    Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
+                                    break;
+                                    case ClientStatusConnection.Connecting:
+                                        if(_data.Item3 == TypeContent.Background)
+                                            switch(_data.Item4){
+                                                case TypeShipping.RSA:
+                                                    publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
+                                                    SendBytes(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, true);
+                                                break;
+                                                case TypeShipping.AES:
+                                                    privateKeyAES = _data.Item1;
+                                                    if(publicKeyRSA != null)
+                                                        ChangeStatus(ClientStatusConnection.Connected);
+                                                break;
+                                            }
+                                    break;
                                 }
                             }
                         }
@@ -222,6 +228,7 @@ namespace Nethostfire {
         }
         static void SendOnline(){
             while(Socket != null){
+
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
                     pingTmp = Environment.TickCount;
@@ -273,10 +280,10 @@ namespace Nethostfire {
                 switch(_status){
                     case ClientStatusConnection.Connecting:
                         publicKeyRSA = null;
-                        PrivateKeyAES = null;
+                        privateKeyAES = null;
                         listHoldConnection.Clear();
                         timeLastPacket = Environment.TickCount;
-                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSA), 0, TypeShipping.RSA, true);
+                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, true);
                         Utility.ShowLog("Connecting on " + host);
                     break;
                     case ClientStatusConnection.Connected:

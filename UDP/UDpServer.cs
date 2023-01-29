@@ -101,7 +101,7 @@ namespace Nethostfire {
             Socket.Client.SendTimeout = receiveAndSendTimeOut;
             Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
             symmetricSizeRSA = _symmetricSizeRSA;
-            Utility.GenerateKeyRSA(_symmetricSizeRSA);
+            Utility.GenerateKey(TypeUDP.Server, _symmetricSizeRSA);
             host = _host;
             try{
                Socket.Client.Bind(_host);
@@ -137,13 +137,10 @@ namespace Nethostfire {
             Socket = null;
             ServerReceiveUDPThread = null;
             CheckOnlineThread = null;
-            OnConnectedClient = null;
-            OnDisconnectedClient = null;
-            OnReceivedNewDataClient = null;
             listHoldConnection.Clear();
             DataClients.Clear();
             WaitDataClients.Clear();
-            Utility.GenerateKeyRSA(symmetricSizeRSA);
+            Utility.GenerateKey(TypeUDP.Server, symmetricSizeRSA);
             if(Status == ServerStatusConnection.Stopping)
                ChangeStatus(ServerStatusConnection.Stopped);
          }
@@ -381,14 +378,14 @@ namespace Nethostfire {
                               case TypeShipping.RSA:
                                  _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
                                  WaitDataClients.TryAdd(_ip, _dataClient);
-                                 Utility.Send(Socket, Encoding.ASCII.GetBytes(Utility.PublicKeyRSA), 0, TypeShipping.RSA, false, TypeContent.Background, _dataClient);
+                                 Utility.Send(Socket, Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, TypeShipping.RSA, false, TypeContent.Background, _dataClient);
                               break;
                               case TypeShipping.AES:
                                  if(WaitDataClients.TryGetValue(_ip, out var _waitDataClient)){
                                     _waitDataClient.PrivateKeyAES = _data.Item1;
                                     if(DataClients.TryAdd(_ip, _waitDataClient))
                                     if(WaitDataClients.TryRemove(_ip, out _)){
-                                       Utility.Send(Socket, Utility.PrivateKeyAES, 1, TypeShipping.AES, false, TypeContent.Background, _waitDataClient);
+                                       Utility.Send(Socket, Utility.PrivateKeyAESServer, 1, TypeShipping.AES, false, TypeContent.Background, _waitDataClient);
                                        Utility.RunOnMainThread(() => OnConnectedClient?.Invoke(_waitDataClient));
                                        Utility.ShowLog(_waitDataClient.IP + " connected to the server.");
                                     }

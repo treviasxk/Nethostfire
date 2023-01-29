@@ -114,9 +114,10 @@ To send bytes to a client, it is necessary to define the bytes, [GroupID](#Group
 
 <a name="SendBytesGroup"></a>
 ### UDpServer.SendBytesGroup
-`UDpServer.SendBytesGroup(byte[] _byte, int _groupID, List<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
+`UDpServer.SendBytesGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
 ```cs
-static List<DataClient> PlayersLobby = new List<DataClient>();
+using System.Collections.Concurrent;
+static ConcurrentQueue<DataClient> PlayersLobby = new ConcurrentQueue<DataClient>();
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Play Game");
 
@@ -165,7 +166,8 @@ To disconnect a client from server, it is necessary to inform the [DataClient](#
 ### UDpServer.DisconnectClientGroup
 `UDpServer.DisconnectClientGroup(<List>DataClient _dataClient)`
 ```cs
-static List<DataClient> AFKPlayers = new List<DataClient>();
+using System.Collections.Concurrent;
+static ConcurrentQueue<DataClient> AFKPlayers = new ConcurrentQueue<DataClient>();
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
   UDpServer.DisconnectClientGroup(AFKPlayers);
 }
@@ -334,7 +336,7 @@ UDpServer.ShowDebugConsole = false;
 // Or
 UDpClient.ShowDebugConsole = false;
 ```
-![Preview](/screenshots/DebugConsole.png)
+![Preview](/Images/DebugConsole.png)
 
 The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
 
@@ -645,7 +647,7 @@ ConnectTimeOut is the time the client will be reconnecting with the server, the 
 UDpClient.ShowUnityNetworkStatistics = true;
 ```
 
-![Preview](/screenshots/NetworkStatistics.png)
+![Preview](/Images/NetworkStatistics.png)
 
 When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on the connection between the client and the server will be displayed during game execution.
 

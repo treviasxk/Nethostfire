@@ -7,6 +7,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using Nethostfire;
+
 class Program {
 
     static void Main(string[] args){
@@ -44,7 +45,7 @@ class Program {
                 Console.ReadKey();
             break;
             case "4":
-                UDpClient.DisconnectServer();
+                
             break;
             default:
                 Menu();
@@ -56,7 +57,7 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         if(_status == ClientStatusConnection.Connected){
             var _text =  Encoding.ASCII.GetBytes("Hello world!");
-            UDpClient.SendBytes(_text, 11, TypeShipping.AES);
+            UDpClient.SendBytes(_text, 11, TypeShipping.RSA);
         }
     }
 
@@ -70,6 +71,6 @@ class Program {
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
         Console.Title = "Server - (Status: " + UDpServer.Status + " - Lost Packets: " + UDpServer.LostPackets + " - Packets Per Seconds: " + UDpServer.PacketsPerSeconds + " - Packets Bytes Received: " + UDpServer.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpServer.PacketsBytesSent + ")";
         Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        UDpServer.SendBytes(_byte, _groupID, _dataClient, TypeShipping.AES);
+        UDpServer.SendBytes(_byte, _groupID, _dataClient, TypeShipping.RSA);
     }
 }
