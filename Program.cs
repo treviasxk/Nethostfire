@@ -57,12 +57,12 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         if(_status == ClientStatusConnection.Connected){
             var _text =  Encoding.ASCII.GetBytes("Hello world!");
-            UDpClient.SendBytes(null, 11, _holdConnection: true);
+            UDpClient.SendBytes(_text, 11, TypeShipping.RSA);
         }
     }
 
     static void OnReceivedNewDataServer(byte[] _byte, int _groupID){
-        Console.Title = "Client - (Ping: " + UDpClient.Ping + " Lost Packets: " + UDpClient.LostPackets + " - Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
+        //Console.Title = "Client - (Ping: " + UDpClient.Ping + " - Lost Packets: " + UDpClient.LostPackets + " - Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
         Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
         //UDpClient.SendBytes(_byte, _groupID);
     }
@@ -71,6 +71,6 @@ class Program {
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
         Console.Title = "Server - (Status: " + UDpServer.Status + " - Lost Packets: " + UDpServer.LostPackets + " - Packets Per Seconds: " + UDpServer.PacketsPerSeconds + " - Packets Bytes Received: " + UDpServer.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpServer.PacketsBytesSent + ")";
         Console.WriteLine("[CLIENT] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        UDpServer.SendBytes(null, _groupID, _dataClient, _holdConnection: true);
+        UDpServer.SendBytes(_byte, _groupID, _dataClient, TypeShipping.RSA);
     }
 }

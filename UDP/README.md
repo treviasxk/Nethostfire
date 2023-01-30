@@ -96,15 +96,18 @@ If the server is running, you can stop it, all connected clients will be disconn
 `UDpServer.SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
 ```cs
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
+   // Sending only groupID to client, without encryption and without HoldConnection
+   UDpServer.SendBytes(null, 4, _dataClient);
+
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
 
-   // Sending bytes with groupID 4 to client, without encryption and without HoldConnection
+   // Sending bytes with groupID to client, without encryption and without HoldConnection
    UDpServer.SendBytes(_byte, 4, _dataClient);
 
-   // Sending bytes with groupID 4 to client, with encryption AES and without HoldConnection
+   // Sending bytes with groupID to client, with encryption AES and without HoldConnection
    UDpServer.SendBytes(_byte, 4, _dataClient, TypeShipping.AES);
 
-   // Sending bytes with groupID 4 to client, with encryption RSA and with HoldConnection
+   // Sending bytes with groupID to client, with encryption RSA and with HoldConnection
    UDpServer.SendBytes(_byte, 4, _dataClient, TypeShipping.RSA, true);
 }
 ```
@@ -119,13 +122,16 @@ To send bytes to a client, it is necessary to define the bytes, [GroupID](#Group
 using System.Collections.Concurrent;
 static ConcurrentQueue<DataClient> PlayersLobby = new ConcurrentQueue<DataClient>();
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
+   // Sending only groupID to all clients on the list, without encryption and without HoldConnection
+   UDpServer.SendBytesGroup(null, 4, _dataClient);
+
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Play Game");
 
-   // Sending bytes with groupID 2 to all clients on the list
-   UDpServer.SendBytesGroup(_byte, 2, PlayersLobby);
+   // Sending bytes with groupID to all clients on the list
+   UDpServer.SendBytesGroup(_byte, 4, PlayersLobby);
 
-   // Sending bytes with groupID 2 to all clients on the list, except for the sending client.
-   UDpServer.SendBytesGroup(_byte, 2, PlayersLobby, _skipDataClient: _dataClient);
+   // Sending bytes with groupID to all clients on the list, except for the sending client.
+   UDpServer.SendBytesGroup(_byte, 4, PlayersLobby, _skipDataClient: _dataClient);
 }
 ```
 To send bytes to a group client, it is necessary to define the bytes, [GroupID](#GroupID) and [List DataClient](#DataClient), the other sending resources such as [TypeShipping](#TypeShipping), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
@@ -137,13 +143,16 @@ To send bytes to a group client, it is necessary to define the bytes, [GroupID](
 `UDpServer.SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
 ```cs
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
+   // Sending only groupID to all clients connected, without encryption and without HoldConnection
+   UDpServer.SendBytesAll(null, 4, _dataClient);
+
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Play Game");
 
-   // Sending bytes with groupID 1 to all clients connected.
-   UDpServer.SendBytesAll(_byte, _groupID);
+   // Sending bytes with groupID to all clients connected.
+   UDpServer.SendBytesAll(_byte, 4);
 
-   // Sending bytes with groupID 1 to all clients connected, except for the sending client.
-   UDpServer.SendBytesGroup(_byte, 2, PlayersLobby, _skipDataClient: _dataClient);
+   // Sending bytes with groupID to all clients connected, except for the sending client.
+   UDpServer.SendBytesAll(_byte, 4, PlayersLobby, _skipDataClient: _dataClient);
 }
 ```
 To send bytes to all clients, it is necessary to define the bytes, [GroupID](#GroupID), the other sending resources such as [TypeShipping](#TypeShipping), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
@@ -455,6 +464,9 @@ Connect to a server with IP, Port and sets the size of [SymmetricSizeRSA](#Symme
 `SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
 ```cs
 var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
+
+// Sending only groupID, without encryption and without HoldConnection
+UDpClient.SendBytes(null, 11);
 
 // Sending bytes with groupID 4 to server, without encryption and without HoldConnection
 UDpClient.SendBytes(_byte, 4);

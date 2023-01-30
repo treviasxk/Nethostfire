@@ -151,8 +151,7 @@ namespace Nethostfire {
                 }
                 if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
                     lostPackets++;
-
-                    packetsSent += _byte.Length;
+                packetsSent += _byte.Length;
                 packetsTmp++;
             }
         }
