@@ -18,7 +18,6 @@ namespace Nethostfire {
         static string publicKeyRSA = null;
         static byte[] privateKeyAES = null;
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
-        static ManualResetEvent manualResetEvent = new ManualResetEvent(true);
         static ConcurrentDictionary<int, HoldConnectionClient> listHoldConnection = new ConcurrentDictionary<int, HoldConnectionClient>();
         static Thread SendOnlineThread, ClientReceiveUDPThread;
         /// <summary>
@@ -80,16 +79,16 @@ namespace Nethostfire {
         /// <summary>
         /// Connect to a server with IP, Port and sets the size of SymmetricSizeRSA if needed.
         /// </summary>
-        public static void Connect(IPEndPoint _host, int _symmetricSizeRSA = 86){
+        public static void Connect(IPAddress _ip, int _port, int _symmetricSizeRSA = 86){
             if(Socket is null){
                 Socket = new UdpClient();
                 Socket.Client.SendTimeout = receiveAndSendTimeOut;
                 Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
                 symmetricSizeRSA = _symmetricSizeRSA;
                 Utility.GenerateKey(TypeUDP.Client, _symmetricSizeRSA);
-                host = _host;
+                host = new IPEndPoint(_ip, _port);
                 try{
-                    Socket.Connect(_host);
+                    Socket.Connect(host);
                 }catch{
                     throw new Exception(Utility.ShowLog("Unable to connect to the server."));
                 }
@@ -138,6 +137,8 @@ namespace Nethostfire {
         /// To send bytes to server, it is necessary to define the bytes and GroupID, the other sending resources such as TypeShipping and HoldConnection are optional.
         /// </summary>
         public static void SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false){
+            if(_byte == null)
+                _byte = new byte[]{};
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_holdConnection){
                     if(listHoldConnection.TryGetValue(_groupID, out var HoldConnection)){
@@ -150,7 +151,8 @@ namespace Nethostfire {
                 }
                 if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
                     lostPackets++;
-                packetsSent += _byte.Length;
+
+                    packetsSent += _byte.Length;
                 packetsTmp++;
             }
         }
@@ -194,17 +196,21 @@ namespace Nethostfire {
 
                         if(data.Length > 1){
                             var _data = Utility.ByteToReceive(data, Socket);
+
+                            if(_data.Item3 == TypeContent.Background)
                             if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
                                 lostPackets++;
-                            if(_data.Item1.Length > 0){
-                                switch(Status){
-                                    case ClientStatusConnection.Connected:
-                                        if(_data.Item3 == TypeContent.Foreground){
-                                            packetsReceived += _data.Item1.Length;
-                                            Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
-                                        }
-                                    break;
-                                    case ClientStatusConnection.Connecting:
+
+                            switch(_data.Item3){
+                                case TypeContent.Foreground:
+                                    if(Status == ClientStatusConnection.Connected){
+                                        packetsReceived += data.Length;
+                                        Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
+                                    }
+                                break;
+                                case TypeContent.Background:
+                                    if(Status == ClientStatusConnection.Connecting){
+                                        if(_data.Item1.Length > 0)
                                         if(_data.Item3 == TypeContent.Background)
                                             switch(_data.Item4){
                                                 case TypeShipping.RSA:
@@ -217,13 +223,14 @@ namespace Nethostfire {
                                                         ChangeStatus(ClientStatusConnection.Connected);
                                                 break;
                                             }
-                                    break;
-                                }
-                            }
+                                        else
+                                            lostPackets++;
+                                    }
+                                break;
+                            }                            
                         }
                     });
                 }
-                manualResetEvent.WaitOne();
             }
         }
         static void SendOnline(){
@@ -245,20 +252,18 @@ namespace Nethostfire {
 
                 // Enviando bytes que estão em listHoldConnection
                 if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
-                    try{
-                        foreach(var item in listHoldConnection.ToArray()){
-                            if(item.Value.Time < Environment.TickCount){
-                                item.Value.Time = Environment.TickCount + receiveAndSendTimeOut;
-                                if(!Utility.Send(Socket, item.Value.Bytes, item.Key, item.Value.TypeShipping, true, item.Value.TypeContent))
-                                    lostPackets++;
+                    Parallel.ForEach(listHoldConnection, item => {
+                        if(item.Value.Time < Environment.TickCount){
+                            item.Value.Time = Environment.TickCount + receiveAndSendTimeOut;
+                            if(!Utility.Send(Socket, item.Value.Bytes, item.Key, item.Value.TypeShipping, true, item.Value.TypeContent))
                                 lostPackets++;
-                            }
+                            lostPackets++;
                         }
-                    }catch{}
+                    });
+
                 GC.WaitForPendingFinalizers();
                 GC.Collect();
                 Thread.Sleep(1000);
-                manualResetEvent.WaitOne();
             }
         }
 

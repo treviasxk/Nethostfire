@@ -63,9 +63,9 @@
 
 <a name="UDpServerStart"></a>
 ### UDpServer.Start
-`UDpServer.Start(IPEndPoint _host = null, int _symmetricSizeRSA = 86)`
+`UDpServer.Start(IPAddress _ip, int _port, int _symmetricSizeRSA = 86)`
 ```cs
-UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000, 16));
+UDpServer.Start(IPAddress.Any, 25000, 16);
 ```
 Start the server with specific IP, Port and sets the size of [SymmetricSizeRSA](#SymmetricSizeRSA) if needed. If the server has already been started and then stopped you can call ``UDpServer.Start();`` without defining _host and _symmetricSizeRSA to start the server with the previous settings.
 
@@ -379,7 +379,7 @@ The Status is an enum [UDpServer.ServerStatusConnection](#ServerStatusConnection
 ```cs
 static void Main(string[] args){
     UDpServer.OnConnectedClient += OnConnectedClient;
-    UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
+    UDpServer.Start(IPAddress.Any, 25000);
 }
 
 static void OnConnectedClient(DataClient _dataClient){
@@ -396,7 +396,7 @@ OnConnectedClient is an event that you can use to receive the [DataClient](#Data
 ```cs
 static void Main(string[] args){
     UDpServer.OnDisconnectedClient += OnDisconnectedClient;
-    UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
+    UDpServer.Start(IPAddress.Any, 25000);
 }
 
 static void OnDisconnectedClient(DataClient _dataClient){
@@ -413,7 +413,7 @@ OnDisconnectedClient is an event that you can use to receive the [DataClient](#D
 ```cs
 static void Main(string[] args){
     UDpServer.ServerStatusConnection += OnServerStatusConnection;
-    UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
+    UDpServer.Start(IPAddress.Any, 25000);
 }
 
 static void OnServerStatusConnection(ServerStatusConnection _status){
@@ -430,7 +430,7 @@ OnServerStatusConnection is an event that returns [UDpServer.ServerStatusConnect
 ```cs
 static void Main(string[] args){
     UDpServer.OnReceivedNewDataClient += OnReceivedNewDataClient;
-    UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
+    UDpServer.Start(IPAddress.Any, 25000);
 }
 
 static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
@@ -444,7 +444,7 @@ OnReceivedNewDataClient an event that returns bytes received, [GroupID](#GroupID
 ### UDpClient.Connect
 `Connect(IPEndPoint _host, int _symmetricSizeRSA = 86)`
 ```cs
-UDpClient.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000), 20);
+UDpClient.Connect(IPAddress.Parse("127.0.0.1"), 25000, 20);
 ```
 Connect to a server with IP, Port and sets the size of [SymmetricSizeRSA](#SymmetricSizeRSA) if needed.
 
@@ -547,7 +547,7 @@ ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiv
 ```cs
 static void Main(string[] args){
     UDpClient.OnReceivedNewDataUDpServer += OnReceivedNewDataUDpServer;
-    UDpClient.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 25000));
+    UDpClient.Connect(IPAddress.Parse("127.0.0.1"), 25000);
 }
 
 static void OnReceivedNewDataUDpServer(byte[] _byte, int _groupID){
@@ -564,7 +564,7 @@ OnReceivedNewDataUDpServer an event that returns bytes received and [GroupID](#G
 ```cs
 static void Main(string[] args){
     UDpClient.ClientStatusConnection += OnClientStatusConnection;
-    UDpServer.Start(new IPEndPoint(IPAddress.Any, 25000));
+    UDpServer.Start(IPAddress.Any, 25000);
 }
 
 static void OnClientStatusConnection(ClientStatusConnection _status){
