@@ -172,7 +172,7 @@ namespace Nethostfire {
             TypeContent _typeContent;
             byte[] data;
             byte[] type;
-            int hascode;
+            int _groupID;
             try{
                 if(_byte[0] == 2){
                     type = new byte[_byte[1]];
@@ -185,11 +185,11 @@ namespace Nethostfire {
                 data = new byte[_byte.Length - type.Length - 4];
                 _byte.Skip(4 + _byte[3]).ToArray().CopyTo(data,0);
 
-                hascode = BitConverter.ToInt32(type, 0);
+                _groupID = BitConverter.ToInt32(type, 0);
                 _TypeShipping = (TypeShipping)_byte[2];
                 _typeContent = (TypeContent)_byte[1];
             }catch{
-                return (new byte[]{}, -1, TypeContent.Foreground, TypeShipping.None);
+                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
             }
 
             if(_typeContent == TypeContent.Background)
@@ -230,14 +230,14 @@ namespace Nethostfire {
             try{
                 if(_byte[0] == 1){
                     byte[] data2 = new byte[_byte[3] + 2];
-                    data2[0] = 2;
-                    data2[1] = _byte[3];
-                    type.CopyTo(data2, 2);
+                    data2[0] = 2;               // Hold Connection respondendo
+                    data2[1] = _byte[3];        // O tamanho do groupID
+                    type.CopyTo(data2, 2);      // GroupID
                     SendPing(_udpClient, data2, _dataClient);
                 }
-                return (data.Length > 1 ? data : new byte[]{}, hascode, _typeContent, _TypeShipping);
+                return (data.Length > 1 ? data : new byte[]{}, _groupID, _typeContent, _TypeShipping);
             }catch{
-                return (new byte[]{}, -1, TypeContent.Foreground, TypeShipping.None);
+                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
             }
         }
         
@@ -277,16 +277,16 @@ namespace Nethostfire {
             }   
            
             try{
-                byte[] hascode = BitConverter.GetBytes(_groupID);
-                byte[] data = new byte[_byte.Length + hascode.Length + 4];
+                byte[] groupID = BitConverter.GetBytes(_groupID);
+                byte[] data = new byte[_byte.Length + groupID.Length + 4];
 
                 data[0] = (byte)(_holdConnection ? 1 : 0);          // Se é um Hold Connection
                 data[1] = (byte)_typeContent;                       // O tipo de conteúdo
-                data[2] = (byte)_TypeShipping;                       // O tipo de criptografia
-                data[3] = (byte)hascode.Length;                     // O tamanho do hascode
+                data[2] = (byte)_TypeShipping;                      // O tipo de criptografia
+                data[3] = (byte)groupID.Length;                     // O tamanho do groupID
 
-                hascode.CopyTo(data, 4);
-                _byte.CopyTo(data, 4 + hascode.Length);
+                groupID.CopyTo(data, 4);                            // GroupID
+                _byte.CopyTo(data, 4 + groupID.Length);             // bytes
 
                 return data;
             }

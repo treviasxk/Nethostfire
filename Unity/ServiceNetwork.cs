@@ -58,6 +58,7 @@ public class ServiceNetwork : MonoBehaviour{
     }
 
     void OnGUI(){
+        if(!Application.isBatchMode)
         if(UDpClient.ShowUnityNetworkStatistics){
             GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
             GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
