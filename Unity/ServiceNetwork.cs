@@ -17,15 +17,16 @@ public class ServiceNetwork : MonoBehaviour{
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Init(){
         bool ShowDebug = UDpClient.ShowDebugConsole;
+        UDpClient.ShowDebugConsole = false;
+        UDpClient.DisconnectServer();
+        UDpServer.Stop();
         UDpClient.OnClientStatusConnection = null;
         UDpClient.OnReceivedNewDataServer = null;
         UDpServer.OnConnectedClient = null;
         UDpServer.OnDisconnectedClient = null;
         UDpServer.OnReceivedNewDataClient = null;
-        UDpClient.ShowDebugConsole = false;
-        UDpClient.DisconnectServer();
-        UDpServer.Stop();
         UDpClient.ShowDebugConsole = ShowDebug;
+        while(Utility.ListRunOnMainThread.TryDequeue(out _)){}
     }
 
     void Awake(){

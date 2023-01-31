@@ -75,7 +75,7 @@ namespace Nethostfire {
         /// <summary>
         /// Ping returns an integer value, this value is per milliseconds
         /// </summary>
-        public static int Ping {get {return (int)pingCount;}}
+        public static int Ping {get {return pingCount;}}
         /// <summary>
         /// Connect to a server with IP, Port and sets the size of SymmetricSizeRSA if needed.
         /// </summary>
@@ -126,7 +126,6 @@ namespace Nethostfire {
                 publicKeyRSA = null;
                 privateKeyAES = null;
                 listHoldConnection.Clear();
-                Utility.GenerateKey(TypeUDP.Client, symmetricSizeRSA);
                 if(Status == ClientStatusConnection.Disconnecting)
                     ChangeStatus(ClientStatusConnection.Disconnected);
                 if(Status == ClientStatusConnection.Connecting)
@@ -195,8 +194,6 @@ namespace Nethostfire {
 
                         if(data.Length > 1){
                             var _data = Utility.ByteToReceive(data, Socket);
-
-                            if(_data.Item3 == TypeContent.Background)
                             if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
                                 lostPackets++;
 
@@ -234,11 +231,10 @@ namespace Nethostfire {
         }
         static void SendOnline(){
             while(Socket != null){
-
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
                     pingTmp = Environment.TickCount;
-                    Utility.SendPing(Socket, new byte[]{1});
+                    Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}));
                 }
 
                 // Verificando se o ultimo ping com o server é de 3000ms
