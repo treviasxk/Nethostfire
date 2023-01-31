@@ -105,6 +105,8 @@ namespace Nethostfire {
             try{
                Socket.Client.Bind(host);
             }catch{
+               Socket = null;
+               ChangeStatus(ServerStatusConnection.Stopped);
                throw new Exception(Utility.ShowLog("Could not start the server, check that the port "+ _port + " is not blocked, or that you have other software using that port."));
             }
             if(ServerReceiveUDPThread == null){
@@ -139,7 +141,6 @@ namespace Nethostfire {
             listHoldConnection.Clear();
             DataClients.Clear();
             WaitDataClients.Clear();
-            Utility.GenerateKey(TypeUDP.Server, symmetricSizeRSA);
             if(Status == ServerStatusConnection.Stopping)
                ChangeStatus(ServerStatusConnection.Stopped);
          }
@@ -353,7 +354,7 @@ namespace Nethostfire {
                            case 1:
                               _dataClient.Ping = Environment.TickCount - _dataClient.Time - 1000;
                               _dataClient.Time = Environment.TickCount;
-                              Utility.SendPing(Socket, new byte[]{1},_dataClient);
+                              Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}, _dataClient));
                            break;
                         }
                      }
@@ -395,18 +396,19 @@ namespace Nethostfire {
                                        if(_holdConnection2.Time[index] < Environment.TickCount)
                                           listHoldConnection.TryRemove(_dataClient, out _);
                                  }
-                              }else{
+                              }else
                                  Utility.RunOnMainThread(() => OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
-                              }
                            }
                         break;
                         case TypeContent.Background:
                            if(_data.Item1.Length > 0)
                               switch(_data.Item4){
                                  case TypeShipping.RSA:
-                                    _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
-                                    WaitDataClients.TryAdd(_ip, _dataClient);
-                                    Utility.Send(Socket, Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, TypeShipping.RSA, false, TypeContent.Background, _dataClient);
+                                    Utility.RunOnMainThread(() =>{
+                                       _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
+                                       WaitDataClients.TryAdd(_ip, _dataClient);
+                                       Utility.Send(Socket, Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, TypeShipping.RSA, false, TypeContent.Background, _dataClient);
+                                    });
                                  break;
                                  case TypeShipping.AES:
                                     if(WaitDataClients.TryGetValue(_ip, out var _waitDataClient)){

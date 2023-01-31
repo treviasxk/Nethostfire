@@ -104,7 +104,7 @@ namespace Nethostfire {
         public static string PublicKeyRSAClient, PrivateKeyRSAClient, PublicKeyRSAServer, PrivateKeyRSAServer;
         public static byte[] PrivateKeyAESClient, PrivateKeyAESServer;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
-        public static readonly ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
+        public static ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
         public static void RunOnMainThread(Action action){
@@ -115,9 +115,8 @@ namespace Nethostfire {
         }
 
         public static void ThisMainThread() {
-            while(ListRunOnMainThread.TryDequeue(out var action)) {
+            while(ListRunOnMainThread.TryDequeue(out var action))
                 action?.Invoke();
-            }
         }
 
         public static string BytesToString(float PacketsReceived){
@@ -233,7 +232,7 @@ namespace Nethostfire {
                     data2[0] = 2;               // Hold Connection respondendo
                     data2[1] = _byte[3];        // O tamanho do groupID
                     type.CopyTo(data2, 2);      // GroupID
-                    SendPing(_udpClient, data2, _dataClient);
+                    RunOnMainThread(() => SendPing(_udpClient, data2, _dataClient));
                 }
                 return (data.Length > 1 ? data : new byte[]{}, _groupID, _typeContent, _TypeShipping);
             }catch{
@@ -415,16 +414,18 @@ namespace Nethostfire {
 
         public static string ShowLog(string Message){
             if(ShowDebugConsole)
-                if(RunningInUnity && !UnityBatchMode)
-                    ShowUnityLog(Message);
-                else{
-                    Console.ForegroundColor = ConsoleColor.DarkRed;
-                    Console.Write("[NETHOSTFIRE] ");
-                    Console.ForegroundColor = ConsoleColor.Gray;
-                    Console.Write(DateTime.Now + " ");
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine(Message);
-                }
+                RunOnMainThread(() => {
+                    if(RunningInUnity && !UnityBatchMode)
+                        ShowUnityLog(Message);
+                    else{
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                        Console.Write("[NETHOSTFIRE] ");
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        Console.Write(DateTime.Now + " ");
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(Message);
+                    }
+                });
             return Message;
         }
 
