@@ -364,7 +364,7 @@ namespace Nethostfire {
                   }
 
                   if(data.Length > 1 && Status == ServerStatusConnection.Running){
-                     var _data = Utility.ByteToReceive(data, Socket, _dataClient != null ? _dataClient : new DataClient(){IP = _ip});
+                     var _data = Utility.ByteToReceive(data, Socket, _dataClient.IP != null ? _dataClient : new DataClient(){IP = _ip});
                      if(listHoldConnection.TryGetValue(_dataClient, out var _holdConnection)){
                         if(_holdConnection.GroupID.Contains(_data.Item2)){
                            var index = _holdConnection.GroupID.IndexOf(_data.Item2);
