@@ -58,6 +58,7 @@
 - FAQ
     - [GroupID](#GroupID)
     - [HoldConnection](#HoldConnection)
+    - [ShippingPreparation](#ShippingPreparation)
 
 ## UDpServer
 
@@ -768,3 +769,12 @@ GroupID is a way to organize your shipments with high performance, whenever you 
 <a name="HoldConnection"></a>
 ### HoldConnection
 HoldConnection is a feature to avoid packet loss, when you set it to true when sending, if the server or client does not respond back on the same GroupID, it will be in a loop re-sending until it responds with a response from the server or client.
+
+-----
+
+<a name="ShippingPreparation"></a>
+### Shipping Preparation
+
+![Preview](/Images/ShippingPreparation.png)
+
+After the message "Hello World!" was sent with [UDpClient.SendBytes](#UDpClientSendBytes), the bytes were sorted before being sent, for Nethostfire features to work.

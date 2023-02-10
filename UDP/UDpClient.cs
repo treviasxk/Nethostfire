@@ -157,13 +157,9 @@ namespace Nethostfire {
 
         private static void ClientReceiveUDP(){
             while(Socket != null){
-                byte[] data = null;
-                IPEndPoint _host = null;
-                try{
-                    data = Socket.Receive(ref _host);
-                }catch{}
-
-                if(data != null && _host.Equals(host)){
+                if(Socket.Available > 0){
+                    IPEndPoint _host = null;
+                    byte[] data = Socket.Receive(ref _host);
                     Parallel.Invoke(()=>{
                         timeLastPacket = Environment.TickCount;
                         packetsTmp++;

@@ -57,7 +57,7 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         if(_status == ClientStatusConnection.Connected){
             var _text =  Encoding.ASCII.GetBytes("Hello world!");
-            UDpClient.SendBytes(_text, 11, TypeShipping.RSA);
+            UDpClient.SendBytes(_text, 11);
         }
     }
 
@@ -71,6 +71,6 @@ class Program {
     static void OnReceivedNewDataClient(byte[] _byte, int _groupID, DataClient _dataClient){
         Console.Title = "Server - (Status: " + UDpServer.Status + " - Lost Packets: " + UDpServer.LostPackets + " - Packets Per Seconds: " + UDpServer.PacketsPerSeconds + " - Packets Bytes Received: " + UDpServer.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpServer.PacketsBytesSent + ")";
         Console.WriteLine("[CLIENT] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.ASCII.GetString(_byte), _byte.Length);
-        UDpServer.SendBytes(_byte, _groupID, _dataClient, TypeShipping.RSA);
+        UDpServer.SendBytes(_byte, _groupID, _dataClient);
     }
 }
