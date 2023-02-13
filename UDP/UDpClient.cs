@@ -157,72 +157,80 @@ namespace Nethostfire {
 
         private static void ClientReceiveUDP(){
             while(Socket != null){
-                if(Socket.Available > 0){
-                    IPEndPoint _host = null;
-                    byte[] data = Socket.Receive(ref _host);
-                    Parallel.Invoke(()=>{
-                        timeLastPacket = Environment.TickCount;
-                        packetsTmp++;
-                        if(DateTime.Now.Second != timeTmp){
-                            timeTmp = DateTime.Now.Second;
-                            packetsSent2 = packetsSent;
-                            packetsReceived2 = packetsReceived;
-                            packetsCount = packetsTmp;
-                            packetsTmp = 0;
-                        }
+                bool SafeThread = false;
+                IPEndPoint _host = null;
+                byte[] data = new byte[]{};
 
-                        if(data.Length == 1){
-                            switch(data[0]){
-                                case 0:
-                                    ChangeStatus(ClientStatusConnection.Disconnected);
-                                break;
-                                case 1:
-                                    pingCount = Environment.TickCount - pingTmp;
-                                break;
-                                case 2:
-                                    ChangeStatus(ClientStatusConnection.IpBlocked);
-                                break;
-                                case 3:
-                                    ChangeStatus(ClientStatusConnection.MaxClientExceeded);
-                                break;
-                            }
-                        }
+                try{
+                    if(Socket.Available > 0){
+                        data = Socket.Receive(ref _host);
+                        SafeThread = true;
+                    }
+                }catch{}
 
-                        if(data.Length > 1){
-                            var _data = Utility.ByteToReceive(data, Socket);
-                            if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
-                                lostPackets++;
+                if(SafeThread)
+                Parallel.Invoke(()=>{
+                    timeLastPacket = Environment.TickCount;
+                    packetsTmp++;
+                    if(DateTime.Now.Second != timeTmp){
+                        timeTmp = DateTime.Now.Second;
+                        packetsSent2 = packetsSent;
+                        packetsReceived2 = packetsReceived;
+                        packetsCount = packetsTmp;
+                        packetsTmp = 0;
+                    }
 
-                            switch(_data.Item3){
-                                case TypeContent.Foreground:
-                                    if(Status == ClientStatusConnection.Connected){
-                                        packetsReceived += data.Length;
-                                        Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
-                                    }
-                                break;
-                                case TypeContent.Background:
-                                    if(Status == ClientStatusConnection.Connecting){
-                                        if(_data.Item1.Length > 0)
-                                        if(_data.Item3 == TypeContent.Background)
-                                            switch(_data.Item4){
-                                                case TypeShipping.RSA:
-                                                    publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
-                                                    SendBytes(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, true);
-                                                break;
-                                                case TypeShipping.AES:
-                                                    privateKeyAES = _data.Item1;
-                                                    if(publicKeyRSA != null)
-                                                        ChangeStatus(ClientStatusConnection.Connected);
-                                                break;
-                                            }
-                                        else
-                                            lostPackets++;
-                                    }
-                                break;
-                            }                            
+                    if(data.Length == 1){
+                        switch(data[0]){
+                            case 0:
+                                ChangeStatus(ClientStatusConnection.Disconnected);
+                            break;
+                            case 1:
+                                pingCount = Environment.TickCount - pingTmp;
+                            break;
+                            case 2:
+                                ChangeStatus(ClientStatusConnection.IpBlocked);
+                            break;
+                            case 3:
+                                ChangeStatus(ClientStatusConnection.MaxClientExceeded);
+                            break;
                         }
-                    });
-                }
+                    }
+
+                    if(data.Length > 1){
+                        var _data = Utility.ByteToReceive(data, Socket);
+                        if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
+                            lostPackets++;
+
+                        switch(_data.Item3){
+                            case TypeContent.Foreground:
+                                if(Status == ClientStatusConnection.Connected){
+                                    packetsReceived += data.Length;
+                                    Utility.RunOnMainThread(() => OnReceivedNewDataServer?.Invoke(_data.Item1, _data.Item2));
+                                }
+                            break;
+                            case TypeContent.Background:
+                                if(Status == ClientStatusConnection.Connecting){
+                                    if(_data.Item1.Length > 0)
+                                    if(_data.Item3 == TypeContent.Background)
+                                        switch(_data.Item4){
+                                            case TypeShipping.RSA:
+                                                publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
+                                                SendBytes(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, true);
+                                            break;
+                                            case TypeShipping.AES:
+                                                privateKeyAES = _data.Item1;
+                                                if(publicKeyRSA != null)
+                                                    ChangeStatus(ClientStatusConnection.Connected);
+                                            break;
+                                        }
+                                    else
+                                        lostPackets++;
+                                }
+                            break;
+                        }                            
+                    }
+                });
             }
         }
         static void SendOnline(){
@@ -271,8 +279,9 @@ namespace Nethostfire {
                     packetsSent2 = 0;
                     lostPackets = 0;
                 }
-                Thread t = new Thread(new ThreadStart(NewThreadStatus));
-                t.Start();
+
+                Utility.RunOnMainThread(() => OnClientStatusConnection?.Invoke(Status));
+
                 switch(_status){
                     case ClientStatusConnection.Connecting:
                         publicKeyRSA = null;
@@ -302,10 +311,6 @@ namespace Nethostfire {
                     break;
                 }
             }
-        }
-
-        static void NewThreadStatus(){
-            Utility.RunOnMainThread(() => OnClientStatusConnection?.Invoke(Status));
         }
     }
 }

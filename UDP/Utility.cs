@@ -107,11 +107,12 @@ namespace Nethostfire {
         public static ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
-        public static void RunOnMainThread(Action action){
+
+        public static void RunOnMainThread(Action _action){
             if(RunningInUnity)
-                ListRunOnMainThread.Enqueue(action);
+                ListRunOnMainThread.Enqueue(_action);
             else
-                action?.Invoke();
+                _action?.Invoke();
         }
 
         public static void ThisMainThread() {
@@ -192,42 +193,45 @@ namespace Nethostfire {
             }
 
             if(_typeContent == TypeContent.Background)
-                switch(_TypeShipping){
-                    case TypeShipping.RSA:
-                        data = Decompress(data);
-                    break;
-                    case TypeShipping.AES:
-                        data = DecryptRSA(data, _dataClient != null ? PrivateKeyRSAServer : PrivateKeyRSAClient);
-                    break;
-                }
+            switch(_TypeShipping){
+                case TypeShipping.RSA:
+                    data = Decompress(data);
+                break;
+                case TypeShipping.AES:
+                    data = DecryptRSA(data, _dataClient != null ? PrivateKeyRSAServer : PrivateKeyRSAClient);
+                break;
+            }
 
 
             if(_typeContent == TypeContent.Foreground)
-                switch(_TypeShipping){
-                    case TypeShipping.AES:
-                        data = DecryptAES(data, _dataClient != null ? _dataClient.PrivateKeyAES : PrivateKeyAESClient);
-                    break;
-                    case TypeShipping.RSA:
-                        data = DecryptRSA(data, _dataClient != null ? PrivateKeyRSAServer : PrivateKeyRSAClient);
-                    break;
-                    case TypeShipping.Base64:
+            switch(_TypeShipping){
+                case TypeShipping.AES:
+                    data = DecryptAES(data, _dataClient != null ? _dataClient.PrivateKeyAES : PrivateKeyAESClient);
+                break;
+                case TypeShipping.RSA:
+                    data = DecryptRSA(data, _dataClient != null ? PrivateKeyRSAServer : PrivateKeyRSAClient);
+                break;
+                case TypeShipping.Base64:
+                    data = DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
+                break;
+                case TypeShipping.Compress:
+                    data = Decompress(data);
+                break;
+                case TypeShipping.OnlyBase64:
+                    if(_dataClient == null)
                         data = DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
-                    break;
-                    case TypeShipping.Compress:
+                break;
+                case TypeShipping.OnlyCompress:
+                    if(_dataClient == null)
                         data = Decompress(data);
-                    break;
-                    case TypeShipping.OnlyBase64:
-                        if(_dataClient == null)
-                            data = DecryptBase64(System.Text.Encoding.ASCII.GetString(data));
-                    break;
-                    case TypeShipping.OnlyCompress:
-                        if(_dataClient == null)
-                            data = Decompress(data);
-                    break;
-                }
+                break;
+            }
+
+            if(_TypeShipping != TypeShipping.None && _byte.Length == 0)
+                return (null, 0, TypeContent.Background, TypeShipping.None);
 
             try{
-                if(_byte[0] == 1){
+                if(_byte[0] == 1 && _typeContent == TypeContent.Foreground){
                     byte[] data2 = new byte[_byte[3] + 2];
                     data2[0] = 2;               // Hold Connection respondendo
                     data2[1] = _byte[3];        // O tamanho do groupID
@@ -242,14 +246,14 @@ namespace Nethostfire {
         
         public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
             if(_typeContent == TypeContent.Background)
-                switch(_TypeShipping){
-                    case TypeShipping.RSA:
-                        _byte = Compress(_byte);
-                    break;
-                    case TypeShipping.AES:
-                        _byte = EncryptRSA(_byte, _dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
-                    break;
-                }
+            switch(_TypeShipping){
+                case TypeShipping.RSA:
+                    _byte = Compress(_byte);
+                break;
+                case TypeShipping.AES:
+                    _byte = EncryptRSA(_byte, _dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
+                break;
+            }
 
             if(_typeContent == TypeContent.Foreground)
             switch(_TypeShipping){
@@ -267,14 +271,17 @@ namespace Nethostfire {
                 break;
                 case TypeShipping.OnlyBase64:
                     if(_dataClient == null)
-                       _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                    _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
                 break;
                 case TypeShipping.OnlyCompress:
                     if(_dataClient == null)
                         _byte = Compress(_byte);
                 break;
-            }   
-           
+            }
+
+             if(_TypeShipping != TypeShipping.None && _byte.Length == 0)
+                return null;
+
             try{
                 byte[] groupID = BitConverter.GetBytes(_groupID);
                 byte[] data = new byte[_byte.Length + groupID.Length + 4];

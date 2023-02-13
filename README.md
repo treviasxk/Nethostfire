@@ -62,3 +62,6 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
 
 ## Projects Examples
   - (Coming soon)
+
+## Youtube Tutorials  
+  - <img src="https://cdn.jsdelivr.net/gh/hampusborgos/country-flags@main/svg/br.svg" width="15"> [Introdução projeto Open-Source para criação de servidores dedicado - Nethostfire](https://youtu.be/T9Mt-7KJBTI) | Trevias Xk
