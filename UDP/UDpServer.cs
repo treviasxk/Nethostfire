@@ -24,9 +24,9 @@ namespace Nethostfire {
       static ConcurrentDictionary<DataClient, HoldConnectionServer> listHoldConnection = new ConcurrentDictionary<DataClient, HoldConnectionServer>();
       static Thread CheckOnlineThread, ServerReceiveUDPThread;
       /// <summary>
-      /// OnReceivedNewDataClient an event that returns bytes received, GroupID and DataClient whenever the received bytes by clients, with it you can manipulate the bytes received.
+      /// OnReceivedBytesClient an event that returns bytes received, GroupID and DataClient whenever the received bytes by clients, with it you can manipulate the bytes received.
       /// </summary>
-      public static Action<byte[], int, DataClient> OnReceivedNewDataClient;
+      public static Action<byte[], int, DataClient> OnReceivedBytesClient;
       /// <summary>
       /// OnServerStatusConnection is an event that returns Server.ServerStatusConnection whenever the status changes, with which you can use it to know the current status of the server.
       /// </summary>
@@ -48,11 +48,11 @@ namespace Nethostfire {
       /// </summary>
       public static int ReceiveAndSendTimeOut {get {return receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} receiveAndSendTimeOut = value > 0 ? value : 1000;}}
       /// <summary>
-      /// The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedNewDataClient event with the received bytes. The default value is 0 which is unlimited.
+      /// The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is 0 which is unlimited.
       /// </summary>
       public static int LimitMaxPacketsPerSeconds {get {return limitMaxPPS;} set{limitMaxPPS = value;}}
       /// <summary>
-      /// The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedNewDataClient event with the received bytes. The default value is 0 which is unlimited.
+      /// The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is 0 which is unlimited.
       /// </summary>
       public static int LimitMaxByteReceive {get {return limitMaxByteSize;} set{limitMaxByteSize = value;}}
       /// <summary>
@@ -159,20 +159,20 @@ namespace Nethostfire {
       /// <summary>
       /// To send bytes to a client, it is necessary to define the bytes, GroupID and DataClient, the other sending resources such as TypeShipping and HoldConnection are optional.
       /// </summary>
-      public static void SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false){
+      public static void SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
          if(_byte == null)
             _byte = new byte[]{};
          if(Status == ServerStatusConnection.Running){
-            if(_holdConnection){
+            if(_typeHoldConnection != TypeHoldConnection.None){
                if(listHoldConnection.TryGetValue(_dataClient, out var HoldConnection)){
-                  HoldConnection.Time.Add(0);
+                  HoldConnection.Time.Add(Environment.TickCount + receiveAndSendTimeOut);
                   HoldConnection.Bytes.Add(_byte);
                   HoldConnection.GroupID.Add(_groupID);
                }
                else
-                  listHoldConnection.TryAdd(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<int>{0}, GroupID = new List<int>{_groupID}});
+                  listHoldConnection.TryAdd(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<int>{0}, GroupID = new List<int>{_groupID}, TypeShipping = new List<TypeShipping>{_typeShipping}, TypeContent = new List<TypeContent>{_dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background}, TypeHoldConnection = new List<TypeHoldConnection>{_typeHoldConnection}});
             }
-            if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, TypeContent.Foreground, _dataClient))
+            if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, _dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background, _dataClient))
                lostPackets++;
             else
                packetsSent += _byte.Length;
@@ -182,21 +182,21 @@ namespace Nethostfire {
       /// <summary>
       /// To send bytes to a group client, it is necessary to define the bytes, GroupID and ConcurrentBag DataClient, the other sending resources such as TypeShipping, SkipDataClient and HoldConnection are optional.
       /// </summary>
-      public static void SendBytesGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false){
+      public static void SendBytesGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
          if(_byte == null)
             _byte = new byte[]{};
          Parallel.ForEach(_dataClients.Where(item => item.IP != (_skipDataClient != null ? _skipDataClient.IP: null)), _dataClient => {
             if(Status == ServerStatusConnection.Running){
-               if(_holdConnection){
+               if(_typeHoldConnection != TypeHoldConnection.None){
                   if(listHoldConnection.TryGetValue(_dataClient, out var HoldConnection)){
-                     HoldConnection.Time.Add(0);
+                     HoldConnection.Time.Add(Environment.TickCount + receiveAndSendTimeOut);
                      HoldConnection.Bytes.Add(_byte);
                      HoldConnection.GroupID.Add(_groupID);
                   }
                   else
-                     listHoldConnection.TryAdd(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<int>{0}, GroupID = new List<int>{_groupID}});
+                     listHoldConnection.TryAdd(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<int>{0}, GroupID = new List<int>{_groupID}, TypeShipping = new List<TypeShipping>{_typeShipping}, TypeContent = new List<TypeContent>{_dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background}, TypeHoldConnection = new List<TypeHoldConnection>{_typeHoldConnection}});
                }
-               if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, TypeContent.Foreground, _dataClient))
+               if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, TypeContent.Foreground, _dataClient))
                   lostPackets++;
                else
                   packetsSent += _byte.Length;
@@ -207,21 +207,21 @@ namespace Nethostfire {
       /// <summary>
       /// To send bytes to all clients, it is necessary to define the bytes, GroupID, the other sending resources such as TypeShipping, SkipDataClient and HoldConnection are optional.
       /// </summary>
-      public static void SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false){
+      public static void SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
          if(_byte == null)
             _byte = new byte[]{};
-         Parallel.ForEach(DataClients.Where(item => item.Value.IP != (_skipDataClient != null ? _skipDataClient.IP: null)), item => {
+         Parallel.ForEach(DataClients.Values.Where(item => item.IP != (_skipDataClient != null ? _skipDataClient.IP: null)), _dataClient => {
             if(Status == ServerStatusConnection.Running){
-               if(_holdConnection){
-                  if(listHoldConnection.TryGetValue(item.Value, out var HoldConnection)){
-                     HoldConnection.Time.Add(0);
+               if(_typeHoldConnection != TypeHoldConnection.None){
+                  if(listHoldConnection.TryGetValue(_dataClient, out var HoldConnection)){
+                     HoldConnection.Time.Add(Environment.TickCount + receiveAndSendTimeOut);
                      HoldConnection.Bytes.Add(_byte);
                      HoldConnection.GroupID.Add(_groupID);
                   }
                   else
-                     listHoldConnection.TryAdd(item.Value, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<int>{0}, GroupID = new List<int>{_groupID}});
+                    listHoldConnection.TryAdd(_dataClient, new HoldConnectionServer{Bytes = new List<byte[]>{_byte}, Time = new List<int>{0}, GroupID = new List<int>{_groupID}, TypeShipping = new List<TypeShipping>{_typeShipping}, TypeContent = new List<TypeContent>{_dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background}, TypeHoldConnection = new List<TypeHoldConnection>{_typeHoldConnection}});
                }
-               if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _holdConnection, TypeContent.Foreground, item.Value))
+               if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, TypeContent.Foreground, _dataClient))
                   lostPackets++;
                else
                   packetsSent += _byte.Length;
@@ -295,7 +295,7 @@ namespace Nethostfire {
 
 
       /// <summary>
-      /// The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a GroupID that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedNewDataClient event with the received bytes. The default value _limitBytes is 0 which is unlimited.
+      /// The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a GroupID that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value _limitBytes is 0 which is unlimited.
       /// </summary>
       public static void ChangeLimitMaxByteSizeGroupID(int _groupID, int _limitBytes){
          if(ListLimitMaxByteSizeGroupID.TryGetValue(_groupID, out var _limitMaxByteSizeGroupID)){
@@ -308,7 +308,7 @@ namespace Nethostfire {
       }
 
       /// <summary>
-      /// The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a GroupID, if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedNewDataClient event with the received bytes. The default value is _limitBytes 0 which is unlimited.
+      /// The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a GroupID, if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is _limitBytes 0 which is unlimited.
       /// </summary>
       public static void ChangeLimitMaxPacketsPerSecondsGroupID(int _groupID, int _limitPPS){
          if(ListLimitMaxPPSGroupID.TryGetValue(_groupID, out var _limitMaxPPGroupID)){
@@ -397,13 +397,13 @@ namespace Nethostfire {
                                  var index = _holdConnection2.GroupID.IndexOf(_data.Item2);
                                  if(_holdConnection2.Time[index] == 0){
                                     _holdConnection2.Time[index] = Environment.TickCount + receiveAndSendTimeOut;
-                                    Utility.RunOnMainThread(() => OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
+                                    Utility.RunOnMainThread(() => OnReceivedBytesClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
                                  }else
                                     if(_holdConnection2.Time[index] < Environment.TickCount)
                                        listHoldConnection.TryRemove(_dataClient, out _);
                               }
                            }else
-                              Utility.RunOnMainThread(() => OnReceivedNewDataClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
+                              Utility.RunOnMainThread(() => OnReceivedBytesClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
                         }
                      break;
                      case TypeContent.Background:
@@ -413,15 +413,15 @@ namespace Nethostfire {
                                  Utility.RunOnMainThread(() =>{
                                     _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
                                     WaitDataClients.TryAdd(_ip, _dataClient);
-                                    Utility.Send(Socket, Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, TypeShipping.RSA, false, TypeContent.Background, _dataClient);
+                                    SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA);
                                  });
                               break;
                               case TypeShipping.AES:
                                  if(WaitDataClients.TryGetValue(_ip, out var _waitDataClient)){
-                                    _waitDataClient.PrivateKeyAES = _data.Item1;
                                     if(DataClients.TryAdd(_ip, _waitDataClient))
                                     if(WaitDataClients.TryRemove(_ip, out _)){
-                                       Utility.Send(Socket, Utility.PrivateKeyAESServer, 1, TypeShipping.AES, false, TypeContent.Background, _waitDataClient);
+                                       SendBytes(Utility.PrivateKeyAESServer, 1, _waitDataClient, TypeShipping.AES, TypeHoldConnection.Auto);
+                                       _waitDataClient.PrivateKeyAES = _data.Item1;       // Client connected
                                        Utility.RunOnMainThread(() => OnConnectedClient?.Invoke(_waitDataClient));
                                        Utility.ShowLog(_waitDataClient.IP + " connected to the server.");
                                     }
@@ -439,27 +439,37 @@ namespace Nethostfire {
 
       static void CheckOnline(){
          while(Socket != null){
-            Parallel.ForEach(DataClients, item =>{
-               item.Value.PPS = 0;
-               if(item.Value.TimeLastPacket + 3000 < Environment.TickCount){
-                  if(DataClients.TryRemove(item.Value.IP, out var _dataClient)){
-                     listHoldConnection.TryRemove(item.Value, out _);
-                     Utility.RunOnMainThread(() => OnDisconnectedClient?.Invoke(item.Value));
+            Parallel.ForEach(DataClients.Values, item =>{
+               item.PPS = 0;
+               if(item.TimeLastPacket + 3000 < Environment.TickCount){
+                  if(DataClients.TryRemove(item.IP, out var _dataClient)){
+                     listHoldConnection.TryRemove(item, out _);
+                     Utility.RunOnMainThread(() => OnDisconnectedClient?.Invoke(item));
                      Utility.ShowLog(_dataClient.IP + " disconnected from the server.");
                   }
                }
+            });
 
-               if(Status == ServerStatusConnection.Running){
-                  Parallel.ForEach(listHoldConnection, item =>{
-                     for(int i = 0; i < item.Value.GroupID.Count; i++){
-                        if(!Utility.Send(Socket, item.Value.Bytes[i], item.Value.GroupID[i], TypeShipping.None, true, TypeContent.Foreground, item.Key))
-                           lostPackets++;
-                        lostPackets++;
-                     }
-                  });
+            Parallel.ForEach(WaitDataClients.Values, item =>{
+               if(item.TimeLastPacket + 10000 < Environment.TickCount){
+                  if(WaitDataClients.TryRemove(item.IP, out var _dataClient)){
+                     listHoldConnection.TryRemove(item, out _);
+                  }
                }
             });
-            
+
+            Parallel.ForEach(listHoldConnection, item =>{
+               if(DataClients.ContainsKey(item.Key.IP) || WaitDataClients.ContainsKey(item.Key.IP))
+               for(int i = 0; i < item.Value.GroupID.Count; i++){
+                  if(item.Value.Time[i] < Environment.TickCount){
+                     item.Value.Time[i] = Environment.TickCount + receiveAndSendTimeOut;
+                     if(!Utility.Send(Socket, item.Value.Bytes[i], item.Value.GroupID[i], item.Value.TypeShipping[i], item.Value.TypeHoldConnection[i], item.Value.TypeContent[i], item.Key))
+                        lostPackets++;
+                     lostPackets++;
+                  }
+               }
+            });
+
             GC.WaitForPendingFinalizers();
             GC.Collect();
             Thread.Sleep(1000);

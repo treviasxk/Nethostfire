@@ -15,14 +15,54 @@ namespace Nethostfire {
     /// The DataClient class is used to store data from a client on the UDpServer. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events UDpServer.OnReceivedNewDataClient, Client.OnReceivedNewDataServer, UDpServer.OnConnectedClient and UDpServer.OnDisconnectedClient
     /// </summary>
     public class DataClient{
+        /// <summary>
+        /// IP Address
+        /// </summary>
         public IPEndPoint IP;
+        /// <summary>
+        /// Packets per second
+        /// </summary>
         public int PPS;
+        /// <summary>
+        /// Ping (ms)
+        /// </summary>
         public int Ping;
+        /// <summary>
+        /// Last time updated by the server.
+        /// </summary>
         public int Time;
+        /// <summary>
+        /// Last time received packet.
+        /// </summary>
         public int TimeLastPacket;
+        /// <summary>
+        /// RSA key
+        /// </summary>
         public string PublicKeyRSA = null;
+        /// <summary>
+        /// Private AES key
+        /// </summary>
         public byte[] PrivateKeyAES = null;
     }
+    
+    /// <summary>
+    /// The TypeHoldConnection is a feature to guarantee the sending of udp packets even with packet losses.
+    /// </summary>
+    public enum TypeHoldConnection {
+        /// <summary>
+        /// With AutoReply, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
+        /// </summary>
+        None = 0,
+        /// <summary>
+        /// With Auto, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
+        /// </summary>
+        Auto = 1,
+        /// <summary>
+        /// With Manual, when the packet arrives at its destination, it is necessary that the Client/Server responds back by sending any byte for the same GroupID received. If it doesn't respond, the client/server that sent the Manual will be stuck in a send loop.
+        /// </summary>
+        Manual = 2,
+    }
+
     /// <summary>
     /// The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the UDpServer.Status variable or with the event OnServerStatusConnection
     /// </summary>
@@ -91,6 +131,9 @@ namespace Nethostfire {
         public List<int> GroupID {get;set;}
         public List<byte[]> Bytes {get;set;}
         public List<int> Time {get;set;}
+        public List<TypeShipping> TypeShipping {get;set;}
+        public List<TypeContent> TypeContent {get;set;}
+        public List<TypeHoldConnection> TypeHoldConnection {get;set;}
     }
     
     class HoldConnectionClient{
@@ -98,6 +141,7 @@ namespace Nethostfire {
         public int Time {get;set;}
         public TypeShipping TypeShipping {get;set;}
         public TypeContent TypeContent {get;set;}
+        public TypeHoldConnection TypeHoldConnection {get;set;}
     }
 
     class Utility {
@@ -174,7 +218,7 @@ namespace Nethostfire {
             byte[] type;
             int _groupID;
             try{
-                if(_byte[0] == 2){
+                if(_byte[0] == 3){
                     type = new byte[_byte[1]];
                     type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
                     return (new byte[]{}, BitConverter.ToInt32(type, 0), TypeContent.Background, TypeShipping.None);
@@ -231,10 +275,10 @@ namespace Nethostfire {
                 return (null, 0, TypeContent.Background, TypeShipping.None);
 
             try{
-                if(_byte[0] == 1 && _typeContent == TypeContent.Foreground){
+                if(_byte[0] == 1){
                     byte[] data2 = new byte[_byte[3] + 2];
-                    data2[0] = 2;               // Hold Connection respondendo
-                    data2[1] = _byte[3];        // O tamanho do groupID
+                    data2[0] = 3;               // Hold Connection respond
+                    data2[1] = _byte[3];        // The size of groupID
                     type.CopyTo(data2, 2);      // GroupID
                     RunOnMainThread(() => SendPing(_udpClient, data2, _dataClient));
                 }
@@ -244,7 +288,7 @@ namespace Nethostfire {
             }
         }
         
-        public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
+        public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, DataClient _dataClient = null){
             if(_typeContent == TypeContent.Background)
             switch(_TypeShipping){
                 case TypeShipping.RSA:
@@ -286,7 +330,7 @@ namespace Nethostfire {
                 byte[] groupID = BitConverter.GetBytes(_groupID);
                 byte[] data = new byte[_byte.Length + groupID.Length + 4];
 
-                data[0] = (byte)(_holdConnection ? 1 : 0);          // Se é um Hold Connection
+                data[0] = (byte)_typeHoldConnection;                // Se é um Hold Connection
                 data[1] = (byte)_typeContent;                       // O tipo de conteúdo
                 data[2] = (byte)_TypeShipping;                      // O tipo de criptografia
                 data[3] = (byte)groupID.Length;                     // O tamanho do groupID
@@ -301,8 +345,8 @@ namespace Nethostfire {
             }
         }
 
-        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _typeShipping, bool _holdConnection, TypeContent _typeContent, DataClient _dataClient = null){
-            byte[] buffer = ByteToSend(_byte, _groupID, _typeShipping, _holdConnection, _typeContent, _dataClient);
+        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _typeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, DataClient _dataClient = null){
+            byte[] buffer = ByteToSend(_byte, _groupID, _typeShipping, _typeHoldConnection, _typeContent, _dataClient);
             try{
                 if(buffer.Length != 0){
                     if(_dataClient == null)

@@ -21,10 +21,10 @@ public class ServiceNetwork : MonoBehaviour{
         UDpClient.DisconnectServer();
         UDpServer.Stop();
         UDpClient.OnClientStatusConnection = null;
-        UDpClient.OnReceivedNewDataServer = null;
+        UDpClient.OnReceivedBytesServer = null;
         UDpServer.OnConnectedClient = null;
         UDpServer.OnDisconnectedClient = null;
-        UDpServer.OnReceivedNewDataClient = null;
+        UDpServer.OnReceivedBytesClient = null;
         UDpClient.ShowDebugConsole = ShowDebug;
         while(Utility.ListRunOnMainThread.TryDequeue(out _)){}
     }
