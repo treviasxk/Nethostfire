@@ -2,6 +2,7 @@
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
+// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using System.Net;
 using System.Reflection;
@@ -62,7 +63,7 @@ class Program {
     }
 
     static void OnReceivedBytesServer(byte[] _byte, int _groupID){
-        //Console.Title = "Client - (Ping: " + UDpClient.Ping + " - Lost Packets: " + UDpClient.LostPackets + " - Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
+        //Console.Title = "Client - (Ping: " + UDpClient.Ping + "ms - Lost Packets: " + UDpClient.LostPackets + " - Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
         Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.UTF8.GetString(_byte), _byte.Length);
         //UDpClient.SendBytes(_byte, _groupID);
     }

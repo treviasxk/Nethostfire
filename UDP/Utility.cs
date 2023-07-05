@@ -49,9 +49,6 @@ namespace Nethostfire {
     /// The TypeHoldConnection is a feature to guarantee the sending of udp packets even with packet losses.
     /// </summary>
     public enum TypeHoldConnection {
-        /// <summary>
-        /// With AutoReply, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
-        /// </summary>
         None = 0,
         /// <summary>
         /// With Auto, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
@@ -461,8 +458,6 @@ namespace Nethostfire {
                 return new byte[]{};
             }
         }
-
-
         public static string ShowLog(string Message){
             if(ShowDebugConsole)
                 RunOnMainThread(() => {
