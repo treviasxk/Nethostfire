@@ -17,7 +17,7 @@ namespace Nethostfire {
       static int packetsCount, packetsTmp, timeTmp, receiveAndSendTimeOut = 1000, symmetricSizeRSA, limitMaxPPS = 0, maxClients = 32, lostPackets, limitMaxByteSize = 0, unityBatchModeFrameRate = 60;
       static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
       static ConcurrentDictionary<int, int> ListLimitMaxByteSizeGroupID = new ConcurrentDictionary<int, int>();
-      static ConcurrentDictionary<int, int> ListLimitMaxPPSGroupID = new ConcurrentDictionary<int, int>();
+      static ConcurrentDictionary<int, LimitMaxPPS> ListLimitMaxPPSGroupID = new ConcurrentDictionary<int, LimitMaxPPS>();
       static ConcurrentDictionary<IPEndPoint, DataClient> DataClients = new ConcurrentDictionary<IPEndPoint, DataClient>();
       static ConcurrentDictionary<IPEndPoint, DataClient> WaitDataClients = new ConcurrentDictionary<IPEndPoint, DataClient>();
       static ConcurrentDictionary<IPEndPoint, long> ListBlockedIPs = new ConcurrentDictionary<IPEndPoint, long>();
@@ -311,15 +311,18 @@ namespace Nethostfire {
       /// The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a GroupID, if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is _limitBytes 0 which is unlimited.
       /// </summary>
       public static void ChangeLimitMaxPacketsPerSecondsGroupID(int _groupID, int _limitPPS){
-         if(ListLimitMaxPPSGroupID.TryGetValue(_groupID, out var _limitMaxPPGroupID)){
+         if(ListLimitMaxPPSGroupID.TryGetValue(_groupID, out var _limitMaxPPS)){
             if(_limitPPS < 0)
-               _limitMaxPPGroupID = _limitPPS;
+               _limitMaxPPS.PPS = _limitPPS;
             else
                ListLimitMaxPPSGroupID.TryRemove(_groupID, out _);
-         }else
-            ListLimitMaxPPSGroupID.TryAdd(_groupID, _limitPPS);
+         }else{
+            LimitMaxPPS limitMaxPPS = new LimitMaxPPS();
+            limitMaxPPS.PPS = _limitPPS;
+            limitMaxPPS.Timer = Environment.TickCount;
+            ListLimitMaxPPSGroupID.TryAdd(_groupID, limitMaxPPS); 
+         }
       }
-
 
       static void ServerReceiveUDP(){
          while(Socket != null){
@@ -388,9 +391,9 @@ namespace Nethostfire {
                      case TypeContent.Foreground:
                         if(_data.Item1.Length <= (limitMaxByteSize > 0 ? limitMaxByteSize : _data.Item1.Length))
                         if(_data.Item1.Length <= (ListLimitMaxByteSizeGroupID.TryGetValue(_data.Item2, out var _limitMaxByteSizeGroupID) ? _limitMaxByteSizeGroupID : _data.Item1.Length))
-                        if(_dataClient.PPS <= (ListLimitMaxPPSGroupID.TryGetValue(_data.Item2, out var _limitMaxPPSGroupdID) ? _limitMaxPPSGroupdID - 1 : _dataClient.PPS))
-                        if(_dataClient.PPS <= (limitMaxPPS > 0 ? limitMaxPPS - 1 : _dataClient.PPS)){
-                           _dataClient.PPS++;
+                        if(ListLimitMaxPPSGroupID.TryGetValue(_data.Item2, out var _limitMaxPPSGroupdID) ? _limitMaxPPSGroupdID.NotLimited : true)
+                        if(Environment.TickCount >= _dataClient.PPS + (1000f / limitMaxPPS) || limitMaxPPS == 0){
+                           _dataClient.PPS = Environment.TickCount;
                            packetsReceived += _data.Item1.Length;
                            if(listHoldConnection.TryGetValue(_dataClient, out var _holdConnection2)){
                               if(_holdConnection2.GroupID.Contains(_data.Item2)){

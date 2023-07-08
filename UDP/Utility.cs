@@ -124,6 +124,19 @@ namespace Nethostfire {
         MaxClientExceeded = 6,
     }
 
+    class LimitMaxPPS {
+        public bool NotLimited {get{
+            if(Environment.TickCount >= Timer + (1000f / PPS)){
+                Timer = Environment.TickCount;
+                return true;
+            }else
+                return false;
+            }
+        }
+        public int PPS;
+        public float Timer;
+    }
+
     class HoldConnectionServer{
         public List<int> GroupID {get;set;}
         public List<byte[]> Bytes {get;set;}
