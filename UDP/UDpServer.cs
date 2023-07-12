@@ -473,8 +473,6 @@ namespace Nethostfire {
                }
             });
 
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
             Thread.Sleep(1000);
          }
       }

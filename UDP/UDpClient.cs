@@ -259,9 +259,6 @@ namespace Nethostfire {
                             lostPackets++;
                         }
                     });
-
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
                 Thread.Sleep(1000);
             }
         }
