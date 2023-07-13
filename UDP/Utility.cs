@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace Nethostfire {
@@ -190,6 +191,9 @@ namespace Nethostfire {
             try{
                 LoadUnity();
                 RunningInUnity = true;
+                if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    if(Utility.UnityBatchMode || !Utility.RunningInUnity)
+                        Utility.Process.PriorityClass = ProcessPriorityClass.High;
             }catch{}
         }
 

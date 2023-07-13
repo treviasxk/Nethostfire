@@ -64,14 +64,14 @@ class Program {
 
     static void OnReceivedBytesServer(byte[] _byte, int _groupID){
         //Console.Title = "Client - (Ping: " + UDpClient.Ping + "ms - Lost Packets: " + UDpClient.LostPackets + " - Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
-        //Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.UTF8.GetString(_byte), _byte.Length);
+        Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.UTF8.GetString(_byte), _byte.Length);
         UDpClient.SendBytes(_byte, _groupID);
     }
     
     //========================= Events Server =========================
     static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
         Console.Title = "Server - (Status: " + UDpServer.Status + " - Lost Packets: " + UDpServer.LostPackets + " - Packets Per Seconds: " + UDpServer.PacketsPerSeconds + " - Packets Bytes Received: " + UDpServer.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpServer.PacketsBytesSent + ")";
-        //Console.WriteLine("[CLIENT] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.UTF8.GetString(_byte), _byte.Length);
+        Console.WriteLine("[CLIENT] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.UTF8.GetString(_byte), _byte.Length);
         UDpServer.SendBytes(_byte, _groupID, _dataClient);
     }
 }

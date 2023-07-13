@@ -238,7 +238,7 @@ namespace Nethostfire {
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
                     pingTmp = Environment.TickCount;
-                    Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}));
+                    Utility.SendPing(Socket, new byte[]{1});
                 }
 
                 // Verificando se o ultimo ping com o server é de 3000ms

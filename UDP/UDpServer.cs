@@ -3,12 +3,10 @@
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
 
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 
 namespace Nethostfire {
    public class UDpServer {
@@ -94,8 +92,6 @@ namespace Nethostfire {
          if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting)
             ChangeStatus(ServerStatusConnection.Initializing);
          if(Socket is null && _ip is not null){
-            if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-               Utility.Process.PriorityClass = ProcessPriorityClass.High;
             Socket = new UdpClient();
             Socket.Client.SendTimeout = receiveAndSendTimeOut;
             Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
@@ -363,7 +359,7 @@ namespace Nethostfire {
                         case 1:
                            _dataClient.Ping = Environment.TickCount - _dataClient.Time - 1000;
                            _dataClient.Time = Environment.TickCount;
-                           Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}, _dataClient));
+                           Utility.SendPing(Socket, new byte[]{1}, _dataClient);
                         break;
                      }
                   }
