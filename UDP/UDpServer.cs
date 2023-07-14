@@ -358,7 +358,7 @@ namespace Nethostfire {
                         case 1:
                            _dataClient.Ping = Environment.TickCount - _dataClient.Time - 1000;
                            _dataClient.Time = Environment.TickCount;
-                           Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}, _dataClient));
+                           Utility.SendPing(Socket, new byte[]{1}, _dataClient);
                         break;
                      }
                   }
