@@ -224,8 +224,6 @@ namespace Nethostfire {
                                                     ChangeStatus(ClientStatusConnection.Connected);
                                             break;
                                         }
-                                    else
-                                        lostPackets++;
                                 }
                             break;
                         }                            

@@ -3,13 +3,10 @@
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
 
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
-
 namespace Nethostfire {
    public class UDpServer {
       static IPEndPoint host;
@@ -94,8 +91,6 @@ namespace Nethostfire {
          if(Status == ServerStatusConnection.Stopped || Status == ServerStatusConnection.Restarting)
             ChangeStatus(ServerStatusConnection.Initializing);
          if(Socket is null && _ip is not null){
-            if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-               Utility.Process.PriorityClass = ProcessPriorityClass.High;
             Socket = new UdpClient();
             Socket.Client.SendTimeout = receiveAndSendTimeOut;
             Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
@@ -431,8 +426,6 @@ namespace Nethostfire {
                                  }
                               break;
                            }
-                        else
-                           lostPackets++;
                      break;
                   }
                }
