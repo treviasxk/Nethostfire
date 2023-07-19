@@ -138,6 +138,11 @@ namespace Nethostfire {
         public float Timer;
     }
 
+    class BuffThread {
+        public  Action Action;
+        public int Time;
+    }
+
     class HoldConnectionServer{
         public List<int> GroupID {get;set;}
         public List<byte[]> Bytes {get;set;}
@@ -158,21 +163,36 @@ namespace Nethostfire {
     class Utility {
         public static string PublicKeyRSAClient, PrivateKeyRSAClient, PublicKeyRSAServer, PrivateKeyRSAServer;
         public static byte[] PrivateKeyAESClient, PrivateKeyAESServer;
+        public static int receiveAndSendTimeOut = 1000;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
-        public static ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
+        public static ConcurrentDictionary<int, BuffThread> ListRunOnMainThread = new ConcurrentDictionary<int, BuffThread>();
+        public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationServerReceive = new ConcurrentDictionary<byte[], int>();
+        public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationClientReceive = new ConcurrentDictionary<byte[], int>();
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
+        public static bool UnityBatchModeAutoFrameRate = true;
+        public static int IndexListThread, CurrentListThread, BufferThreadUnity = 1000;
 
         public static void RunOnMainThread(Action _action){
             if(RunningInUnity)
-                ListRunOnMainThread.Enqueue(_action);
+                ListRunOnMainThread.TryAdd(IndexListThread++, new BuffThread{Action = _action, Time = Environment.TickCount});
             else
                 _action?.Invoke();
         }
 
+        public static int lostPackets;
+
         public static void ThisMainThread() {
-            while(ListRunOnMainThread.TryDequeue(out var action))
-                action?.Invoke();
+            int i = 0;
+            foreach(var item in ListRunOnMainThread.Where(item => item.Key >= CurrentListThread && item.Key < CurrentListThread + BufferThreadUnity)){
+                if(ListRunOnMainThread.TryRemove(item.Key, out var action))
+                    if(item.Value.Time + receiveAndSendTimeOut > Environment.TickCount)
+                        action.Action?.Invoke();
+                    else
+                        lostPackets++;
+                i++;
+            }
+            CurrentListThread += i;
         }
 
         public static string BytesToString(float PacketsReceived){
@@ -294,7 +314,31 @@ namespace Nethostfire {
                     data2[0] = 3;               // Hold Connection respond
                     data2[1] = _byte[3];        // The size of groupID
                     type.CopyTo(data2, 2);      // GroupID
-                    RunOnMainThread(() => SendPing(_udpClient, data2, _dataClient));
+                    SendPing(_udpClient, data2, _dataClient);
+
+                    // Block Udp Duplication receive
+                    if(_dataClient != null){
+                        if(BlockUdpDuplicationServerReceive.TryGetValue(data, out int time)){
+                            if(time + receiveAndSendTimeOut < Environment.TickCount)
+                                BlockUdpDuplicationServerReceive[data] = Environment.TickCount;
+                            else
+                                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
+                        }else
+                            BlockUdpDuplicationServerReceive.TryAdd(data, Environment.TickCount);
+                    }else
+                        if(BlockUdpDuplicationClientReceive.TryGetValue(data, out int time)){
+                            if(time + receiveAndSendTimeOut < Environment.TickCount)
+                                BlockUdpDuplicationClientReceive[data] = Environment.TickCount;
+                            else
+                                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
+                        }else
+                            BlockUdpDuplicationClientReceive.TryAdd(data, Environment.TickCount);
+                    
+                    foreach(var item in BlockUdpDuplicationServerReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
+                        BlockUdpDuplicationServerReceive.TryRemove(item.Key, out _);
+                    foreach(var item in BlockUdpDuplicationClientReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
+                        BlockUdpDuplicationClientReceive.TryRemove(item.Key, out _);
+                    
                 }
                 return (data.Length > 1 ? data : new byte[]{}, _groupID, _typeContent, _TypeShipping);
             }catch{
@@ -340,7 +384,7 @@ namespace Nethostfire {
              if(_TypeShipping != TypeShipping.None && _byte.Length == 0)
                 return null;
 
-            try{
+            try{               
                 byte[] groupID = BitConverter.GetBytes(_groupID);
                 byte[] data = new byte[_byte.Length + groupID.Length + 4];
 
@@ -477,18 +521,16 @@ namespace Nethostfire {
         }
         public static string ShowLog(string Message){
             if(ShowDebugConsole)
-                RunOnMainThread(() => {
-                    if(RunningInUnity && !UnityBatchMode)
-                        ShowUnityLog(Message);
-                    else{
-                        Console.ForegroundColor = ConsoleColor.DarkRed;
-                        Console.Write("[NETHOSTFIRE] ");
-                        Console.ForegroundColor = ConsoleColor.Gray;
-                        Console.Write(DateTime.Now + " ");
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Console.WriteLine(Message);
-                    }
-                });
+                if(RunningInUnity && !UnityBatchMode)
+                    ShowUnityLog(Message);
+                else{
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.Write("[NETHOSTFIRE] ");
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.Write(DateTime.Now + " ");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine(Message);
+                }
             return Message;
         }
 

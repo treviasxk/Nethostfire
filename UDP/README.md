@@ -23,7 +23,8 @@
     - [UDpServer.PacketsBytesReceived](#PacketsBytesReceived)
     - [UDpServer.PacketsBytesSent](#PacketsBytesSent)
     - [UDpServer.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
-    - [UDpServer.UnityBatchModeFrameRate](#UnityBatchModeFrameRate)
+    - [UDpServer.UnityBatchModeAutoFrameRate](#UnityBatchModeAutoFrameRate)
+    - [UDpServer.UnityBufferThread](#UnityBufferThread)
     - [UDpServer.ClientsCount](#ClientsCount)
     - [UDpServer.ShowDebugConsole](#ShowDebugConsole)
     - [UDpServer.OnConnectedClient](#OnConnectedClient)
@@ -360,14 +361,25 @@ The Socket is a `System.Net.Sockets.UdpClient` variable. This is the main commun
 
 -----
 
-<a name="UnityBatchModeFrameRate"></a>
-### UDpServer.UnityBatchModeFrameRate
+<a name="UnityBatchModeAutoFrameRate"></a>
+### UDpServer.UnityBatchModeAutoFrameRate
 `Write/Read Variable`
 ```cs
-UDpServer.UnityBatchModeFrameRate = 30;
+UDpServer.UnityBatchModeAutoFrameRate = true;
 ```
 
-The UnityBatchModeFrameRate limits the fps at which the dedicated server build (batchmode) will run, it is recommended to limit it to prevent the CPU from being used to the maximum. The default value is 60.
+The UnityBatchModeAutoFrameRate will lower the fps of the dedicated server build (batchmode) when no packets are being received to alleviate CPU utilization. The default value is true.
+
+-----
+
+<a name="UnityBufferThread"></a>
+### UDpServer.UnityBufferThread
+`Write/Read Variable`
+```cs
+UDpServer.UnityBufferThread = 1000;
+```
+
+The UnityBufferThread is the number of packets that will be executed each frame in Unity. This feature works to prevent high demand bursts of packets from crashing 1fps in unity. The default value is 1000.
 
 -----
 

@@ -4,8 +4,10 @@
 // Paypal:              trevias@live.com
 // Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
+using System.Diagnostics;
 using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using Nethostfire;
 
@@ -58,14 +60,14 @@ class Program {
     static void OnClientStatusConnection(ClientStatusConnection _status){
         if(_status == ClientStatusConnection.Connected){
             var _text =  Encoding.UTF8.GetBytes("Hello world!");
-            UDpClient.SendBytes(_text, 11);
+            UDpClient.SendBytes(_text, 11, _typeHoldConnection: TypeHoldConnection.Auto);
         }
     }
 
     static void OnReceivedBytesServer(byte[] _byte, int _groupID){
         //Console.Title = "Client - (Ping: " + UDpClient.Ping + "ms - Lost Packets: " + UDpClient.LostPackets + " - Packets Per Seconds: " + UDpClient.PacketsPerSeconds + " - Packets Bytes Received: " + UDpClient.PacketsBytesReceived + " - Packets Bytes Sent: " + UDpClient.PacketsBytesSent + ")";
         Console.WriteLine("[SERVER] GroupID: {0} - Message: {1} | Length: {2}", _groupID, Encoding.UTF8.GetString(_byte), _byte.Length);
-        UDpClient.SendBytes(_byte, _groupID);
+        //UDpClient.SendBytes(_byte, _groupID);
     }
     
     //========================= Events Server =========================

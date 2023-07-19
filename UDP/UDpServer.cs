@@ -7,12 +7,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Collections.Concurrent;
-
 namespace Nethostfire {
    public class UDpServer {
       static IPEndPoint host;
       public static UdpClient Socket;
-      static int packetsCount, packetsTmp, timeTmp, receiveAndSendTimeOut = 1000, symmetricSizeRSA, limitMaxPPS = 0, maxClients = 32, lostPackets, limitMaxByteSize = 0, unityBatchModeFrameRate = 60;
+      static int packetsCount, packetsTmp, timeTmp, symmetricSizeRSA, limitMaxPPS = 0, maxClients = 32, lostPackets, limitMaxByteSize = 0;
       static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
       static ConcurrentDictionary<int, int> ListLimitMaxByteSizeGroupID = new ConcurrentDictionary<int, int>();
       static ConcurrentDictionary<int, LimitMaxPPS> ListLimitMaxPPSGroupID = new ConcurrentDictionary<int, LimitMaxPPS>();
@@ -44,7 +43,7 @@ namespace Nethostfire {
       /// <summary>
       /// ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiving, if any packet exceeds that sending the server will ignore the receiving or sending. The default and recommended value is 1000.
       /// </summary>
-      public static int ReceiveAndSendTimeOut {get {return receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} receiveAndSendTimeOut = value > 0 ? value : 1000;}}
+      public static int ReceiveAndSendTimeOut {get {return Utility.receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} Utility.receiveAndSendTimeOut = value > 0 ? value : 1000;}}
       /// <summary>
       /// The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is 0 which is unlimited.
       /// </summary>
@@ -64,7 +63,7 @@ namespace Nethostfire {
       /// <summary>
       /// LostPackets is the number of packets lost.
       /// </summary>
-      public static int LostPackets {get {return lostPackets;}}
+      public static int LostPackets {get {return lostPackets + Utility.lostPackets;}}
       /// <summary>
       /// PacketsPerSeconds is the amount of packets per second that happen when the server is sending and receiving.
       /// </summary>
@@ -74,9 +73,13 @@ namespace Nethostfire {
       /// </summary>
       public static string PacketsBytesReceived {get {return Utility.BytesToString(packetsReceived2);}}
       /// <summary>
-      /// The UnityBatchModeFrameRate limits the fps at which the dedicated server build (batchmode) will run, it is recommended to limit it to prevent the CPU from being used to the maximum. The default value is 60.
+      /// The UnityBufferThread is the number of packets that will be executed each frame in Unity. This feature works to prevent high demand bursts of packets from crashing 1fps in unity. The default value is 1000.
       /// </summary>
-      public static int UnityBatchModeFrameRate {get {return unityBatchModeFrameRate;} set { unityBatchModeFrameRate = value;}}
+      public static int UnityBufferThread {get {return Utility.BufferThreadUnity;} set{Utility.BufferThreadUnity = value;}}
+      /// <summary>
+      /// The UnityBatchModeAutoFrameRate will lower the fps of the dedicated server build (batchmode) when no packets are being received to alleviate CPU utilization. The default value is true.
+      /// </summary>
+      public static bool UnityBatchModeAutoFrameRate {get {return Utility.UnityBatchModeAutoFrameRate;} set{Utility.UnityBatchModeAutoFrameRate = value;}}
       /// <summary>
       /// The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
       /// </summary>
@@ -93,8 +96,8 @@ namespace Nethostfire {
             ChangeStatus(ServerStatusConnection.Initializing);
          if(Socket is null && _ip is not null){
             Socket = new UdpClient();
-            Socket.Client.SendTimeout = receiveAndSendTimeOut;
-            Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
+            Socket.Client.SendTimeout = Utility.receiveAndSendTimeOut;
+            Socket.Client.ReceiveTimeout = Utility.receiveAndSendTimeOut;
             symmetricSizeRSA = _symmetricSizeRSA;
             Utility.GenerateKey(TypeUDP.Server, _symmetricSizeRSA);
             host = new IPEndPoint(_ip, _port);
@@ -108,11 +111,15 @@ namespace Nethostfire {
             if(ServerReceiveUDPThread == null){
                ServerReceiveUDPThread = new Thread(ServerReceiveUDP);
                ServerReceiveUDPThread.IsBackground = true;
+               ServerReceiveUDPThread.Priority = ThreadPriority.Highest;
+               ServerReceiveUDPThread.SetApartmentState(ApartmentState.MTA);
                ServerReceiveUDPThread.Start();
             }
             if(CheckOnlineThread == null){
                CheckOnlineThread = new Thread(CheckOnline);
                CheckOnlineThread.IsBackground = true;
+               CheckOnlineThread.Priority = ThreadPriority.Highest;
+               CheckOnlineThread.SetApartmentState(ApartmentState.MTA);
                CheckOnlineThread.Start();
             }
          }else
@@ -161,7 +168,7 @@ namespace Nethostfire {
          if(Status == ServerStatusConnection.Running){
             if(_typeHoldConnection != TypeHoldConnection.None){
                if(listHoldConnection.TryGetValue(_dataClient, out var HoldConnection)){
-                  HoldConnection.Time.Add(Environment.TickCount + receiveAndSendTimeOut);
+                  HoldConnection.Time.Add(Environment.TickCount + Utility.receiveAndSendTimeOut);
                   HoldConnection.Bytes.Add(_byte);
                   HoldConnection.GroupID.Add(_groupID);
                }
@@ -185,7 +192,7 @@ namespace Nethostfire {
             if(Status == ServerStatusConnection.Running){
                if(_typeHoldConnection != TypeHoldConnection.None){
                   if(listHoldConnection.TryGetValue(_dataClient, out var HoldConnection)){
-                     HoldConnection.Time.Add(Environment.TickCount + receiveAndSendTimeOut);
+                     HoldConnection.Time.Add(Environment.TickCount + Utility.receiveAndSendTimeOut);
                      HoldConnection.Bytes.Add(_byte);
                      HoldConnection.GroupID.Add(_groupID);
                   }
@@ -210,7 +217,7 @@ namespace Nethostfire {
             if(Status == ServerStatusConnection.Running){
                if(_typeHoldConnection != TypeHoldConnection.None){
                   if(listHoldConnection.TryGetValue(_dataClient, out var HoldConnection)){
-                     HoldConnection.Time.Add(Environment.TickCount + receiveAndSendTimeOut);
+                     HoldConnection.Time.Add(Environment.TickCount + Utility.receiveAndSendTimeOut);
                      HoldConnection.Bytes.Add(_byte);
                      HoldConnection.GroupID.Add(_groupID);
                   }
@@ -395,7 +402,7 @@ namespace Nethostfire {
                               if(_holdConnection2.GroupID.Contains(_data.Item2)){
                                  var index = _holdConnection2.GroupID.IndexOf(_data.Item2);
                                  if(_holdConnection2.Time[index] == 0){
-                                    _holdConnection2.Time[index] = Environment.TickCount + receiveAndSendTimeOut;
+                                    _holdConnection2.Time[index] = Environment.TickCount + Utility.receiveAndSendTimeOut;
                                     Utility.RunOnMainThread(() => OnReceivedBytesClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
                                  }else
                                     if(_holdConnection2.Time[index] < Environment.TickCount)
@@ -427,8 +434,6 @@ namespace Nethostfire {
                                  }
                               break;
                            }
-                        else
-                           lostPackets++;
                      break;
                   }
                }
@@ -461,7 +466,7 @@ namespace Nethostfire {
                if(DataClients.ContainsKey(item.Key.IP) || WaitDataClients.ContainsKey(item.Key.IP))
                for(int i = 0; i < item.Value.GroupID.Count; i++){
                   if(item.Value.Time[i] < Environment.TickCount){
-                     item.Value.Time[i] = Environment.TickCount + receiveAndSendTimeOut;
+                     item.Value.Time[i] = Environment.TickCount + Utility.receiveAndSendTimeOut;
                      if(!Utility.Send(Socket, item.Value.Bytes[i], item.Value.GroupID[i], item.Value.TypeShipping[i], item.Value.TypeHoldConnection[i], item.Value.TypeContent[i], item.Key))
                         lostPackets++;
                      lostPackets++;

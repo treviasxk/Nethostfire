@@ -26,13 +26,15 @@ public class ServiceNetwork : MonoBehaviour{
         UDpServer.OnDisconnectedClient = null;
         UDpServer.OnReceivedBytesClient = null;
         UDpClient.ShowDebugConsole = ShowDebug;
-        while(Utility.ListRunOnMainThread.TryDequeue(out _)){}
+        Utility.ListRunOnMainThread.Clear();
+        Utility.IndexListThread = 0;
+        Utility.CurrentListThread = 0;
+        Utility.lostPackets = 0;
     }
 
     void Awake(){
         if(Utility.UnityBatchMode){
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = UDpServer.UnityBatchModeFrameRate;
         }
     }
 
@@ -48,6 +50,13 @@ public class ServiceNetwork : MonoBehaviour{
     }
 
     void Update() {
+        if(Utility.UnityBatchMode && Utility.UnityBatchModeAutoFrameRate)
+            if(Utility.ListRunOnMainThread.Count > 0)
+                Application.targetFrameRate = 40 + Convert.ToInt32(Utility.ListRunOnMainThread.Count / Utility.BufferThreadUnity);
+            else
+                Application.targetFrameRate = 10;
+            
+        
         if(tmp + 1 < Time.time){
             tmp = Time.time;
             AddValueGraph(count, FPS);

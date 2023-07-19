@@ -12,7 +12,7 @@ namespace Nethostfire {
     public class UDpClient {
         public static UdpClient Socket;
         static IPEndPoint host;
-        static int packetsCount, pingCount, packetsTmp, timeTmp, symmetricSizeRSA, connectTimeOut = 10000, receiveAndSendTimeOut = 1000, lostPackets, pingTmp;
+        static int packetsCount, pingCount, packetsTmp, timeTmp, symmetricSizeRSA, connectTimeOut = 10000, lostPackets, pingTmp;
         static long timeLastPacket;
         static bool showUnityNetworkStatistics = false;
         static string publicKeyRSA = null;
@@ -51,7 +51,7 @@ namespace Nethostfire {
         /// <summary>
         /// ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiving, if any packet exceeds that sending the client will ignore the receiving or sending. The default and recommended value is 1000.
         /// </summary>
-        public static int ReceiveAndSendTimeOut {get {return receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} receiveAndSendTimeOut = value > 0 ? value : 1000;}}
+        public static int ReceiveAndSendTimeOut {get {return Utility.receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} Utility.receiveAndSendTimeOut = value > 0 ? value : 1000;}}
         /// <summary>
         /// PacketsBytesReceived is the amount of bytes received by the client.
         /// </summary>
@@ -63,7 +63,7 @@ namespace Nethostfire {
         /// <summary>
         /// LostPackets is the number of packets lost.
         /// </summary>
-        public static int LostPackets {get {return lostPackets;}}
+        public static int LostPackets {get {return lostPackets + Utility.lostPackets;}}
         /// <summary>
         /// The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
         /// </summary>
@@ -82,8 +82,8 @@ namespace Nethostfire {
         public static void Connect(IPAddress _ip, int _port, int _symmetricSizeRSA = 86){
             if(Socket is null){
                 Socket = new UdpClient();
-                Socket.Client.SendTimeout = receiveAndSendTimeOut;
-                Socket.Client.ReceiveTimeout = receiveAndSendTimeOut;
+                Socket.Client.SendTimeout = Utility.receiveAndSendTimeOut;
+                Socket.Client.ReceiveTimeout = Utility.receiveAndSendTimeOut;
                 symmetricSizeRSA = _symmetricSizeRSA;
                 Utility.GenerateKey(TypeUDP.Client, _symmetricSizeRSA);
                 host = new IPEndPoint(_ip, _port);
@@ -97,11 +97,15 @@ namespace Nethostfire {
                 if(ClientReceiveUDPThread == null){
                     ClientReceiveUDPThread = new Thread(ClientReceiveUDP);
                     ClientReceiveUDPThread.IsBackground = true;
+                    ClientReceiveUDPThread.Priority = ThreadPriority.Highest;
+                    ClientReceiveUDPThread.SetApartmentState(ApartmentState.MTA);
                     ClientReceiveUDPThread.Start();
                 }
                 if(SendOnlineThread == null){
                     SendOnlineThread = new Thread(SendOnline);
                     SendOnlineThread.IsBackground = true;
+                    SendOnlineThread.Priority = ThreadPriority.Highest;
+                    SendOnlineThread.SetApartmentState(ApartmentState.MTA);
                     SendOnlineThread.Start();
                 }                    
             }
@@ -141,7 +145,7 @@ namespace Nethostfire {
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_typeHoldConnection != TypeHoldConnection.None){
                     if(listHoldConnection.TryGetValue(_groupID, out var HoldConnection)){
-                        HoldConnection.Time = Environment.TickCount + receiveAndSendTimeOut;
+                        HoldConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
                         HoldConnection.Bytes = _byte;
                         HoldConnection.TypeShipping = _typeShipping;
                         HoldConnection.TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
@@ -224,11 +228,9 @@ namespace Nethostfire {
                                                     ChangeStatus(ClientStatusConnection.Connected);
                                             break;
                                         }
-                                    else
-                                        lostPackets++;
                                 }
                             break;
-                        }                            
+                        }
                     }
                 });
             }
@@ -253,7 +255,7 @@ namespace Nethostfire {
                 if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
                     Parallel.ForEach(listHoldConnection, item => {
                         if(item.Value.Time < Environment.TickCount){
-                            item.Value.Time = Environment.TickCount + receiveAndSendTimeOut;
+                            item.Value.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
                             if(!Utility.Send(Socket, item.Value.Bytes, item.Key, item.Value.TypeShipping, item.Value.TypeHoldConnection, item.Value.TypeContent))
                                 lostPackets++;
                             lostPackets++;
