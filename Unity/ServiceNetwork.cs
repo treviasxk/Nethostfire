@@ -49,15 +49,17 @@ public class ServiceNetwork : MonoBehaviour{
         TextStyle.padding.top = 3;
     }
 
+
     void Update() {
-        if(Utility.UnityBatchMode && Utility.UnityBatchModeAutoFrameRate)
-            if(Utility.ListRunOnMainThread.Count > 0)
-                Application.targetFrameRate = 40 + Convert.ToInt32(Utility.ListRunOnMainThread.Count / Utility.BufferThreadUnity);
-            else
-                Application.targetFrameRate = 10;
-            
-        
-        if(tmp + 1 < Time.time){
+        if(tmp + 1 < Time.time){ 
+            if(Utility.UnityBatchMode && Utility.UnityBatchModeAutoFrameRate)
+                if(Utility.ListRunOnMainThread.Count > 0)
+                    Application.targetFrameRate = 40 + Convert.ToInt32(Utility.ListRunOnMainThread.Count / Utility.BufferThreadUnity);
+                else
+                    Application.targetFrameRate = 10;
+
+            if(UDpServer.ShowUnityNetworkStatistics && UDpServer.Status == ServerStatusConnection.Running)
+                Utility.ShowLog("FPS: " + count + " PPS: " + UDpServer.PacketsPerSeconds + " LostPackets: " + UDpServer.LostPackets + " BufferThread: " + Utility.BufferThreadUnity);
             tmp = Time.time;
             AddValueGraph(count, FPS);
             AddValueGraph(UDpClient.Ping, Latency);

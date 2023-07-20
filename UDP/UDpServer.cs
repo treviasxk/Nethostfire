@@ -11,6 +11,7 @@ namespace Nethostfire {
    public class UDpServer {
       static IPEndPoint host;
       public static UdpClient Socket;
+      static bool showUnityNetworkStatistics = false;
       static int packetsCount, packetsTmp, timeTmp, symmetricSizeRSA, limitMaxPPS = 0, maxClients = 32, lostPackets, limitMaxByteSize = 0;
       static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
       static ConcurrentDictionary<int, int> ListLimitMaxByteSizeGroupID = new ConcurrentDictionary<int, int>();
@@ -67,7 +68,7 @@ namespace Nethostfire {
       /// <summary>
       /// PacketsPerSeconds is the amount of packets per second that happen when the server is sending and receiving.
       /// </summary>
-      public static string PacketsPerSeconds {get {return packetsCount +"pps";}}
+      public static string PacketsPerSeconds {get {return packetsCount + "pps";}}
       /// <summary>
       /// PacketsBytesReceived is the amount of bytes received by the server.
       /// </summary>
@@ -80,6 +81,10 @@ namespace Nethostfire {
       /// The UnityBatchModeAutoFrameRate will lower the fps of the dedicated server build (batchmode) when no packets are being received to alleviate CPU utilization. The default value is true.
       /// </summary>
       public static bool UnityBatchModeAutoFrameRate {get {return Utility.UnityBatchModeAutoFrameRate;} set{Utility.UnityBatchModeAutoFrameRate = value;}}
+      /// <summary>
+      /// When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on the connection between the client and the server will be displayed during game execution.
+      /// </summary>
+      public static bool ShowUnityNetworkStatistics {get {return showUnityNetworkStatistics;} set {showUnityNetworkStatistics = value;}}
       /// <summary>
       /// The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
       /// </summary>
@@ -416,11 +421,9 @@ namespace Nethostfire {
                         if(_data.Item1.Length > 0)
                            switch(_data.Item4){
                               case TypeShipping.RSA:
-                                 Utility.RunOnMainThread(() =>{
-                                    _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
-                                    WaitDataClients.TryAdd(_ip, _dataClient);
-                                    SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA);
-                                 });
+                                 _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
+                                 WaitDataClients.TryAdd(_ip, _dataClient);
+                                 SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA);
                               break;
                               case TypeShipping.AES:
                                  if(WaitDataClients.TryGetValue(_ip, out var _waitDataClient)){

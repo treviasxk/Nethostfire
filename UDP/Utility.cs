@@ -139,7 +139,8 @@ namespace Nethostfire {
     }
 
     class BuffThread {
-        public  Action Action;
+        public bool NoRemove;
+        public Action Action;
         public int Time;
     }
 
@@ -173,9 +174,9 @@ namespace Nethostfire {
         public static bool UnityBatchModeAutoFrameRate = true;
         public static int IndexListThread, CurrentListThread, BufferThreadUnity = 1000;
 
-        public static void RunOnMainThread(Action _action){
+        public static void RunOnMainThread(Action _action, bool _noRemove = true){
             if(RunningInUnity)
-                ListRunOnMainThread.TryAdd(IndexListThread++, new BuffThread{Action = _action, Time = Environment.TickCount});
+                ListRunOnMainThread.TryAdd(IndexListThread++, new BuffThread{Action = _action, Time = Environment.TickCount, NoRemove = _noRemove});
             else
                 _action?.Invoke();
         }
@@ -184,14 +185,24 @@ namespace Nethostfire {
 
         public static void ThisMainThread() {
             int i = 0;
-            foreach(var item in ListRunOnMainThread.Where(item => item.Key >= CurrentListThread && item.Key < CurrentListThread + BufferThreadUnity)){
-                if(ListRunOnMainThread.TryRemove(item.Key, out var action))
-                    if(item.Value.Time + receiveAndSendTimeOut > Environment.TickCount)
-                        action.Action?.Invoke();
-                    else
-                        lostPackets++;
-                i++;
-            }
+            if(UnityBatchMode || !RunningInUnity)
+                Parallel.ForEach(ListRunOnMainThread.Where(item => item.Key >= CurrentListThread && item.Key <= CurrentListThread + BufferThreadUnity), item =>{
+                    if(ListRunOnMainThread.TryRemove(item.Key, out var action))
+                        if(item.Value.Time + receiveAndSendTimeOut > Environment.TickCount || item.Value.NoRemove)
+                            action.Action?.Invoke();
+                        else
+                            lostPackets++;
+                    i++;
+                });
+            else
+                foreach(var item in ListRunOnMainThread.Where(item => item.Key >= CurrentListThread && item.Key <= CurrentListThread + BufferThreadUnity)){
+                    if(ListRunOnMainThread.TryRemove(item.Key, out var action))
+                        if(item.Value.Time + receiveAndSendTimeOut > Environment.TickCount || item.Value.NoRemove)
+                            action.Action?.Invoke();
+                        else
+                            lostPackets++;
+                    i++;
+                }
             CurrentListThread += i;
         }
 
@@ -314,9 +325,10 @@ namespace Nethostfire {
                     data2[0] = 3;               // Hold Connection respond
                     data2[1] = _byte[3];        // The size of groupID
                     type.CopyTo(data2, 2);      // GroupID
-                    SendPing(_udpClient, data2, _dataClient);
-
-                    // Block Udp Duplication receive
+                    SendPing(_udpClient, data2, _dataClient);                    
+                }
+                // Block Udp Duplication receive
+                if(_byte[0] == 1 || _byte[0] == 2)
                     if(_dataClient != null){
                         if(BlockUdpDuplicationServerReceive.TryGetValue(data, out int time)){
                             if(time + receiveAndSendTimeOut < Environment.TickCount)
@@ -334,12 +346,11 @@ namespace Nethostfire {
                         }else
                             BlockUdpDuplicationClientReceive.TryAdd(data, Environment.TickCount);
                     
-                    foreach(var item in BlockUdpDuplicationServerReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
-                        BlockUdpDuplicationServerReceive.TryRemove(item.Key, out _);
-                    foreach(var item in BlockUdpDuplicationClientReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
-                        BlockUdpDuplicationClientReceive.TryRemove(item.Key, out _);
-                    
-                }
+                foreach(var item in BlockUdpDuplicationServerReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
+                    BlockUdpDuplicationServerReceive.TryRemove(item.Key, out _);
+                foreach(var item in BlockUdpDuplicationClientReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
+                    BlockUdpDuplicationClientReceive.TryRemove(item.Key, out _);
+                
                 return (data.Length > 1 ? data : new byte[]{}, _groupID, _typeContent, _TypeShipping);
             }catch{
                 return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
@@ -388,7 +399,7 @@ namespace Nethostfire {
                 byte[] groupID = BitConverter.GetBytes(_groupID);
                 byte[] data = new byte[_byte.Length + groupID.Length + 4];
 
-                data[0] = (byte)_typeHoldConnection;                // Se é um Hold Connection
+                data[0] = (byte)_typeHoldConnection;                // If is HoldConnection. 0 = disable, 1 = auto, 2 = manual
                 data[1] = (byte)_typeContent;                       // O tipo de conteúdo
                 data[2] = (byte)_TypeShipping;                      // O tipo de criptografia
                 data[3] = (byte)groupID.Length;                     // O tamanho do groupID
@@ -544,6 +555,8 @@ namespace Nethostfire {
             UnityBatchMode = UnityEngine.Application.isBatchMode;
             UnityEditorMode = UnityEngine.Application.isEditor;
             if(!UnityEngine.GameObject.Find("Nethostfire")){
+                if(UnityBatchMode)
+                    Console.Clear();
                 UnityEngine.GameObject runThreadUnity = new UnityEngine.GameObject("Nethostfire");
                 runThreadUnity.AddComponent<ServiceNetwork>(); 
             }

@@ -43,7 +43,7 @@ namespace Nethostfire {
         /// <summary>
         /// PacketsPerSeconds is the amount of packets per second that happen when the client is sending and receiving.
         /// </summary>
-        public static string PacketsPerSeconds {get {return packetsCount +"pps";}}
+        public static string PacketsPerSeconds {get {return packetsCount + "pps";}}
         /// <summary>
         /// ConnectTimeOut is the time the client will be reconnecting with the server, the time is defined in milliseconds, if the value is 0 the client will be reconnecting infinitely. The default value is 10000.
         /// </summary>
