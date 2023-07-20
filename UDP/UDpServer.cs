@@ -82,7 +82,7 @@ namespace Nethostfire {
       /// </summary>
       public static bool UnityBatchModeAutoFrameRate {get {return Utility.UnityBatchModeAutoFrameRate;} set{Utility.UnityBatchModeAutoFrameRate = value;}}
       /// <summary>
-      /// When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on the connection between the client and the server will be displayed during game execution.
+      /// When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on server will be displayed in console running batchmode.
       /// </summary>
       public static bool ShowUnityNetworkStatistics {get {return showUnityNetworkStatistics;} set {showUnityNetworkStatistics = value;}}
       /// <summary>

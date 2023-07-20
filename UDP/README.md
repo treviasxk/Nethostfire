@@ -24,6 +24,7 @@
     - [UDpServer.PacketsBytesSent](#PacketsBytesSent)
     - [UDpServer.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
     - [UDpServer.UnityBatchModeAutoFrameRate](#UnityBatchModeAutoFrameRate)
+    - [UDpServer.ShowUnityNetworkStatistics](#UdpServerShowUnityNetworkStatistics)
     - [UDpServer.UnityBufferThread](#UnityBufferThread)
     - [UDpServer.ClientsCount](#ClientsCount)
     - [UDpServer.ShowDebugConsole](#ShowDebugConsole)
@@ -369,6 +370,17 @@ UDpServer.UnityBatchModeAutoFrameRate = true;
 ```
 
 The UnityBatchModeAutoFrameRate will lower the fps of the dedicated server build (batchmode) when no packets are being received to alleviate CPU utilization. The default value is true.
+
+-----
+
+<a name="UdpServerShowUnityNetworkStatistics"></a>
+### UdpServer.ShowUnityNetworkStatistics
+`Write/Read Variable`
+```cs
+UdpServer.ShowUnityNetworkStatistics = true;
+```
+
+When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on server will be displayed in console running batchmode.
 
 -----
 
