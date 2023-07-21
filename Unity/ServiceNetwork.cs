@@ -27,9 +27,6 @@ public class ServiceNetwork : MonoBehaviour{
         UDpServer.OnReceivedBytesClient = null;
         UDpClient.ShowDebugConsole = ShowDebug;
         Utility.ListRunOnMainThread.Clear();
-        Utility.IndexListThread = 0;
-        Utility.CurrentListThread = 0;
-        Utility.lostPackets = 0;
     }
 
     void Awake(){
@@ -40,29 +37,27 @@ public class ServiceNetwork : MonoBehaviour{
 
     void Start(){
         DontDestroyOnLoad(gameObject);
-        mat = new Material(Shader.Find("Hidden/Internal-Colored"));
-        Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
-        FPS = CreateGraph(500, "FPS", new Rect(170, 46, 100, 37));
-        TextStyle.fontSize = 10;
-        TextStyle.alignment = TextAnchor.UpperLeft;
-        TextStyle.padding.left = 3;
-        TextStyle.padding.top = 3;
+        if(!Utility.UnityBatchMode){
+            mat = new Material(Shader.Find("Hidden/Internal-Colored"));
+            Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
+            FPS = CreateGraph(500, "FPS", new Rect(170, 46, 100, 37));
+            TextStyle.fontSize = 10;
+            TextStyle.alignment = TextAnchor.UpperLeft;
+            TextStyle.padding.left = 3;
+            TextStyle.padding.top = 3;
+        }
     }
 
 
     void Update() {
         if(tmp + 1 < Time.time){ 
-            if(Utility.UnityBatchMode && Utility.UnityBatchModeAutoFrameRate)
-                if(Utility.ListRunOnMainThread.Count > 0)
-                    Application.targetFrameRate = 40 + Convert.ToInt32(Utility.ListRunOnMainThread.Count / Utility.BufferThreadUnity);
-                else
-                    Application.targetFrameRate = 10;
-
-            if(UDpServer.ShowUnityNetworkStatistics && UDpServer.Status == ServerStatusConnection.Running)
-                Utility.ShowLog("FPS: " + count + " PPS: " + UDpServer.PacketsPerSeconds + " LostPackets: " + UDpServer.LostPackets + " BufferThread: " + Utility.BufferThreadUnity);
             tmp = Time.time;
-            AddValueGraph(count, FPS);
-            AddValueGraph(UDpClient.Ping, Latency);
+            if(UDpServer.ShowUnityNetworkStatistics && UDpServer.Status == ServerStatusConnection.Running)
+                Utility.ShowLog("FPS: " + count + " PPS: " + UDpServer.PacketsPerSeconds + " LostPackets: " + UDpServer.LostPackets + " BufferMainThread: " + Utility.ListRunOnMainThread.Count + " PacketsSizeReceived: " + UDpServer.PacketsBytesReceived + " PacketsSizeSent: " + UDpServer.PacketsBytesSent);
+            if(!Utility.UnityBatchMode){
+                AddValueGraph(count, FPS);
+                AddValueGraph(UDpClient.Ping, Latency);
+            }
             count = 0;
         }
         count++;
@@ -71,16 +66,19 @@ public class ServiceNetwork : MonoBehaviour{
 
     void OnGUI(){
         if(!Application.isBatchMode)
-        if(UDpClient.ShowUnityNetworkStatistics){
-            GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
-            GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Size Received: " + UDpClient.PacketsBytesReceived + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Size Sent: " + UDpClient.PacketsBytesSent + "</color>", TextStyle);
-            for(int i = 0; i < ListGraph.Count; i++)
-                ShowGraph(ListGraph[i]);
-        }
+            if(UDpClient.ShowUnityNetworkStatistics){
+                GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
+                GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Packets Size Received: " + UDpClient.PacketsBytesReceived + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Packets Size Sent: " + UDpClient.PacketsBytesSent + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Buffer Main Thread: " + Utility.ListRunOnMainThread.Count + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Connect Time Out: " + UDpClient.ConnectTimeOut + "</color>", TextStyle);
+                GUILayout.Label("<color=white>Receive And Send Time Out: " + UDpClient.ReceiveAndSendTimeOut + "</color>", TextStyle);
+                for(int i = 0; i < ListGraph.Count; i++)
+                    ShowGraph(ListGraph[i]);
+            }
     }
 
 

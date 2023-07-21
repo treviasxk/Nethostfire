@@ -29,7 +29,11 @@ Nethostfire is a library (netstandard2.0) to create UDP server and client in C#,
  - Adapted for Enter Play Mode on Unity.
  - Adapted for dedicated Unity build server.
  - Connection statistics interface in Unity for the client.
-   
+
+## Requisites
+ - Unity 2021.2 or above
+ - .Net Netstandard 2.1 or above
+
 ## Unity installation
 1 - Download the library **Nethostfire.dll** in [Releases](https://github.com/treviasxk/Nethostfire/releases)
 

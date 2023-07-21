@@ -2,6 +2,7 @@
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
+// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using System.Net;
 using System.Net.Sockets;
@@ -63,7 +64,7 @@ namespace Nethostfire {
         /// <summary>
         /// LostPackets is the number of packets lost.
         /// </summary>
-        public static int LostPackets {get {return lostPackets + Utility.lostPackets;}}
+        public static int LostPackets {get {return lostPackets;}}
         /// <summary>
         /// The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. The default value is true.
         /// </summary>
@@ -159,20 +160,10 @@ namespace Nethostfire {
             }
         }
 
-        private static void ClientReceiveUDP(){
+        private static async void ClientReceiveUDP(){
             while(Socket != null){
-                bool SafeThread = false;
-                IPEndPoint _host = null;
-                byte[] data = new byte[]{};
-
-                try{
-                    if(Socket.Available > 0){
-                        data = Socket.Receive(ref _host);
-                        SafeThread = true;
-                    }
-                }catch{}
-
-                if(SafeThread)
+                var receivedResult = await Socket.ReceiveAsync();
+                byte[] data  = receivedResult.Buffer;
                 Parallel.Invoke(()=>{
                     timeLastPacket = Environment.TickCount;
                     packetsTmp++;

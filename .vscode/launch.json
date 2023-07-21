@@ -6,14 +6,10 @@
     "configurations": [
         {
             "name": ".NET Core Launch (console)",
-            "type": "clr",
+            "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/netstandard2.0/Nethostfire.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "console": "externalTerminal",
-            "stopAtEntry": false
+            "program": "${workspaceFolder}/bin/Debug/netstandard2.1/Nethostfire.dll",
         },
         {
             "name": ".NET Core Attach",

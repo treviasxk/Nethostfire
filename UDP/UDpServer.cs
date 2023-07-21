@@ -2,6 +2,7 @@
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
+// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using System.Net;
 using System.Net.Sockets;
@@ -64,7 +65,7 @@ namespace Nethostfire {
       /// <summary>
       /// LostPackets is the number of packets lost.
       /// </summary>
-      public static int LostPackets {get {return lostPackets + Utility.lostPackets;}}
+      public static int LostPackets {get {return lostPackets;}}
       /// <summary>
       /// PacketsPerSeconds is the amount of packets per second that happen when the server is sending and receiving.
       /// </summary>
@@ -73,14 +74,6 @@ namespace Nethostfire {
       /// PacketsBytesReceived is the amount of bytes received by the server.
       /// </summary>
       public static string PacketsBytesReceived {get {return Utility.BytesToString(packetsReceived2);}}
-      /// <summary>
-      /// The UnityBufferThread is the number of packets that will be executed each frame in Unity. This feature works to prevent high demand bursts of packets from crashing 1fps in unity. The default value is 1000.
-      /// </summary>
-      public static int UnityBufferThread {get {return Utility.BufferThreadUnity;} set{Utility.BufferThreadUnity = value;}}
-      /// <summary>
-      /// The UnityBatchModeAutoFrameRate will lower the fps of the dedicated server build (batchmode) when no packets are being received to alleviate CPU utilization. The default value is true.
-      /// </summary>
-      public static bool UnityBatchModeAutoFrameRate {get {return Utility.UnityBatchModeAutoFrameRate;} set{Utility.UnityBatchModeAutoFrameRate = value;}}
       /// <summary>
       /// When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on server will be displayed in console running batchmode.
       /// </summary>
@@ -332,20 +325,12 @@ namespace Nethostfire {
          }
       }
 
-      static void ServerReceiveUDP(){
+      static async void ServerReceiveUDP(){
          while(Socket != null){
-            bool SafeThread = false;
-            IPEndPoint _ip = null;
-            byte[] data = new byte[]{};
-
-            try{
-               if(Socket.Available > 0){
-                  data = Socket.Receive(ref _ip);
-                  SafeThread = true;
-               }
-            }catch{}
-
-            if(SafeThread && !CheckBlockerIP(_ip))
+            var receivedResult = await Socket.ReceiveAsync();
+            byte[] data  = receivedResult.Buffer;
+            IPEndPoint _ip = receivedResult.RemoteEndPoint;
+            if(!CheckBlockerIP(_ip))
             Parallel.Invoke(()=>{
                packetsTmp++;
                if(DateTime.Now.Second != timeTmp){

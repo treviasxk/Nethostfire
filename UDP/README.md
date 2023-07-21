@@ -23,9 +23,7 @@
     - [UDpServer.PacketsBytesReceived](#PacketsBytesReceived)
     - [UDpServer.PacketsBytesSent](#PacketsBytesSent)
     - [UDpServer.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
-    - [UDpServer.UnityBatchModeAutoFrameRate](#UnityBatchModeAutoFrameRate)
     - [UDpServer.ShowUnityNetworkStatistics](#UdpServerShowUnityNetworkStatistics)
-    - [UDpServer.UnityBufferThread](#UnityBufferThread)
     - [UDpServer.ClientsCount](#ClientsCount)
     - [UDpServer.ShowDebugConsole](#ShowDebugConsole)
     - [UDpServer.OnConnectedClient](#OnConnectedClient)
@@ -362,17 +360,6 @@ The Socket is a `System.Net.Sockets.UdpClient` variable. This is the main commun
 
 -----
 
-<a name="UnityBatchModeAutoFrameRate"></a>
-### UDpServer.UnityBatchModeAutoFrameRate
-`Write/Read Variable`
-```cs
-UDpServer.UnityBatchModeAutoFrameRate = true;
-```
-
-The UnityBatchModeAutoFrameRate will lower the fps of the dedicated server build (batchmode) when no packets are being received to alleviate CPU utilization. The default value is true.
-
------
-
 <a name="UdpServerShowUnityNetworkStatistics"></a>
 ### UdpServer.ShowUnityNetworkStatistics
 `Write/Read Variable`
@@ -381,17 +368,6 @@ UdpServer.ShowUnityNetworkStatistics = true;
 ```
 
 When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatistics to true, statistics on server will be displayed in console running batchmode.
-
------
-
-<a name="UnityBufferThread"></a>
-### UDpServer.UnityBufferThread
-`Write/Read Variable`
-```cs
-UDpServer.UnityBufferThread = 1000;
-```
-
-The UnityBufferThread is the number of packets that will be executed each frame in Unity. This feature works to prevent high demand bursts of packets from crashing 1fps in unity. The default value is 1000.
 
 -----
 

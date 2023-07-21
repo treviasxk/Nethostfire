@@ -2,6 +2,7 @@
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
+// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -138,12 +139,6 @@ namespace Nethostfire {
         public float Timer;
     }
 
-    class BuffThread {
-        public bool NoRemove;
-        public Action Action;
-        public int Time;
-    }
-
     class HoldConnectionServer{
         public List<int> GroupID {get;set;}
         public List<byte[]> Bytes {get;set;}
@@ -166,44 +161,27 @@ namespace Nethostfire {
         public static byte[] PrivateKeyAESClient, PrivateKeyAESServer;
         public static int receiveAndSendTimeOut = 1000;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
-        public static ConcurrentDictionary<int, BuffThread> ListRunOnMainThread = new ConcurrentDictionary<int, BuffThread>();
+        public static ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationServerReceive = new ConcurrentDictionary<byte[], int>();
         public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationClientReceive = new ConcurrentDictionary<byte[], int>();
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
-        public static bool UnityBatchModeAutoFrameRate = true;
-        public static int IndexListThread, CurrentListThread, BufferThreadUnity = 1000;
 
-        public static void RunOnMainThread(Action _action, bool _noRemove = true){
+        public static void RunOnMainThread(Action _action){
             if(RunningInUnity)
-                ListRunOnMainThread.TryAdd(IndexListThread++, new BuffThread{Action = _action, Time = Environment.TickCount, NoRemove = _noRemove});
+                ListRunOnMainThread.Enqueue(_action);
             else
                 _action?.Invoke();
         }
 
-        public static int lostPackets;
-
         public static void ThisMainThread() {
-            int i = 0;
-            if(UnityBatchMode || !RunningInUnity)
-                Parallel.ForEach(ListRunOnMainThread.Where(item => item.Key >= CurrentListThread && item.Key <= CurrentListThread + BufferThreadUnity), item =>{
-                    if(ListRunOnMainThread.TryRemove(item.Key, out var action))
-                        if(item.Value.Time + receiveAndSendTimeOut > Environment.TickCount || item.Value.NoRemove)
-                            action.Action?.Invoke();
-                        else
-                            lostPackets++;
-                    i++;
-                });
-            else
-                foreach(var item in ListRunOnMainThread.Where(item => item.Key >= CurrentListThread && item.Key <= CurrentListThread + BufferThreadUnity)){
-                    if(ListRunOnMainThread.TryRemove(item.Key, out var action))
-                        if(item.Value.Time + receiveAndSendTimeOut > Environment.TickCount || item.Value.NoRemove)
-                            action.Action?.Invoke();
-                        else
-                            lostPackets++;
-                    i++;
-                }
-            CurrentListThread += i;
+            while(ListRunOnMainThread.TryDequeue(out var _action))
+                if(UnityBatchMode){
+                    Parallel.Invoke(() =>{
+                        _action?.Invoke();
+                    });
+                }else
+                    _action?.Invoke();
         }
 
         public static string BytesToString(float PacketsReceived){
