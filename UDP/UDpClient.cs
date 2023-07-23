@@ -19,7 +19,6 @@ namespace Nethostfire {
         static string publicKeyRSA = null;
         static byte[] privateKeyAES = null;
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
-        static ConcurrentDictionary<int, HoldConnectionClient> listHoldConnection = new ConcurrentDictionary<int, HoldConnectionClient>();
         static Thread SendOnlineThread, ClientReceiveUDPThread;
         /// <summary>
         /// OnReceivedBytesServer an event that returns bytes received and GroupID whenever the received bytes by clients, with it you can manipulate the bytes received.
@@ -130,7 +129,8 @@ namespace Nethostfire {
                 ClientReceiveUDPThread = null;
                 publicKeyRSA = null;
                 privateKeyAES = null;
-                listHoldConnection.Clear();
+                Utility.listHoldConnectionClient.Clear();
+                Utility.BlockUdpDuplicationClientReceive.Clear();
                 if(Status == ClientStatusConnection.Disconnecting)
                     ChangeStatus(ClientStatusConnection.Disconnected);
                 if(Status == ClientStatusConnection.Connecting)
@@ -145,13 +145,13 @@ namespace Nethostfire {
                 _byte = new byte[]{};
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_typeHoldConnection != TypeHoldConnection.None){
-                    if(listHoldConnection.TryGetValue(_groupID, out var HoldConnection)){
+                    if(Utility.listHoldConnectionClient.TryGetValue(_groupID, out var HoldConnection)){
                         HoldConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
                         HoldConnection.Bytes = _byte;
                         HoldConnection.TypeShipping = _typeShipping;
                         HoldConnection.TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
                     }else
-                        listHoldConnection.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
+                        Utility.listHoldConnectionClient.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
                 }
                 if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
                     lostPackets++;
@@ -162,8 +162,14 @@ namespace Nethostfire {
 
         private static async void ClientReceiveUDP(){
             while(Socket != null){
-                var receivedResult = await Socket.ReceiveAsync();
-                byte[] data  = receivedResult.Buffer;
+                byte[] data  = null;
+                
+                try{
+                    var receivedResult = await Socket.ReceiveAsync();
+                    data  = receivedResult.Buffer;
+                }catch{}
+
+                if(data != null)
                 Parallel.Invoke(()=>{
                     timeLastPacket = Environment.TickCount;
                     packetsTmp++;
@@ -194,9 +200,8 @@ namespace Nethostfire {
 
                     if(data.Length > 1){
                         var _data = Utility.ByteToReceive(data, Socket);
-                        if(!listHoldConnection.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
+                        if(!Utility.listHoldConnectionClient.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
                             lostPackets++;
-
                         switch(_data.Item3){
                             case TypeContent.Foreground:
                                 if(Status == ClientStatusConnection.Connected){
@@ -231,9 +236,8 @@ namespace Nethostfire {
                 // Enviando byte 1 para o server, para dizer que está online
                 if(Status == ClientStatusConnection.Connected){
                     pingTmp = Environment.TickCount;
-                    Utility.SendPing(Socket, new byte[]{1});
+                    Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}));
                 }
-
                 // Verificando se o ultimo ping com o server é de 3000ms
                 if(Environment.TickCount - timeLastPacket > 3000 && Status == ClientStatusConnection.Connected)
                     ChangeStatus(ClientStatusConnection.Connecting);
@@ -242,9 +246,9 @@ namespace Nethostfire {
                 if(Status == ClientStatusConnection.Connecting && Environment.TickCount - timeLastPacket > 3000 + connectTimeOut && connectTimeOut != 0)
                     DisconnectServer();
 
-                // Enviando bytes que estão em listHoldConnection
+                // Enviando bytes que estão em Utility.listHoldConnectionClient
                 if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
-                    Parallel.ForEach(listHoldConnection, item => {
+                    Parallel.ForEach(Utility.listHoldConnectionClient, item => {
                         if(item.Value.Time < Environment.TickCount){
                             item.Value.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
                             if(!Utility.Send(Socket, item.Value.Bytes, item.Key, item.Value.TypeShipping, item.Value.TypeHoldConnection, item.Value.TypeContent))
@@ -276,7 +280,8 @@ namespace Nethostfire {
                     case ClientStatusConnection.Connecting:
                         publicKeyRSA = null;
                         privateKeyAES = null;
-                        listHoldConnection.Clear();
+                        Utility.listHoldConnectionClient.Clear();
+                        Utility.BlockUdpDuplicationClientReceive.Clear();
                         timeLastPacket = Environment.TickCount;
                         SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.Manual);
                         Utility.ShowLog("Connecting on " + host);

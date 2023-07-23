@@ -26,7 +26,11 @@ public class ServiceNetwork : MonoBehaviour{
         UDpServer.OnDisconnectedClient = null;
         UDpServer.OnReceivedBytesClient = null;
         UDpClient.ShowDebugConsole = ShowDebug;
+        Utility.listHoldConnectionClient.Clear();
+        Utility.listHoldConnectionServer.Clear();
         Utility.ListRunOnMainThread.Clear();
+        Utility.BlockUdpDuplicationClientReceive.Clear();
+        Utility.BlockUdpDuplicationServerReceive.Clear();
     }
 
     void Awake(){
