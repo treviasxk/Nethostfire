@@ -305,7 +305,7 @@ namespace Nethostfire {
                     data2[0] = 3;               // Hold Connection respond
                     data2[1] = _byte[3];        // The size of groupID
                     type.CopyTo(data2, 2);      // GroupID
-                    RunOnMainThread(() => SendPing(_udpClient, data2, _dataClient));      
+                    SendPing(_udpClient, data2, _dataClient);      
                 }
                 // Block Udp Duplication receive
                 if(_byte[0] == 1 || _byte[0] == 2)
@@ -512,18 +512,16 @@ namespace Nethostfire {
         }
         public static string ShowLog(string Message){
             if(ShowDebugConsole)
-                RunOnMainThread(() => {
-                    if(RunningInUnity && !UnityBatchMode)
-                        ShowUnityLog(Message);
-                    else{
-                        Console.ForegroundColor = ConsoleColor.DarkRed;
-                        Console.Write("[NETHOSTFIRE] ");
-                        Console.ForegroundColor = ConsoleColor.Gray;
-                        Console.Write(DateTime.Now + " ");
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Console.WriteLine(Message);
-                    }
-                });
+                if(RunningInUnity && !UnityBatchMode)
+                    ShowUnityLog(Message);
+                else{
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.Write("[NETHOSTFIRE] ");
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.Write(DateTime.Now + " ");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine(Message);
+                }
             return Message;
         }
 

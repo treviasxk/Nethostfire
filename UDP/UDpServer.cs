@@ -363,7 +363,7 @@ namespace Nethostfire {
                         case 1:
                            _dataClient.Ping = Environment.TickCount - _dataClient.Time - 1000;
                            _dataClient.Time = Environment.TickCount;
-                           Utility.RunOnMainThread(() => Utility.SendPing(Socket, new byte[]{1}, _dataClient));
+                           Utility.SendPing(Socket, new byte[]{1}, _dataClient);
                         break;
                      }
                   }
@@ -413,11 +413,9 @@ namespace Nethostfire {
                         if(_data.Item1.Length > 0)
                            switch(_data.Item4){
                               case TypeShipping.RSA:
-                                 Utility.RunOnMainThread(() =>{
-                                    _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
-                                    WaitDataClients.TryAdd(_ip, _dataClient);
-                                    SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA);
-                                 });
+                                 _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
+                                 WaitDataClients.TryAdd(_ip, _dataClient);
+                                 SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA);
                               break;
                               case TypeShipping.AES:
                                  if(WaitDataClients.TryGetValue(_ip, out var _waitDataClient)){

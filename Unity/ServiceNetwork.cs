@@ -5,6 +5,7 @@
 
 using UnityEngine;
 using Nethostfire;
+using UnityEditor;
 
 public class ServiceNetwork : MonoBehaviour{
     [Header("Nethostfire")]
@@ -13,6 +14,7 @@ public class ServiceNetwork : MonoBehaviour{
     List<ChartGraph> ListGraph = new List<ChartGraph>();
     ChartGraph Latency, FPS;
     float tmp, count;
+
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Init(){
@@ -41,6 +43,8 @@ public class ServiceNetwork : MonoBehaviour{
 
     void Start(){
         DontDestroyOnLoad(gameObject);
+        if(Application.isEditor)
+            EditorApplication.playModeStateChanged += Stop;
         if(!Utility.UnityBatchMode){
             mat = new Material(Shader.Find("Hidden/Internal-Colored"));
             Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
@@ -52,6 +56,12 @@ public class ServiceNetwork : MonoBehaviour{
         }
     }
 
+    void Stop(PlayModeStateChange change){
+        if(change == PlayModeStateChange.ExitingEditMode || change == PlayModeStateChange.ExitingPlayMode){
+            UDpClient.DisconnectServer();
+            UDpServer.Stop();
+        }
+    }
 
     void Update() {
         if(tmp + 1 < Time.time){ 
