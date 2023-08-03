@@ -131,6 +131,7 @@ namespace Nethostfire {
                 privateKeyAES = null;
                 Utility.listHoldConnectionClient.Clear();
                 Utility.BlockUdpDuplicationClientReceive.Clear();
+                Utility.listHoldConnectionClientQueue.Clear();
                 if(Status == ClientStatusConnection.Disconnecting)
                     ChangeStatus(ClientStatusConnection.Disconnected);
                 if(Status == ClientStatusConnection.Connecting)
@@ -141,23 +142,38 @@ namespace Nethostfire {
         /// To send bytes to server, it is necessary to define the bytes and GroupID, the other sending resources such as TypeShipping and HoldConnection are optional.
         /// </summary>
         public static void SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
-            if(_byte == null)
-                _byte = new byte[]{};
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
-                if(_typeHoldConnection != TypeHoldConnection.None){
-                    if(Utility.listHoldConnectionClient.TryGetValue(_groupID, out var HoldConnection)){
-                        HoldConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                        HoldConnection.Bytes = _byte;
-                        HoldConnection.TypeShipping = _typeShipping;
-                        HoldConnection.TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
-                    }else
-                        Utility.listHoldConnectionClient.TryAdd(_groupID, new HoldConnectionClient{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
-                }
-                if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
-                    lostPackets++;
-                packetsSent += _byte.Length;
-                packetsTmp++;
+                if(_byte == null)
+                    _byte = new byte[]{};
+                if(_typeHoldConnection == TypeHoldConnection.Enqueue)
+                    PrepareEnqueued(_byte, _groupID, _typeShipping);
+                else
+                    PrepareSend(_byte, _groupID, _typeShipping, _typeHoldConnection);
             }
+        }
+
+        static void PrepareSend(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+            if(_typeHoldConnection != TypeHoldConnection.None){
+                if(Utility.listHoldConnectionClient.TryGetValue(_groupID, out var HoldConnection)){
+                    HoldConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
+                    HoldConnection.Bytes = _byte;
+                    HoldConnection.TypeShipping = _typeShipping;
+                    HoldConnection.TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
+                }else
+                    Utility.listHoldConnectionClient.TryAdd(_groupID, new HoldConnection{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
+            }
+            if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
+                lostPackets++;
+            packetsSent += _byte.Length;
+            packetsTmp++;
+        }
+
+        static void PrepareEnqueued(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None){
+            if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
+                Utility.listHoldConnectionClientQueue.Enqueue(new HoldConnectionQueue(){GroupID = _groupID, Bytes = _byte, TypeShipping = _typeShipping});
+            if(Utility.listHoldConnectionClientQueue.TryPeek(out var hccq))
+                if(hccq.GroupID == _groupID)
+                    PrepareSend(_byte, _groupID, _typeShipping, TypeHoldConnection.Auto);
         }
 
         private static async void ClientReceiveUDP(){
@@ -282,6 +298,7 @@ namespace Nethostfire {
                         privateKeyAES = null;
                         Utility.listHoldConnectionClient.Clear();
                         Utility.BlockUdpDuplicationClientReceive.Clear();
+                        Utility.listHoldConnectionClientQueue.Clear();
                         timeLastPacket = Environment.TickCount;
                         SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.Manual);
                         Utility.ShowLog("Connecting on " + host);

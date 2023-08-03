@@ -45,6 +45,8 @@ namespace Nethostfire {
         /// Private AES key
         /// </summary>
         public byte[] PrivateKeyAES = null;
+        public ConcurrentQueue<HoldConnectionQueue> ListHoldConnectionQueue = new ConcurrentQueue<HoldConnectionQueue>();
+        public ConcurrentDictionary<int, HoldConnection> ListHoldConnection = new ConcurrentDictionary<int, HoldConnection>();
     }
     
     /// <summary>
@@ -60,6 +62,10 @@ namespace Nethostfire {
         /// With Manual, when the packet arrives at its destination, it is necessary that the Client/Server responds back by sending any byte for the same GroupID received. If it doesn't respond, the client/server that sent the Manual will be stuck in a send loop.
         /// </summary>
         Manual = 2,
+        /// <summary>
+        /// With Enqueue the bytes are adds in a queue and sent 1 packet at a time, sending is done with HoldConnection in Auto. This feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms.
+        /// </summary>
+        Enqueue = 3,
     }
 
     /// <summary>
@@ -72,7 +78,7 @@ namespace Nethostfire {
         Initializing = 3,
         Restarting = 4,
     }
-    enum TypeContent{
+    public enum TypeContent{
         Background = 0,
         Foreground = 1,
     }
@@ -138,22 +144,19 @@ namespace Nethostfire {
         public int PPS;
         public float Timer;
     }
-
-    class HoldConnectionServer{
-        public List<int> GroupID {get;set;}
-        public List<byte[]> Bytes {get;set;}
-        public List<int> Time {get;set;}
-        public List<TypeShipping> TypeShipping {get;set;}
-        public List<TypeContent> TypeContent {get;set;}
-        public List<TypeHoldConnection> TypeHoldConnection {get;set;}
-    }
     
-    class HoldConnectionClient{
+    public class HoldConnection{
         public byte[] Bytes {get;set;}
         public int Time {get;set;}
         public TypeShipping TypeShipping {get;set;}
         public TypeContent TypeContent {get;set;}
         public TypeHoldConnection TypeHoldConnection {get;set;}
+    }
+
+    public struct HoldConnectionQueue{
+        public int GroupID {get;set;}
+        public byte[] Bytes {get;set;}
+        public TypeShipping TypeShipping {get;set;}
     }
 
     class Utility {
@@ -164,8 +167,8 @@ namespace Nethostfire {
         public static ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
         public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationServerReceive = new ConcurrentDictionary<byte[], int>();
         public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationClientReceive = new ConcurrentDictionary<byte[], int>();
-        public static ConcurrentDictionary<DataClient, HoldConnectionServer> listHoldConnectionServer = new ConcurrentDictionary<DataClient, HoldConnectionServer>();
-        public static ConcurrentDictionary<int, HoldConnectionClient> listHoldConnectionClient = new ConcurrentDictionary<int, HoldConnectionClient>();
+        public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionClient = new ConcurrentDictionary<int, HoldConnection>();
+        public static ConcurrentQueue<HoldConnectionQueue> listHoldConnectionClientQueue = new ConcurrentQueue<HoldConnectionQueue>();
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
 
@@ -246,7 +249,22 @@ namespace Nethostfire {
                 if(_byte[0] == 3){
                     type = new byte[_byte[1]];
                     type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
-                    return (new byte[]{}, BitConverter.ToInt32(type, 0), TypeContent.Background, TypeShipping.None);
+                    _groupID = BitConverter.ToInt32(type, 0);
+                    if(_dataClient == null){
+                        if(listHoldConnectionClientQueue.TryPeek(out var hccq))
+                            if(hccq.GroupID == _groupID)
+                                if(listHoldConnectionClientQueue.TryDequeue(out _))
+                                    if(listHoldConnectionClientQueue.TryPeek(out var hccq2))
+                                        UDpClient.SendBytes(hccq2.Bytes, hccq2.GroupID, hccq2.TypeShipping, TypeHoldConnection.Auto);
+                    }else{
+                        if(_dataClient.ListHoldConnectionQueue.TryPeek(out var hccq))
+                            if(hccq.GroupID == _groupID)
+                                if(_dataClient.ListHoldConnectionQueue.TryDequeue(out _))
+                                    if(_dataClient.ListHoldConnectionQueue.TryPeek(out var hccq2))
+                                        UDpServer.SendBytes(hccq2.Bytes, hccq2.GroupID, _dataClient, hccq2.TypeShipping, TypeHoldConnection.Auto);
+                    }
+                    
+                    return (new byte[]{}, _groupID, TypeContent.Background, TypeShipping.None);
                 }
 
                 type = new byte[_byte[3]];
@@ -538,7 +556,7 @@ namespace Nethostfire {
                 if(UnityBatchMode)
                     Console.Clear();
                 UnityEngine.GameObject runThreadUnity = new UnityEngine.GameObject("Nethostfire");
-                runThreadUnity.AddComponent<ServiceNetwork>(); 
+                runThreadUnity.AddComponent<ServiceNetwork>();
             }
         }
     }

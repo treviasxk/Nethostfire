@@ -55,9 +55,9 @@
     - [ClientStatusConnection](#ClientStatusConnection)
     - [DataClient](#DataClient)
     - [TypeShipping](#TypeShipping)
+    - [TypeHoldConnection](#TypeHoldConnection)
 - FAQ
     - [GroupID](#GroupID)
-    - [HoldConnection](#HoldConnection)
     - [ShippingPreparation](#ShippingPreparation)
 
 ## UDpServer
@@ -743,6 +743,16 @@ _Encryption/Decryprion Speed may vary depending on your machine's performance._
 
 -----
 
+<a name="TypeHoldConnection"></a>
+### TypeHoldConnection
+
+• TypeHoldConnection.None - Value default. (No effect)
+• TypeHoldConnection.Auto - With Auto, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
+• TypeHoldConnection.Manual - With Manual, when the packet arrives at its destination, it is necessary that the Client/Server responds back by sending any byte for the same GroupID received. If it doesn't respond, the client/server that sent the Manual will be stuck in a send loop.
+• TypeHoldConnection.Enqueue - With Enqueue the bytes are adds in a queue and sent 1 packet at a time, sending is done with HoldConnection in Auto. This feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms.
+
+-----
+
 <a name="ClientStatusConnection"></a>
 ### ClientStatusConnection
 ```cs
@@ -763,12 +773,6 @@ The ClientStatusConnection is used to define client states. The ClientStatusConn
 <a name="GroupID"></a>
 ### GroupID
 GroupID is a way to organize your shipments with high performance, whenever you send bytes with the UDpServer or Client the GroupID will be obtained in the following events: [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient) and [UDpClient.OnReceivedBytesServer](#OnReceivedBytesServer).
-
------
-
-<a name="HoldConnection"></a>
-### HoldConnection
-HoldConnection is a feature to avoid packet loss, when you set it to true when sending, if the server or client does not respond back on the same GroupID, it will be in a loop re-sending until it responds with a response from the server or client.
 
 -----
 

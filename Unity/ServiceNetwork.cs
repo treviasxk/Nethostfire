@@ -5,7 +5,6 @@
 
 using UnityEngine;
 using Nethostfire;
-using UnityEditor;
 
 public class ServiceNetwork : MonoBehaviour{
     [Header("Nethostfire")]
@@ -19,6 +18,7 @@ public class ServiceNetwork : MonoBehaviour{
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Init(){
         bool ShowDebug = UDpClient.ShowDebugConsole;
+        Application.quitting -= null;
         UDpClient.ShowDebugConsole = false;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
@@ -29,10 +29,10 @@ public class ServiceNetwork : MonoBehaviour{
         UDpServer.OnReceivedBytesClient = null;
         UDpClient.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
-        Utility.listHoldConnectionServer.Clear();
         Utility.ListRunOnMainThread.Clear();
         Utility.BlockUdpDuplicationClientReceive.Clear();
         Utility.BlockUdpDuplicationServerReceive.Clear();
+        Utility.listHoldConnectionClientQueue.Clear();
     }
 
     void Awake(){
@@ -43,8 +43,7 @@ public class ServiceNetwork : MonoBehaviour{
 
     void Start(){
         DontDestroyOnLoad(gameObject);
-        if(Application.isEditor)
-            EditorApplication.playModeStateChanged += Stop;
+        Application.quitting += Stop;
         if(!Utility.UnityBatchMode){
             mat = new Material(Shader.Find("Hidden/Internal-Colored"));
             Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
@@ -56,11 +55,9 @@ public class ServiceNetwork : MonoBehaviour{
         }
     }
 
-    void Stop(PlayModeStateChange change){
-        if(change == PlayModeStateChange.ExitingEditMode || change == PlayModeStateChange.ExitingPlayMode){
-            UDpClient.DisconnectServer();
-            UDpServer.Stop();
-        }
+    void Stop(){
+        UDpClient.DisconnectServer();
+        UDpServer.Stop();
     }
 
     void Update() {
