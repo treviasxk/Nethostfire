@@ -2,6 +2,7 @@
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
 // Paypal:              trevias@live.com
+// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using UnityEngine;
 using Nethostfire;
@@ -22,11 +23,14 @@ public class ServiceNetwork : MonoBehaviour{
         UDpClient.ShowDebugConsole = false;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
-        UDpClient.OnClientStatusConnection = null;
-        UDpClient.OnReceivedBytesServer = null;
+        UDpClient.OnClientStatus = null;
+        UDpClient.OnReceivedBytes = null;
+        UDpClient.OnShippedBytes = null;
         UDpServer.OnConnectedClient = null;
         UDpServer.OnDisconnectedClient = null;
-        UDpServer.OnReceivedBytesClient = null;
+        UDpServer.OnReceivedBytes = null;
+        UDpServer.OnServerStatus = null;
+        UDpServer.OnShippedBytes = null;
         UDpClient.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();

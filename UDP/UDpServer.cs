@@ -22,19 +22,23 @@ namespace Nethostfire {
       static ConcurrentDictionary<IPEndPoint, long> ListBlockedIPs = new ConcurrentDictionary<IPEndPoint, long>();
       static Thread CheckOnlineThread, ServerReceiveUDPThread;
       /// <summary>
-      /// OnReceivedBytesClient an event that returns bytes received, GroupID and DataClient whenever the received bytes by clients, with it you can manipulate the bytes received.
+      /// OnReceivedBytes an event that returns bytes received, GroupID and DataClient whenever the received bytes by clients, with it you can manipulate the bytes received.
       /// </summary>
-      public static Action<byte[], int, DataClient> OnReceivedBytesClient;
+      public static Action<byte[], int, DataClient> OnReceivedBytes;
       /// <summary>
-      /// OnServerStatusConnection is an event that returns Server.ServerStatusConnection whenever the status changes, with which you can use it to know the current status of the server.
+      /// OnServerStatus is an event that returns Server.ServerStatusConnection whenever the status changes, with which you can use it to know the current status of the server.
       /// </summary>
-      public static Action<ServerStatusConnection> OnServerStatusConnection;
+      public static Action<ServerStatusConnection> OnServerStatus;
       /// <summary>
-      /// OnConnectedClient is an event that you can use to receive the DataClient whenever a new client connected.
+      /// OnShippedBytes is an event that returns a groupID whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
+      /// </summary>
+      public static Action<int, DataClient> OnShippedBytes;
+      /// <summary>
+      /// OnConnectedClient is an event that you can use to receive the DataClient whenever a client connected.
       /// </summary>
       public static Action<DataClient> OnConnectedClient;
       /// <summary>
-      /// OnDisconnectedClient is an event that you can use to receive the DataClient whenever a new client disconnected.
+      /// OnDisconnectedClient is an event that you can use to receive the DataClient whenever a client disconnected.
       /// </summary>
       public static Action<DataClient> OnDisconnectedClient;
       /// <summary>
@@ -46,11 +50,11 @@ namespace Nethostfire {
       /// </summary>
       public static int ReceiveAndSendTimeOut {get {return Utility.receiveAndSendTimeOut;} set{if(Socket != null){Socket.Client.ReceiveTimeout = value; Socket.Client.SendTimeout = value;} Utility.receiveAndSendTimeOut = value > 0 ? value : 1000;}}
       /// <summary>
-      /// The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is 0 which is unlimited.
+      /// The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytes event with the received bytes. The default value is 0 which is unlimited.
       /// </summary>
       public static int LimitMaxPacketsPerSeconds {get {return limitMaxPPS;} set{limitMaxPPS = value;}}
       /// <summary>
-      /// The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is 0 which is unlimited.
+      /// The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedBytes event with the received bytes. The default value is 0 which is unlimited.
       /// </summary>
       public static int LimitMaxByteReceive {get {return limitMaxByteSize;} set{limitMaxByteSize = value;}}
       /// <summary>
@@ -276,7 +280,7 @@ namespace Nethostfire {
 
 
       /// <summary>
-      /// The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a GroupID that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value _limitBytes is 0 which is unlimited.
+      /// The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a GroupID that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the Server.OnReceivedBytes event with the received bytes. The default value _limitBytes is 0 which is unlimited.
       /// </summary>
       public static void ChangeLimitMaxByteSizeGroupID(int _groupID, int _limitBytes){
          if(ListLimitMaxByteSizeGroupID.TryGetValue(_groupID, out var _limitMaxByteSizeGroupID)){
@@ -289,7 +293,7 @@ namespace Nethostfire {
       }
 
       /// <summary>
-      /// The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a GroupID, if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytesClient event with the received bytes. The default value is _limitBytes 0 which is unlimited.
+      /// The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a GroupID, if the packets is greater than the limit in 1 second, the server will not call the Server.OnReceivedBytes event with the received bytes. The default value is _limitBytes 0 which is unlimited.
       /// </summary>
       public static void ChangeLimitMaxPacketsPerSecondsGroupID(int _groupID, int _limitPPS){
          if(ListLimitMaxPPSGroupID.TryGetValue(_groupID, out var _limitMaxPPS)){
@@ -355,7 +359,10 @@ namespace Nethostfire {
 
                if(data.Length > 1 && Status == ServerStatusConnection.Running){
                   var _data = Utility.ByteToReceive(data, Socket, _dataClient.IP != null ? _dataClient : new DataClient(){IP = _ip});
-                  _dataClient.ListHoldConnection.TryRemove(_data.Item2, out _);
+                  if(_dataClient.ListHoldConnection.TryRemove(_data.Item2, out _))
+                     Utility.RunOnMainThread(() => OnShippedBytes?.Invoke(_data.Item2, _dataClient));
+                  else
+                     lostPackets++;
 
                   switch(_data.Item3){
                      case TypeContent.Foreground:
@@ -368,12 +375,12 @@ namespace Nethostfire {
                            if(_dataClient.ListHoldConnection.TryGetValue(_data.Item2, out var _holdConnection)){
                               if(_holdConnection.Time == 0){
                                  _holdConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                                 Utility.RunOnMainThread(() => OnReceivedBytesClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
+                                 Utility.RunOnMainThread(() => OnReceivedBytes?.Invoke(_data.Item1, _data.Item2, _dataClient));
                               }else
                                  if(_holdConnection.Time < Environment.TickCount)
                                     _dataClient.ListHoldConnection.TryRemove(_data.Item2, out _);
                            }else
-                              Utility.RunOnMainThread(() => OnReceivedBytesClient?.Invoke(_data.Item1, _data.Item2, _dataClient));
+                              Utility.RunOnMainThread(() => OnReceivedBytes?.Invoke(_data.Item1, _data.Item2, _dataClient));
                         }
                      break;
                      case TypeContent.Background:
@@ -441,7 +448,7 @@ namespace Nethostfire {
          if(Status != _status){
             Status = _status;
 
-            Utility.RunOnMainThread(() => OnServerStatusConnection?.Invoke(Status));
+            Utility.RunOnMainThread(() => OnServerStatus?.Invoke(Status));
             
             if(_status != ServerStatusConnection.Running){
                packetsCount = 0;

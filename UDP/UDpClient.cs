@@ -7,7 +7,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Collections.Concurrent;
 
 namespace Nethostfire {
     public class UDpClient {
@@ -21,13 +20,17 @@ namespace Nethostfire {
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
         static Thread SendOnlineThread, ClientReceiveUDPThread;
         /// <summary>
-        /// OnReceivedBytesServer an event that returns bytes received and GroupID whenever the received bytes by clients, with it you can manipulate the bytes received.
+        /// OnReceivedBytes an event that returns bytes received and GroupID whenever the received bytes by clients, with it you can manipulate the bytes received.
         /// </summary>
-        public static Action<byte[], int> OnReceivedBytesServer;
+        public static Action<byte[], int> OnReceivedBytes;
         /// <summary>
-        /// OnClientStatusConnection is an event that returns Client.ClientStatusConnection whenever the status changes, with which you can use it to know the current status of the server.
+        /// OnClientStatus is an event that returns Client.ClientStatusConnection whenever the status changes, with which you can use it to know the current status of the server.
         /// </summary>
-        public static Action<ClientStatusConnection> OnClientStatusConnection;
+        public static Action<ClientStatusConnection> OnClientStatus;
+        /// <summary>
+        /// OnShippedBytes is an event that returns a groupID whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
+        /// </summary>
+        public static Action<int> OnShippedBytes;
         /// <summary>
         /// PublicKeyRSA returns the RSA public key obtained by the server after connecting.
         /// </summary>
@@ -216,13 +219,15 @@ namespace Nethostfire {
 
                     if(data.Length > 1){
                         var _data = Utility.ByteToReceive(data, Socket);
-                        if(!Utility.listHoldConnectionClient.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
+                        if(Utility.listHoldConnectionClient.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
+                            Utility.RunOnMainThread(() => OnShippedBytes?.Invoke(_data.Item2));
+                        else
                             lostPackets++;
                         switch(_data.Item3){
                             case TypeContent.Foreground:
                                 if(Status == ClientStatusConnection.Connected){
                                     packetsReceived += data.Length;
-                                    Utility.RunOnMainThread(() => OnReceivedBytesServer?.Invoke(_data.Item1, _data.Item2));
+                                    Utility.RunOnMainThread(() => OnReceivedBytes?.Invoke(_data.Item1, _data.Item2));
                                 }
                             break;
                             case TypeContent.Background:
@@ -290,7 +295,7 @@ namespace Nethostfire {
                     lostPackets = 0;
                 }
 
-                Utility.RunOnMainThread(() => OnClientStatusConnection?.Invoke(Status));
+                Utility.RunOnMainThread(() => OnClientStatus?.Invoke(Status));
 
                 switch(_status){
                     case ClientStatusConnection.Connecting:

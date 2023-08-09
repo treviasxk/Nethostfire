@@ -28,8 +28,9 @@
     - [UDpServer.ShowDebugConsole](#ShowDebugConsole)
     - [UDpServer.OnConnectedClient](#OnConnectedClient)
     - [UDpServer.OnDisconnectedClient](#OnDisconnectedClient)
-    - [UDpServer.ServerStatusConnection](#OnServerStatusConnection)
-    - [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient);
+    - [UDpServer.ServerStatusConnection](#OnServerStatus)
+    - [UDpServer.OnReceivedBytes](#OnReceivedBytesClient);
+    - [UDpServer.OnShippedBytes](#OnShippedBytesClient);
 - UDpClient
     - [UDpClient.Connect](#UDpClientConnect)
     - [UDpClient.SendBytes](#UDpClientSendBytes)
@@ -45,8 +46,9 @@
     - [UDpClient.ShowUnityNetworkStatistics](#ShowUnityNetworkStatistics)
     - [UDpClient.ShowDebugConsole](#ShowDebugConsole)
     - [UDpClient.Ping](#Ping)
-    - [UDpClient.OnReceivedBytesServer](#OnReceivedBytesServer)
-    - [UDpClient.ClientStatusConnection](#OnClientStatusConnection)
+    - [UDpClient.OnReceivedBytes](#OnReceivedBytesServer)
+    - [UDpClient.OnShippedBytes](#OnShippedBytesServer);
+    - [UDpClient.ClientStatusConnection](#OnClientStatus)
     - [UDpClient.PublicKeyRSA](#PublicKeyRSA)
     - [UDpClient.PrivateKeyAES](#PrivateKeyAES)
 - Others
@@ -204,7 +206,7 @@ To disconnect alls clients from server.
 ```cs
 UDpServer.ChangeLimitMaxByteSizeGroupID(4, 12);
 ```
-The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a [GroupID](#GroupID) that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient) event with the received bytes. The default value _limitBytes is 0 which is unlimited.
+The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a [GroupID](#GroupID) that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value _limitBytes is 0 which is unlimited.
 
 -----
 
@@ -214,7 +216,7 @@ The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a [G
 ```cs
 UDpServer.ChangeLimitMaxPacketsPerSecondsGroupID(4, 60);
 ```
-The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a [GroupID](#GroupID), if the packets is greater than the limit in 1 second, the server will not call the [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient) event with the received bytes. The default value is _limitBytes 0 which is unlimited.
+The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a [GroupID](#GroupID), if the packets is greater than the limit in 1 second, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is _limitBytes 0 which is unlimited.
 
 -----
 
@@ -251,7 +253,7 @@ The ClientsCount is the total number of clients connected to the server.
 // Limit in 12 bytes;
 UDpServer.LimitMaxByteReceive = 12;
 ```
-The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
+The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
 
 -----
 
@@ -262,7 +264,7 @@ The LimitMaxByteReceive will change the maximum limit of bytes that the server w
 // Limit in 60 pps;
 UDpServer.LimitMaxPacketsPerSeconds = 60;
 ```
-The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
+The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
 
 -----
 
@@ -396,7 +398,7 @@ static void OnConnectedClient(DataClient _dataClient){
     Console.WriteLine(_dataClient.IP + " new client conected!");
 }
 ```
-OnConnectedClient is an event that you can use to receive the [DataClient](#DataClient) whenever a new client connected.
+OnConnectedClient is an event that you can use to receive the [DataClient](#DataClient) whenever a client connected.
 
 -----
 
@@ -413,33 +415,33 @@ static void OnDisconnectedClient(DataClient _dataClient){
     Console.WriteLine(_dataClient.IP + " new client conected!");
 }
 ```
-OnDisconnectedClient is an event that you can use to receive the [DataClient](#DataClient) whenever a new client disconnected.
+OnDisconnectedClient is an event that you can use to receive the [DataClient](#DataClient) whenever a client disconnected.
 
 -----
 
-<a name="OnServerStatusConnection"></a>
+<a name="OnServerStatus"></a>
 ### UDpServer.ServerStatusConnection
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpServer.ServerStatusConnection += OnServerStatusConnection;
+    UDpServer.ServerStatusConnection += OnServerStatus;
     UDpServer.Start(IPAddress.Any, 25000);
 }
 
-static void OnServerStatusConnection(ServerStatusConnection _status){
+static void OnServerStatus(ServerStatusConnection _status){
     Console.WriteLine("UDpServer Status: " + _status);
 }
 ```
-OnServerStatusConnection is an event that returns [UDpServer.ServerStatusConnection](#ServerStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
+OnServerStatus is an event that returns [UDpServer.ServerStatusConnection](#ServerStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
 
 -----
 
 <a name="OnReceivedBytesClient"></a>
-### UDpServer.OnReceivedBytesClient
+### UDpServer.OnReceivedBytes
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpServer.OnReceivedBytesClient += OnReceivedBytesClient;
+    UDpServer.OnReceivedBytes += OnReceivedBytesClient;
     UDpServer.Start(IPAddress.Any, 25000);
 }
 
@@ -448,6 +450,23 @@ static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataCl
 }
 ```
 OnReceivedBytesClient an event that returns bytes received, [GroupID](#GroupID) and [DataClient](#DataClient) whenever the received bytes by clients, with it you can manipulate the bytes received.
+
+-----
+
+<a name="OnShippedBytesClient"></a>
+### UDpServer.OnShippedBytes
+`Event`
+```cs
+static void Main(string[] args){
+    UDpServer.OnShippedBytes += OnShippedBytesClient;
+}
+
+static void OnShippedBytesClient(int _groupID, DataClient _dataClient){
+    Console.WriteLine("[SHIPPED] GroupID: {0} to {1}", _groupID, _dataClient.IP);
+}
+```
+OnShippedBytes is an event that returns a groupID and DataClient whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
+
 
 ## Client
 <a name="UDpClientConnect"></a>
@@ -555,11 +574,11 @@ ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiv
 -----
 
 <a name="OnReceivedBytesServer"></a>
-### UDpClient.OnReceivedBytesServer
+### UDpClient.OnReceivedBytes
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpClient.OnReceivedBytesServer += OnReceivedBytesServer;
+    UDpClient.OnReceivedBytes += OnReceivedBytesServer;
     UDpClient.Connect(IPAddress.Parse("127.0.0.1"), 25000);
 }
 
@@ -571,20 +590,36 @@ OnReceivedBytesServer an event that returns bytes received and [GroupID](#GroupI
 
 -----
 
-<a name="OnClientStatusConnection"></a>
+<a name="OnShippedBytesServer"></a>
+### UDpClient.OnShippedBytes
+`Event`
+```cs
+static void Main(string[] args){
+    UDpClient.OnShippedBytes += OnShippedBytesServer;
+}
+
+static void OnShippedBytesServer(int _groupID){
+    Console.WriteLine("[SHIPPED] GroupID: {0} to server", _groupID);
+}
+```
+OnShippedBytes is an event that returns a groupID whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
+
+-----
+
+<a name="OnClientStatus"></a>
 ### UDpClient.ClientStatusConnection
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpClient.ClientStatusConnection += OnClientStatusConnection;
+    UDpClient.ClientStatusConnection += OnClientStatus;
     UDpServer.Start(IPAddress.Any, 25000);
 }
 
-static void OnClientStatusConnection(ClientStatusConnection _status){
+static void OnClientStatus(ClientStatusConnection _status){
     Console.WriteLine("Client Status: " + _status);
 }
 ```
-OnClientStatusConnection is an event that returns [UDpClient.ClientStatusConnection](#ClientStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
+OnClientStatus is an event that returns [UDpClient.ClientStatusConnection](#ClientStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
 
 -----
 
@@ -605,7 +640,7 @@ Ping returns an integer value, this value is per milliseconds
 ### UDpClient.PublicKeyRSA
 `Read-Only Variable`
 ```cs
-static void OnClientStatusConnection(ClientStatusConnection _status){
+static void OnClientStatus(ClientStatusConnection _status){
     if(_status == ClientStatusConnection.Connected){
         string publicKeyRSA = UDpClient.PublicKeyRSA;
         Console.WriteLine("Public Key RSA: {0}", publicKeyRSA);
@@ -620,7 +655,7 @@ PublicKeyRSA returns the RSA public key obtained by the server after connecting.
 ### UDpClient.PrivateKeyAES
 `Read-Only Variable`
 ```cs
-static void OnClientStatusConnection(ClientStatusConnection _status){
+static void OnClientStatus(ClientStatusConnection _status){
     if(_status == ClientStatusConnection.Connected){
         string privateKeyAES = UDpClient.PrivateKeyAES;
         Console.WriteLine("Private Key AES: {0}", privateKeyAES);
@@ -695,7 +730,7 @@ public class DataClient{
     public byte[] PrivateKeyAES = null; // Private AES key
 }
 ```
-The DataClient class is used to store data from a client on the server. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient), [UDpClient.OnReceivedBytesServer](#OnReceivedBytesServer), [UDpServer.OnConnectedClient](#OnConnectedClient) and [UDpServer.OnDisconnectedClient](#OnDisconnectedClient)
+The DataClient class is used to store data from a client on the server. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events [UDpServer.OnReceivedBytes](#OnReceivedBytesClient), [UDpClient.OnReceivedBytes](#OnReceivedBytesServer), [UDpServer.OnConnectedClient](#OnConnectedClient) and [UDpServer.OnDisconnectedClient](#OnDisconnectedClient)
 
 -----
 
@@ -710,7 +745,7 @@ public enum ServerStatusConnection{
     Restarting = 4,
 }
 ```
-The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the [UDpServer.Status](#Status) variable or with the event [UDpServer.ServerStatusConnection](#OnServerStatusConnection)
+The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the [UDpServer.Status](#Status) variable or with the event [UDpServer.ServerStatusConnection](#OnServerStatus)
 
 -----
 
@@ -766,13 +801,13 @@ public enum ClientStatusConnection{
     MaxClientExceeded = 6, // The server has exceeded the limit of connected clients
 }
 ```
-The ClientStatusConnection is used to define client states. The ClientStatusConnection can be obtained by the [UDpClient.Status](#UDpClientStatus) variable or with the event [UDpClient.ClientStatusConnection](#OnClientStatusConnection)
+The ClientStatusConnection is used to define client states. The ClientStatusConnection can be obtained by the [UDpClient.Status](#UDpClientStatus) variable or with the event [UDpClient.ClientStatusConnection](#OnClientStatus)
 
 ## FAQ
 
 <a name="GroupID"></a>
 ### GroupID
-GroupID is a way to organize your shipments with high performance, whenever you send bytes with the UDpServer or Client the GroupID will be obtained in the following events: [UDpServer.OnReceivedBytesClient](#OnReceivedBytesClient) and [UDpClient.OnReceivedBytesServer](#OnReceivedBytesServer).
+GroupID is a way to organize your shipments with high performance, whenever you send bytes with the UDpServer or Client the GroupID will be obtained in the following events: [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) and [UDpClient.OnReceivedBytes](#OnReceivedBytesServer).
 
 -----
 
