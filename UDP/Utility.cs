@@ -556,7 +556,7 @@ namespace Nethostfire {
                 if(UnityBatchMode)
                     Console.Clear();
                 UnityEngine.GameObject runThreadUnity = new UnityEngine.GameObject("Nethostfire");
-                runThreadUnity.AddComponent<ServiceNetwork>();
+                runThreadUnity.AddComponent<NethostfireService>();
             }
         }
     }

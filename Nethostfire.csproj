@@ -8,13 +8,13 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <Version>2.2.4.0</Version>
-    <AssemblyVersion>2.2.4.0</AssemblyVersion>
-    <FileVersion>2.2.4.0</FileVersion>
-    <Company>Trevias Xk</Company>
+    <Version>2.2.5.0</Version>
+    <AssemblyVersion>2.2.5.0</AssemblyVersion>
+    <FileVersion>2.2.5.0</FileVersion>
+    <Company>treviasxk</Company>
     <Authors>Trevias Xk</Authors>
     <Product>Nethostfire</Product>
-    <Description>Nethostfire is a server created in Netstandard2.0 with C#, it's a simple and easy-to-understand project, it's perfect for creating game servers like Unity 3D for example.</Description>
+    <Description>Nethostfire is a library (netstandard2.1) to create UDP server and client in C#, with encryption support, Unity 3D integration and several other advanced features to facilitate communication between client and server.</Description>
     <Copyright>Trevias Xk © 2023</Copyright>
     <RootNamespace>Nethostfire</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
