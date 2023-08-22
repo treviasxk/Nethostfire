@@ -9,9 +9,9 @@ using Nethostfire;
 
 public class NethostfireService : MonoBehaviour{
     [Header("Nethostfire")]
-    GUIStyle TextStyle = new GUIStyle();
+    GUIStyle TextStyle = new();
     Material mat;
-    List<ChartGraph> ListGraph = new List<ChartGraph>();
+    List<ChartGraph> ListGraph = new();
     ChartGraph Latency, FPS;
     float tmp, count;
 
@@ -25,18 +25,15 @@ public class NethostfireService : MonoBehaviour{
         UDpServer.Stop();
         UDpClient.OnClientStatus = null;
         UDpClient.OnReceivedBytes = null;
-        UDpClient.OnShippedBytes = null;
         UDpServer.OnConnectedClient = null;
         UDpServer.OnDisconnectedClient = null;
         UDpServer.OnReceivedBytes = null;
         UDpServer.OnServerStatus = null;
-        UDpServer.OnShippedBytes = null;
         UDpClient.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();
         Utility.BlockUdpDuplicationClientReceive.Clear();
         Utility.BlockUdpDuplicationServerReceive.Clear();
-        Utility.listHoldConnectionClientQueue.Clear();
     }
 
     void Awake(){
@@ -101,7 +98,7 @@ public class NethostfireService : MonoBehaviour{
         public string Name;
         public float value;
         public float maxValue;
-        public List<float> values = new List<float>();
+        public List<float> values = new();
     }
 
     void AddValueGraph(float value, ChartGraph graph){
@@ -118,10 +115,12 @@ public class NethostfireService : MonoBehaviour{
     }
 
     ChartGraph CreateGraph(int maxValue, string name, Rect windowRect){
-        ChartGraph graph = new ChartGraph();
-        graph.windowRect = windowRect;
-        graph.maxValue = maxValue; 
-        graph.Name = name;
+        ChartGraph graph = new()
+        {
+            windowRect = windowRect,
+            maxValue = maxValue,
+            Name = name
+        };
         ListGraph.Add(graph);
         return graph;
     }
@@ -176,9 +175,11 @@ public class NethostfireService : MonoBehaviour{
 
             GL.End();
             GL.PopMatrix();
-            var style = new GUIStyle();
-            style.alignment = TextAnchor.UpperRight;
-            style.fontSize = 10;
+            var style = new GUIStyle
+            {
+                alignment = TextAnchor.UpperRight,
+                fontSize = 10
+            };
             GUI.Label(new Rect(graph.windowRect.x,graph.windowRect.y,graph.windowRect.width,graph.windowRect.height),"<color=white>"+ graph.Name + ": " + graph.value + "</color>", style);
         }
     }

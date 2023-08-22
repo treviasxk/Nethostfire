@@ -12,7 +12,7 @@ namespace Nethostfire {
     public class UDpClient {
         public static UdpClient Socket;
         static IPEndPoint host;
-        static int packetsCount, pingCount, packetsTmp, timeTmp, symmetricSizeRSA, connectTimeOut = 10000, lostPackets, pingTmp;
+        static int packetsCount, pingCount, packetsTmp, timeTmp, connectTimeOut = 10000, lostPackets, pingTmp;
         static long timeLastPacket;
         static bool showUnityNetworkStatistics = false;
         static string publicKeyRSA = null;
@@ -27,10 +27,6 @@ namespace Nethostfire {
         /// OnClientStatus is an event that returns Client.ClientStatusConnection whenever the status changes, with which you can use it to know the current status of the server.
         /// </summary>
         public static Action<ClientStatusConnection> OnClientStatus;
-        /// <summary>
-        /// OnShippedBytes is an event that returns a groupID whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
-        /// </summary>
-        public static Action<int> OnShippedBytes;
         /// <summary>
         /// PublicKeyRSA returns the RSA public key obtained by the server after connecting.
         /// </summary>
@@ -87,7 +83,6 @@ namespace Nethostfire {
                 Socket = new UdpClient();
                 Socket.Client.SendTimeout = Utility.receiveAndSendTimeOut;
                 Socket.Client.ReceiveTimeout = Utility.receiveAndSendTimeOut;
-                symmetricSizeRSA = _symmetricSizeRSA;
                 Utility.GenerateKey(TypeUDP.Client, _symmetricSizeRSA);
                 host = new IPEndPoint(_ip, _port);
                 try{
@@ -98,16 +93,20 @@ namespace Nethostfire {
                 timeLastPacket = Environment.TickCount;
 
                 if(ClientReceiveUDPThread == null){
-                    ClientReceiveUDPThread = new Thread(ClientReceiveUDP);
-                    ClientReceiveUDPThread.IsBackground = true;
-                    ClientReceiveUDPThread.Priority = ThreadPriority.Highest;
+                    ClientReceiveUDPThread = new Thread(ClientReceiveUDP)
+                    {
+                        IsBackground = true,
+                        Priority = ThreadPriority.Highest
+                    };
                     ClientReceiveUDPThread.SetApartmentState(ApartmentState.MTA);
                     ClientReceiveUDPThread.Start();
                 }
                 if(SendOnlineThread == null){
-                    SendOnlineThread = new Thread(SendOnline);
-                    SendOnlineThread.IsBackground = true;
-                    SendOnlineThread.Priority = ThreadPriority.Highest;
+                    SendOnlineThread = new Thread(SendOnline)
+                    {
+                        IsBackground = true,
+                        Priority = ThreadPriority.Highest
+                    };
                     SendOnlineThread.SetApartmentState(ApartmentState.MTA);
                     SendOnlineThread.Start();
                 }                    
@@ -134,7 +133,6 @@ namespace Nethostfire {
                 privateKeyAES = null;
                 Utility.listHoldConnectionClient.Clear();
                 Utility.BlockUdpDuplicationClientReceive.Clear();
-                Utility.listHoldConnectionClientQueue.Clear();
                 if(Status == ClientStatusConnection.Disconnecting)
                     ChangeStatus(ClientStatusConnection.Disconnected);
                 if(Status == ClientStatusConnection.Connecting)
@@ -148,35 +146,11 @@ namespace Nethostfire {
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                 if(_byte == null)
                     _byte = new byte[]{};
-                if(_typeHoldConnection == TypeHoldConnection.Enqueue)
-                    PrepareEnqueued(_byte, _groupID, _typeShipping);
-                else
-                    PrepareSend(_byte, _groupID, _typeShipping, _typeHoldConnection);
+                if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, Utility.IndexShipping++))
+                    lostPackets++;
+                packetsSent += _byte.Length;
+                packetsTmp++;
             }
-        }
-
-        static void PrepareSend(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
-            if(_typeHoldConnection != TypeHoldConnection.None){
-                if(Utility.listHoldConnectionClient.TryGetValue(_groupID, out var HoldConnection)){
-                    HoldConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                    HoldConnection.Bytes = _byte;
-                    HoldConnection.TypeShipping = _typeShipping;
-                    HoldConnection.TypeContent = (Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background);
-                }else
-                    Utility.listHoldConnectionClient.TryAdd(_groupID, new HoldConnection{Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background});
-            }
-            if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background))
-                lostPackets++;
-            packetsSent += _byte.Length;
-            packetsTmp++;
-        }
-
-        static void PrepareEnqueued(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None){
-            if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
-                Utility.listHoldConnectionClientQueue.Enqueue(new HoldConnectionQueue(){GroupID = _groupID, Bytes = _byte, TypeShipping = _typeShipping});
-            if(Utility.listHoldConnectionClientQueue.TryPeek(out var hccq))
-                if(hccq.GroupID == _groupID)
-                    PrepareSend(_byte, _groupID, _typeShipping, TypeHoldConnection.Auto);
         }
 
         private static async void ClientReceiveUDP(){
@@ -219,10 +193,7 @@ namespace Nethostfire {
 
                     if(data.Length > 1){
                         var _data = Utility.ByteToReceive(data, Socket);
-                        if(Utility.listHoldConnectionClient.TryRemove(_data.Item2, out _) && _data.Item1.Length == 0)
-                            Utility.RunOnMainThread(() => OnShippedBytes?.Invoke(_data.Item2));
-                        else
-                            lostPackets++;
+                        Utility.listHoldConnectionClient.TryRemove(_data.Item5, out _);
                         switch(_data.Item3){
                             case TypeContent.Foreground:
                                 if(Status == ClientStatusConnection.Connected){
@@ -237,7 +208,7 @@ namespace Nethostfire {
                                         switch(_data.Item4){
                                             case TypeShipping.RSA:
                                                 publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
-                                                SendBytes(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, TypeHoldConnection.Manual);
+                                                SendBytes(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, TypeHoldConnection.NotEnqueue);
                                             break;
                                             case TypeShipping.AES:
                                                 privateKeyAES = _data.Item1;
@@ -272,7 +243,7 @@ namespace Nethostfire {
                     Parallel.ForEach(Utility.listHoldConnectionClient, item => {
                         if(item.Value.Time < Environment.TickCount){
                             item.Value.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                            if(!Utility.Send(Socket, item.Value.Bytes, item.Key, item.Value.TypeShipping, item.Value.TypeHoldConnection, item.Value.TypeContent))
+                            if(!Utility.Send(Socket, item.Value.Bytes, item.Value.GroupID, item.Value.TypeShipping, item.Value.TypeHoldConnection, item.Value.TypeContent, item.Key))
                                 lostPackets++;
                             lostPackets++;
                         }
@@ -303,9 +274,8 @@ namespace Nethostfire {
                         privateKeyAES = null;
                         Utility.listHoldConnectionClient.Clear();
                         Utility.BlockUdpDuplicationClientReceive.Clear();
-                        Utility.listHoldConnectionClientQueue.Clear();
                         timeLastPacket = Environment.TickCount;
-                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.Manual);
+                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
                         Utility.ShowLog("Connecting on " + host);
                     break;
                     case ClientStatusConnection.Connected:

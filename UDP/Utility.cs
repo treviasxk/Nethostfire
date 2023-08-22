@@ -11,6 +11,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Nethostfire {
     /// <summary>
@@ -45,8 +46,7 @@ namespace Nethostfire {
         /// Private AES key
         /// </summary>
         public byte[] PrivateKeyAES = null;
-        public ConcurrentQueue<HoldConnectionQueue> ListHoldConnectionQueue = new ConcurrentQueue<HoldConnectionQueue>();
-        public ConcurrentDictionary<int, HoldConnection> ListHoldConnection = new ConcurrentDictionary<int, HoldConnection>();
+        public ConcurrentDictionary<int, HoldConnection> ListHoldConnection = new();
     }
     
     /// <summary>
@@ -55,17 +55,13 @@ namespace Nethostfire {
     public enum TypeHoldConnection {
         None = 0,
         /// <summary>
-        /// With Auto, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
+        /// With NotEnqueue, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
         /// </summary>
-        Auto = 1,
+        NotEnqueue = 1,
         /// <summary>
-        /// With Manual, when the packet arrives at its destination, it is necessary that the Client/Server responds back by sending any byte for the same GroupID received. If it doesn't respond, the client/server that sent the Manual will be stuck in a send loop.
+        /// With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
         /// </summary>
-        Manual = 2,
-        /// <summary>
-        /// With Enqueue the bytes are adds in a queue and sent 1 packet at a time, sending is done with HoldConnection in Auto. This feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms.
-        /// </summary>
-        Enqueue = 3,
+        //Enqueue = 2,
     }
 
     /// <summary>
@@ -146,6 +142,7 @@ namespace Nethostfire {
     }
     
     public class HoldConnection{
+        public int GroupID;
         public byte[] Bytes {get;set;}
         public int Time {get;set;}
         public TypeShipping TypeShipping {get;set;}
@@ -153,22 +150,16 @@ namespace Nethostfire {
         public TypeHoldConnection TypeHoldConnection {get;set;}
     }
 
-    public struct HoldConnectionQueue{
-        public int GroupID {get;set;}
-        public byte[] Bytes {get;set;}
-        public TypeShipping TypeShipping {get;set;}
-    }
-
     class Utility {
         public static string PublicKeyRSAClient, PrivateKeyRSAClient, PublicKeyRSAServer, PrivateKeyRSAServer;
         public static byte[] PrivateKeyAESClient, PrivateKeyAESServer;
         public static int receiveAndSendTimeOut = 1000;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
-        public static ConcurrentQueue<Action> ListRunOnMainThread = new ConcurrentQueue<Action>();
-        public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationServerReceive = new ConcurrentDictionary<byte[], int>();
-        public static ConcurrentDictionary<byte[], int> BlockUdpDuplicationClientReceive = new ConcurrentDictionary<byte[], int>();
-        public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionClient = new ConcurrentDictionary<int, HoldConnection>();
-        public static ConcurrentQueue<HoldConnectionQueue> listHoldConnectionClientQueue = new ConcurrentQueue<HoldConnectionQueue>();
+        public static ConcurrentQueue<Action> ListRunOnMainThread = new();
+        public static ConcurrentDictionary<int, int> BlockUdpDuplicationServerReceive = new();
+        public static ConcurrentDictionary<int, int> BlockUdpDuplicationClientReceive = new();
+        public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionClient = new();
+        public static int IndexShipping = 1;
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
 
@@ -206,24 +197,24 @@ namespace Nethostfire {
                 LoadUnity();
                 RunningInUnity = true;
                 if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    if(Utility.UnityBatchMode || !Utility.RunningInUnity)
-                        Utility.Process.PriorityClass = ProcessPriorityClass.High;
+                    if(UnityBatchMode || !RunningInUnity)
+                        Process.PriorityClass = ProcessPriorityClass.High;
             }catch{}
         }
 
         public static void GenerateKey(TypeUDP typeUDP,int SymmetricSize){
             string publicKeyRSA, privateKeyRSA;
             byte[] privateKeyAES;
-            AES = AES == null ? Aes.Create() : AES;
+            AES ??= Aes.Create();
             int value = (SymmetricSize - 6) * 8 + 384;
             if(value >= 464 && value <= 4096){
                 using(var RSA = new RSACryptoServiceProvider(value)){
                     privateKeyRSA = RSA.ToXmlString(true);
                     publicKeyRSA = RSA.ToXmlString(false);
                 }
-                privateKeyAES = GetHashMD5(System.Text.Encoding.ASCII.GetBytes(privateKeyRSA));
+                privateKeyAES = GetHashMD5(Encoding.ASCII.GetBytes(privateKeyRSA));
             }else
-                throw new Exception(Utility.ShowLog("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6)));
+                throw new Exception(ShowLog("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6)));
            
             switch(typeUDP){
                 case TypeUDP.Server:
@@ -239,44 +230,38 @@ namespace Nethostfire {
             }
         }
 
-        public static (byte[], int, TypeContent, TypeShipping) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
+        public static (byte[], int, TypeContent, TypeShipping, int) ByteToReceive(byte[] _byte, UdpClient _udpClient, DataClient _dataClient = null){
             TypeShipping _TypeShipping;
             TypeContent _typeContent;
             byte[] data;
             byte[] type;
             int _groupID;
+            int _indexID;
+
             try{
-                if(_byte[0] == 3){
+                if(_byte[0] == 3){                              // confirm respond
                     type = new byte[_byte[1]];
                     type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
-                    _groupID = BitConverter.ToInt32(type, 0);
-                    if(_dataClient == null){
-                        if(listHoldConnectionClientQueue.TryPeek(out var hccq))
-                            if(hccq.GroupID == _groupID)
-                                if(listHoldConnectionClientQueue.TryDequeue(out _))
-                                    if(listHoldConnectionClientQueue.TryPeek(out var hccq2))
-                                        UDpClient.SendBytes(hccq2.Bytes, hccq2.GroupID, hccq2.TypeShipping, TypeHoldConnection.Auto);
-                    }else{
-                        if(_dataClient.ListHoldConnectionQueue.TryPeek(out var hccq))
-                            if(hccq.GroupID == _groupID)
-                                if(_dataClient.ListHoldConnectionQueue.TryDequeue(out _))
-                                    if(_dataClient.ListHoldConnectionQueue.TryPeek(out var hccq2))
-                                        UDpServer.SendBytes(hccq2.Bytes, hccq2.GroupID, _dataClient, hccq2.TypeShipping, TypeHoldConnection.Auto);
-                    }
-                    
-                    return (new byte[]{}, _groupID, TypeContent.Background, TypeShipping.None);
+                    _indexID = BitConverter.ToInt16(type, 0);
+                    return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, _indexID);
                 }
 
                 type = new byte[_byte[3]];
-                type = _byte.Skip(4).ToArray().Take(_byte[3]).ToArray();
-                data = new byte[_byte.Length - type.Length - 4];
-                _byte.Skip(4 + _byte[3]).ToArray().CopyTo(data,0);
+                type = _byte.Skip(5).Take(_byte[3]).ToArray();
+                _groupID = BitConverter.ToInt16(type, 0);
 
-                _groupID = BitConverter.ToInt32(type, 0);
+
+                type = new byte[_byte[4]];
+                type = _byte.Skip(5 + _byte[3]).Take(_byte[4]).ToArray();
+                _indexID = BitConverter.ToInt32(type, 0);
+                
+                data = new byte[_byte.Length - _byte[3] - _byte[4] - 5];
+                _byte.Skip(5 + _byte[3] +  _byte[4]).ToArray().CopyTo(data,0);
+
                 _TypeShipping = (TypeShipping)_byte[2];
                 _typeContent = (TypeContent)_byte[1];
             }catch{
-                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
+                return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, 0);
             }
 
             if(_typeContent == TypeContent.Background)
@@ -315,47 +300,48 @@ namespace Nethostfire {
             }
 
             if(_TypeShipping != TypeShipping.None && _byte.Length == 0)
-                return (null, 0, TypeContent.Background, TypeShipping.None);
+                return (null, 0, TypeContent.Background, TypeShipping.None, 0);
 
             try{
-                if(_byte[0] == 1){
-                    byte[] data2 = new byte[_byte[3] + 2];
-                    data2[0] = 3;               // Hold Connection respond
-                    data2[1] = _byte[3];        // The size of groupID
-                    type.CopyTo(data2, 2);      // GroupID
-                    SendPing(_udpClient, data2, _dataClient);      
+                if(_byte[0] == 1){                                          // return auto
+                    byte[] data2 = new byte[_byte[4] + 2];
+                    data2[0] = 3;                                           // Hold Connection respond
+                    data2[1] = _byte[4];                                    // The size of indexID
+                    type.CopyTo(data2, 2);                                  // IndexID
+                    SendPing(_udpClient, data2, _dataClient);
                 }
+
                 // Block Udp Duplication receive
                 if(_byte[0] == 1 || _byte[0] == 2)
                     if(_dataClient != null){
-                        if(BlockUdpDuplicationServerReceive.TryGetValue(data, out int time)){
+                        if(BlockUdpDuplicationServerReceive.TryGetValue(_indexID, out int time)){
                             if(time + receiveAndSendTimeOut < Environment.TickCount)
-                                BlockUdpDuplicationServerReceive[data] = Environment.TickCount;
+                                BlockUdpDuplicationServerReceive[_indexID] = Environment.TickCount;
                             else
-                                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
+                                return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None,0 );
                         }else
-                            BlockUdpDuplicationServerReceive.TryAdd(data, Environment.TickCount);
+                            BlockUdpDuplicationServerReceive.TryAdd(_indexID, Environment.TickCount);
                     }else
-                        if(BlockUdpDuplicationClientReceive.TryGetValue(data, out int time)){
+                        if(BlockUdpDuplicationClientReceive.TryGetValue(_indexID, out int time)){
                             if(time + receiveAndSendTimeOut < Environment.TickCount)
-                                BlockUdpDuplicationClientReceive[data] = Environment.TickCount;
+                                BlockUdpDuplicationClientReceive[_indexID] = Environment.TickCount;
                             else
-                                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
+                                return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, 0);
                         }else
-                            BlockUdpDuplicationClientReceive.TryAdd(data, Environment.TickCount);
+                            BlockUdpDuplicationClientReceive.TryAdd(_indexID, Environment.TickCount);
                     
                 foreach(var item in BlockUdpDuplicationServerReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
                     BlockUdpDuplicationServerReceive.TryRemove(item.Key, out _);
                 foreach(var item in BlockUdpDuplicationClientReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
                     BlockUdpDuplicationClientReceive.TryRemove(item.Key, out _);
                 
-                return (data.Length > 1 ? data : new byte[]{}, _groupID, _typeContent, _TypeShipping);
+                return (data.Length > 1 ? data : ""u8.ToArray(), _groupID, _typeContent, _TypeShipping, _indexID);
             }catch{
-                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None);
+                return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, 0);
             }
         }
         
-        public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, DataClient _dataClient = null){
+        public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, int _indexID, DataClient _dataClient = null){
             if(_typeContent == TypeContent.Background)
             switch(_TypeShipping){
                 case TypeShipping.RSA:
@@ -375,14 +361,14 @@ namespace Nethostfire {
                     _byte = EncryptRSA(_byte, _dataClient != null ? _dataClient.PublicKeyRSA : UDpClient.PublicKeyRSA);
                 break;
                 case TypeShipping.Base64:
-                    _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                    _byte = EncryptBase64(_byte) == "" ? ""u8.ToArray() : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
                 break;
                 case TypeShipping.Compress:
                     _byte = Compress(_byte);
                 break;
                 case TypeShipping.OnlyBase64:
                     if(_dataClient == null)
-                    _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                    _byte = EncryptBase64(_byte) == "" ? ""u8.ToArray() : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
                 break;
                 case TypeShipping.OnlyCompress:
                     if(_dataClient == null)
@@ -391,35 +377,45 @@ namespace Nethostfire {
             }
 
              if(_TypeShipping != TypeShipping.None && _byte.Length == 0)
-                return null;
+                return ""u8.ToArray();
 
-            try{               
+            try{
                 byte[] groupID = BitConverter.GetBytes(_groupID);
-                byte[] data = new byte[_byte.Length + groupID.Length + 4];
+                byte[] indexID = BitConverter.GetBytes(_indexID);
+                byte[] data = new byte[_byte.Length + indexID.Length + groupID.Length + 5]; //5 é a quantidade de dados
 
-                data[0] = (byte)_typeHoldConnection;                // If is HoldConnection. 0 = disable, 1 = auto, 2 = manual
+                //dados
+                data[0] = (byte)_typeHoldConnection;                // If is HoldConnection. 0 = disable, 1 = auto, 2 = enqueued
                 data[1] = (byte)_typeContent;                       // O tipo de conteúdo
                 data[2] = (byte)_TypeShipping;                      // O tipo de criptografia
                 data[3] = (byte)groupID.Length;                     // O tamanho do groupID
+                data[4] = (byte)indexID.Length;                     // O tamanho do index
 
-                groupID.CopyTo(data, 4);                            // GroupID
-                _byte.CopyTo(data, 4 + groupID.Length);             // bytes
-
+                groupID.CopyTo(data, 5);                                    // GroupID
+                indexID.CopyTo(data, 5 + groupID.Length);                   // indexID
+                _byte.CopyTo(data, 5 + indexID.Length + groupID.Length);    // bytes
                 return data;
             }
             catch{
-                return new byte[]{};
+                return ""u8.ToArray();
             }
         }
 
-        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _typeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, DataClient _dataClient = null){
-            byte[] buffer = ByteToSend(_byte, _groupID, _typeShipping, _typeHoldConnection, _typeContent, _dataClient);
+        public static bool Send(UdpClient _udpClient, byte[] _byte, int _groupID, TypeShipping _typeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, int _indexID, DataClient _dataClient = null){
+            byte[] _buffer = ByteToSend(_byte, _groupID, _typeShipping, _typeHoldConnection, _typeContent, _indexID, _dataClient);
             try{
-                if(buffer.Length != 0){
-                    if(_dataClient == null)
-                        _udpClient.Send(buffer, buffer.Length);
-                    else
-                        _udpClient.Send(buffer, buffer.Length, _dataClient.IP);
+                if(_buffer.Length != 0){
+                    if(_dataClient == null){
+                        if(_typeHoldConnection != TypeHoldConnection.None){
+                            listHoldConnectionClient.TryAdd(_indexID, new HoldConnection{GroupID = _groupID, Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = UDpClient.Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = _typeHoldConnection});
+                        }
+                        _udpClient.Send(_buffer, _buffer.Length);
+                    }else{
+                        if(_typeHoldConnection != TypeHoldConnection.None){
+                            _dataClient.ListHoldConnection.TryAdd(_indexID, new HoldConnection(){GroupID = _groupID, Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = _dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = _typeHoldConnection});
+                        }
+                        _udpClient.Send(_buffer, _buffer.Length, _dataClient.IP);
+                    }
                     return true;
                 }else
                     return false;
@@ -444,43 +440,51 @@ namespace Nethostfire {
             }
         }
         private static byte[] EncryptRSA(byte[] _byte, string _publicKeyRSA){
-            using(var RSA = new RSACryptoServiceProvider())
-            try{
+            using var RSA = new RSACryptoServiceProvider();
+            try
+            {
                 RSA.FromXmlString(_publicKeyRSA);
                 return RSA.Encrypt(_byte, true);
-            }catch{
+            }
+            catch
+            {
                 var b = ((RSA.KeySize - 384) / 8) + 6;
-                if(b < _byte.Length)
-                    Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
-                return new byte[]{};
+                if (b < _byte.Length)
+                    ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
+                return ""u8.ToArray();
             }
         }
         private static byte[] DecryptRSA(byte[] _byte, string _privateKeyRSA){
-            using(var RSA = new RSACryptoServiceProvider())
-            try{
+            using var RSA = new RSACryptoServiceProvider();
+            try
+            {
                 RSA.FromXmlString(_privateKeyRSA);
                 return RSA.Decrypt(_byte, true);
-            }catch{
+            }
+            catch
+            {
                 var b = ((RSA.KeySize - 384) / 8) + 6;
-                if(b < _byte.Length)
-                    Utility.ShowLog("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes.");
-                return new byte[]{};
+                if (b < _byte.Length)
+                    ShowLog("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes.");
+                return ""u8.ToArray();
             }
         }
         private static byte[] EncryptAES(byte[] _byte, byte[] _privateKeyAES){
             try{
-                using (var encryptor = AES.CreateEncryptor(_privateKeyAES, _privateKeyAES))
+                using var encryptor = AES.CreateEncryptor(_privateKeyAES, _privateKeyAES);
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
-            }catch{
-                return new byte[]{};
+            }
+            catch{
+                return ""u8.ToArray();
             }
         }
         private static byte[] DecryptAES(byte[] _byte, byte[] _privateKeyAES){
             try{
-                using (var encryptor = AES.CreateDecryptor(_privateKeyAES, _privateKeyAES))
+                using var encryptor = AES.CreateDecryptor(_privateKeyAES, _privateKeyAES);
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
-            }catch{
-                return new byte[]{};
+            }
+            catch{
+                return ""u8.ToArray();
             }
         }
         private static string EncryptBase64(byte[] _byte){
@@ -494,30 +498,30 @@ namespace Nethostfire {
             try{
                 return Convert.FromBase64String(_text);
             }catch{
-                return new byte[]{};
+                return ""u8.ToArray();
             }
         }
         private static byte[] Compress(byte[] _byte){
             try{
-                MemoryStream output = new MemoryStream();
-                using (DeflateStream dstream = new DeflateStream(output, CompressionMode.Compress)){
+                MemoryStream output = new();
+                using (DeflateStream dstream = new(output, CompressionMode.Compress)){
                     dstream.Write(_byte, 0, _byte.Length);
                 }
                 return output.ToArray();
             }catch{
-                return new byte[]{};
+                return ""u8.ToArray();
             }
         }
         private static byte[] Decompress(byte[] data){
             try{
-                MemoryStream input = new MemoryStream(data);
-                MemoryStream output = new MemoryStream();
-                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress)){
+                MemoryStream input = new(data);
+                MemoryStream output = new();
+                using (DeflateStream dstream = new(input, CompressionMode.Decompress)){
                     dstream.CopyTo(output);
                 }
                 return output.ToArray();
             }catch{
-                return new byte[]{};
+                return ""u8.ToArray();
             }
         }
         private static byte[] GetHashMD5(byte[] _byte){
@@ -525,7 +529,7 @@ namespace Nethostfire {
                 MD5 md5 = MD5.Create();
                 return md5.ComputeHash(_byte);
             }catch{
-                return new byte[]{};
+                return ""u8.ToArray();
             }
         }
         public static string ShowLog(string Message){
@@ -555,7 +559,7 @@ namespace Nethostfire {
             if(!UnityEngine.GameObject.Find("Nethostfire")){
                 if(UnityBatchMode)
                     Console.Clear();
-                UnityEngine.GameObject runThreadUnity = new UnityEngine.GameObject("Nethostfire");
+                UnityEngine.GameObject runThreadUnity = new("Nethostfire");
                 runThreadUnity.AddComponent<NethostfireService>();
             }
         }
