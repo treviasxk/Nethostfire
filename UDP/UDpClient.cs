@@ -4,6 +4,7 @@
 // Paypal:              trevias@live.com
 // Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -19,6 +20,7 @@ namespace Nethostfire {
         static byte[] privateKeyAES = null;
         static float packetsReceived, packetsReceived2, packetsSent, packetsSent2;
         static Thread SendOnlineThread, ClientReceiveUDPThread;
+
         /// <summary>
         /// OnReceivedBytes an event that returns bytes received and GroupID whenever the received bytes by clients, with it you can manipulate the bytes received.
         /// </summary>
@@ -132,7 +134,6 @@ namespace Nethostfire {
                 publicKeyRSA = null;
                 privateKeyAES = null;
                 Utility.listHoldConnectionClient.Clear();
-                Utility.BlockUdpDuplicationClientReceive.Clear();
                 if(Status == ClientStatusConnection.Disconnecting)
                     ChangeStatus(ClientStatusConnection.Disconnected);
                 if(Status == ClientStatusConnection.Connecting)
@@ -144,8 +145,7 @@ namespace Nethostfire {
         /// </summary>
         public static void SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
-                if(_byte == null)
-                    _byte = new byte[]{};
+                _byte ??= ""u8.ToArray();
                 if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, Utility.IndexShipping++))
                     lostPackets++;
                 packetsSent += _byte.Length;
@@ -241,12 +241,9 @@ namespace Nethostfire {
                 // Enviando bytes que estão em Utility.listHoldConnectionClient
                 if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting)
                     Parallel.ForEach(Utility.listHoldConnectionClient, item => {
-                        if(item.Value.Time < Environment.TickCount){
-                            item.Value.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                            if(!Utility.Send(Socket, item.Value.Bytes, item.Value.GroupID, item.Value.TypeShipping, item.Value.TypeHoldConnection, item.Value.TypeContent, item.Key))
-                                lostPackets++;
+                        if(!Utility.Send(Socket, item.Value.Bytes, item.Value.GroupID, item.Value.TypeShipping, item.Value.TypeHoldConnection, item.Value.TypeContent, item.Key))
                             lostPackets++;
-                        }
+                        lostPackets++;
                     });
                 Thread.Sleep(1000);
             }
@@ -273,7 +270,6 @@ namespace Nethostfire {
                         publicKeyRSA = null;
                         privateKeyAES = null;
                         Utility.listHoldConnectionClient.Clear();
-                        Utility.BlockUdpDuplicationClientReceive.Clear();
                         timeLastPacket = Environment.TickCount;
                         SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
                         Utility.ShowLog("Connecting on " + host);

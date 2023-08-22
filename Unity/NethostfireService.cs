@@ -32,8 +32,6 @@ public class NethostfireService : MonoBehaviour{
         UDpClient.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();
-        Utility.BlockUdpDuplicationClientReceive.Clear();
-        Utility.BlockUdpDuplicationServerReceive.Clear();
     }
 
     void Awake(){

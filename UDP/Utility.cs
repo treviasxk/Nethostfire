@@ -46,7 +46,8 @@ namespace Nethostfire {
         /// Private AES key
         /// </summary>
         public byte[] PrivateKeyAES = null;
-        public ConcurrentDictionary<int, HoldConnection> ListHoldConnection = new();
+        public readonly ConcurrentDictionary<int, HoldConnection> ListHoldConnection = new();
+        public readonly ConcurrentDictionary<int, HoldConnection> ListHoldConnectionQueue = new();
     }
     
     /// <summary>
@@ -61,7 +62,7 @@ namespace Nethostfire {
         /// <summary>
         /// With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
         /// </summary>
-        //Enqueue = 2,
+        Enqueue = 2,
     }
 
     /// <summary>
@@ -141,10 +142,9 @@ namespace Nethostfire {
         public float Timer;
     }
     
-    public class HoldConnection{
+    public struct HoldConnection{
         public int GroupID;
         public byte[] Bytes {get;set;}
-        public int Time {get;set;}
         public TypeShipping TypeShipping {get;set;}
         public TypeContent TypeContent {get;set;}
         public TypeHoldConnection TypeHoldConnection {get;set;}
@@ -156,9 +156,8 @@ namespace Nethostfire {
         public static int receiveAndSendTimeOut = 1000;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
-        public static ConcurrentDictionary<int, int> BlockUdpDuplicationServerReceive = new();
-        public static ConcurrentDictionary<int, int> BlockUdpDuplicationClientReceive = new();
         public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionClient = new();
+        public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionQueueClient = new();
         public static int IndexShipping = 1;
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
@@ -239,10 +238,20 @@ namespace Nethostfire {
             int _indexID;
 
             try{
-                if(_byte[0] == 3){                              // confirm respond
+                if(_byte[0] == 3 && _byte.Length > 1){                              // confirm respond
                     type = new byte[_byte[1]];
                     type = _byte.Skip(2).ToArray().Take(_byte[1]).ToArray();
                     _indexID = BitConverter.ToInt16(type, 0);
+                        
+                    if(_dataClient != null)
+                        if(_dataClient.ListHoldConnectionQueue.Count > 0)
+                        if(_dataClient.ListHoldConnectionQueue.ElementAt(0).Key == _indexID)
+                            if(_dataClient.ListHoldConnectionQueue.TryRemove(_indexID, out _))
+                                if(_dataClient.ListHoldConnectionQueue.Count > 0){
+                                    var _lhcq = _dataClient.ListHoldConnectionQueue.ElementAt(0).Value;
+                                    UDpServer.SendBytes(_lhcq.Bytes, _lhcq.GroupID, _dataClient, _lhcq.TypeShipping, TypeHoldConnection.NotEnqueue);
+                            }
+
                     return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, _indexID);
                 }
 
@@ -303,7 +312,7 @@ namespace Nethostfire {
                 return (null, 0, TypeContent.Background, TypeShipping.None, 0);
 
             try{
-                if(_byte[0] == 1){                                          // return auto
+                if(_byte[0] == 1 || _byte[0] == 2){                                          // return auto
                     byte[] data2 = new byte[_byte[4] + 2];
                     data2[0] = 3;                                           // Hold Connection respond
                     data2[1] = _byte[4];                                    // The size of indexID
@@ -311,30 +320,6 @@ namespace Nethostfire {
                     SendPing(_udpClient, data2, _dataClient);
                 }
 
-                // Block Udp Duplication receive
-                if(_byte[0] == 1 || _byte[0] == 2)
-                    if(_dataClient != null){
-                        if(BlockUdpDuplicationServerReceive.TryGetValue(_indexID, out int time)){
-                            if(time + receiveAndSendTimeOut < Environment.TickCount)
-                                BlockUdpDuplicationServerReceive[_indexID] = Environment.TickCount;
-                            else
-                                return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None,0 );
-                        }else
-                            BlockUdpDuplicationServerReceive.TryAdd(_indexID, Environment.TickCount);
-                    }else
-                        if(BlockUdpDuplicationClientReceive.TryGetValue(_indexID, out int time)){
-                            if(time + receiveAndSendTimeOut < Environment.TickCount)
-                                BlockUdpDuplicationClientReceive[_indexID] = Environment.TickCount;
-                            else
-                                return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, 0);
-                        }else
-                            BlockUdpDuplicationClientReceive.TryAdd(_indexID, Environment.TickCount);
-                    
-                foreach(var item in BlockUdpDuplicationServerReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
-                    BlockUdpDuplicationServerReceive.TryRemove(item.Key, out _);
-                foreach(var item in BlockUdpDuplicationClientReceive.Where(item => item.Value + receiveAndSendTimeOut < Environment.TickCount))
-                    BlockUdpDuplicationClientReceive.TryRemove(item.Key, out _);
-                
                 return (data.Length > 1 ? data : ""u8.ToArray(), _groupID, _typeContent, _TypeShipping, _indexID);
             }catch{
                 return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, 0);
@@ -406,15 +391,33 @@ namespace Nethostfire {
             try{
                 if(_buffer.Length != 0){
                     if(_dataClient == null){
-                        if(_typeHoldConnection != TypeHoldConnection.None){
-                            listHoldConnectionClient.TryAdd(_indexID, new HoldConnection{GroupID = _groupID, Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = UDpClient.Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = _typeHoldConnection});
-                        }
-                        _udpClient.Send(_buffer, _buffer.Length);
-                    }else{
-                        if(_typeHoldConnection != TypeHoldConnection.None){
-                            _dataClient.ListHoldConnection.TryAdd(_indexID, new HoldConnection(){GroupID = _groupID, Bytes = _byte, Time = 0, TypeShipping = _typeShipping, TypeContent = _dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = _typeHoldConnection});
-                        }
-                        _udpClient.Send(_buffer, _buffer.Length, _dataClient.IP);
+                        if(_typeHoldConnection == TypeHoldConnection.NotEnqueue)
+                            listHoldConnectionClient.TryAdd(_indexID, new HoldConnection{GroupID = _groupID, Bytes = _byte, TypeShipping = _typeShipping, TypeContent = UDpClient.Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = _typeHoldConnection});
+                        
+                        if(_typeHoldConnection == TypeHoldConnection.Enqueue){
+                           if(listHoldConnectionQueueClient.Count > 0){
+                                if(listHoldConnectionQueueClient.ElementAt(0).Key == _indexID)
+                                    _udpClient.Send(_buffer, _buffer.Length);
+                           }else{
+                                listHoldConnectionClient.TryAdd(_indexID, new HoldConnection{GroupID = _groupID, Bytes = _byte, TypeShipping = _typeShipping, TypeContent = UDpClient.Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = TypeHoldConnection.NotEnqueue});
+                                _udpClient.Send(_buffer, _buffer.Length);
+                           }
+                        }else
+                            _udpClient.Send(_buffer, _buffer.Length);
+                    }else{   
+                        if(_typeHoldConnection == TypeHoldConnection.NotEnqueue)
+                            _dataClient.ListHoldConnection.TryAdd(_indexID, new HoldConnection(){GroupID = _groupID, Bytes = _byte, TypeShipping = _typeShipping, TypeContent = _dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = _typeHoldConnection});
+
+                        if(_typeHoldConnection == TypeHoldConnection.Enqueue){
+                            if(_dataClient.ListHoldConnectionQueue.Count > 0){
+                                if(_dataClient.ListHoldConnectionQueue.ElementAt(0).Key == _indexID)
+                                    _udpClient.Send(_buffer, _buffer.Length, _dataClient.IP);
+                            }else{
+                                _dataClient.ListHoldConnection.TryAdd(_indexID, new HoldConnection(){GroupID = _groupID, Bytes = _byte, TypeShipping = _typeShipping, TypeContent = _dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background, TypeHoldConnection = TypeHoldConnection.NotEnqueue});
+                                _udpClient.Send(_buffer, _buffer.Length, _dataClient.IP);
+                            }
+                        }else
+                            _udpClient.Send(_buffer, _buffer.Length, _dataClient.IP);
                     }
                     return true;
                 }else

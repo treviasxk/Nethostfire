@@ -146,7 +146,6 @@ namespace Nethostfire {
             CheckOnlineThread = null;
             DataClients.Clear();
             WaitDataClients.Clear();
-            Utility.BlockUdpDuplicationServerReceive.Clear();
             if(Status == ServerStatusConnection.Stopping)
                ChangeStatus(ServerStatusConnection.Stopped);
          }
@@ -346,15 +345,7 @@ namespace Nethostfire {
                         if(Environment.TickCount >= _dataClient.PPS + (1000f / limitMaxPPS) || limitMaxPPS == 0){
                            _dataClient.PPS = Environment.TickCount;
                            packetsReceived += _data.Item1.Length;
-                           if(_dataClient.ListHoldConnection.TryGetValue(_data.Item2, out var _holdConnection)){
-                              if(_holdConnection.Time == 0){
-                                 _holdConnection.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                                 Utility.RunOnMainThread(() => OnReceivedBytes?.Invoke(_data.Item1, _data.Item2, _dataClient));
-                              }else
-                                 if(_holdConnection.Time < Environment.TickCount)
-                                    _dataClient.ListHoldConnection.TryRemove(_data.Item2, out _);
-                           }else
-                              Utility.RunOnMainThread(() => OnReceivedBytes?.Invoke(_data.Item1, _data.Item2, _dataClient));
+                           Utility.RunOnMainThread(() => OnReceivedBytes?.Invoke(_data.Item1, _data.Item2, _dataClient));
                         }
                      break;
                      case TypeContent.Background:
@@ -386,30 +377,26 @@ namespace Nethostfire {
 
       static void CheckOnline(){
          while(Socket != null){
-            Parallel.ForEach(DataClients.Values, item =>{
-               item.PPS = 0;
-               if(item.TimeLastPacket + 3000 < Environment.TickCount){
-                  if(DataClients.TryRemove(item.IP, out var _dataClient)){
-                     Utility.RunOnMainThread(() => OnDisconnectedClient?.Invoke(item));
+            Parallel.ForEach(DataClients.Values, _dataClient =>{
+               _dataClient.PPS = 0;
+               if(_dataClient.TimeLastPacket + 3000 < Environment.TickCount){
+                  if(DataClients.TryRemove(_dataClient.IP, out _)){
+                     Utility.RunOnMainThread(() => OnDisconnectedClient?.Invoke(_dataClient));
                      Utility.ShowLog(_dataClient.IP + " disconnected from the server.");
                   }
                }
             });
 
-            Parallel.ForEach(WaitDataClients.Values, item =>{
-               if(item.TimeLastPacket + 10000 < Environment.TickCount){
-                  WaitDataClients.TryRemove(item.IP, out var _dataClient);
-               }
+            Parallel.ForEach(WaitDataClients.Values, _dataClient =>{               
+               if(_dataClient.TimeLastPacket + 10000 < Environment.TickCount)
+                  WaitDataClients.TryRemove(_dataClient.IP, out _);
             });
 
             Parallel.ForEach(DataClients.Values, _dataClient =>{
-               foreach(var holdConnection in _dataClient.ListHoldConnection){
-                  if(holdConnection.Value.Time < Environment.TickCount){
-                     holdConnection.Value.Time = Environment.TickCount + Utility.receiveAndSendTimeOut;
-                     if(!Utility.Send(Socket, holdConnection.Value.Bytes, holdConnection.Value.GroupID, holdConnection.Value.TypeShipping, holdConnection.Value.TypeHoldConnection, holdConnection.Value.TypeContent, holdConnection.Key, _dataClient))
-                        lostPackets++;
+               foreach(var _lhdc in _dataClient.ListHoldConnection){
+                  if(!Utility.Send(Socket, _lhdc.Value.Bytes, _lhdc.Value.GroupID, _lhdc.Value.TypeShipping, _lhdc.Value.TypeHoldConnection, _lhdc.Value.TypeContent, _lhdc.Key, _dataClient))
                      lostPackets++;
-                  }
+                  lostPackets++;
                }
             });
 
