@@ -161,12 +161,75 @@ namespace Nethostfire {
          }else
             throw new Exception(Utility.ShowLog("It is not possible to restart the server if it is not running."));
       }
+
+
+
       /// <summary>
-      /// To send bytes to a client, it is necessary to define the bytes, GroupID and DataClient, the other sending resources such as TypeShipping and HoldConnection are optional.
+      /// To send bytes to a client, it is necessary to define the Bytes, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
       /// </summary>
-      public static void SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+      public static void Send(byte[] _byte, int _groupID, DataClient _dataClient){
+         PrepareSend(_byte, _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None);
+      }
+      /// <summary>
+      /// To send bytes to a client, it is necessary to define the Bytes, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         PrepareSend(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection);
+      }
+      /// <summary>
+      /// To send bytes to a client, it is necessary to define the Bytes, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(byte[] _byte, int _groupID, DataClient _dataClient, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         PrepareSend(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection);
+      }
+
+
+
+      /// <summary>
+      /// To send string to a client, it is necessary to define the Text, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(string _text, int _groupID, DataClient _dataClient){
+         PrepareSend(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None);
+      }
+      /// <summary>
+      /// To send string to a client, it is necessary to define the Text, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(string _text, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         PrepareSend(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, _typeShipping, _typeHoldConnection);
+      }
+      /// <summary>
+      /// To send string to a client, it is necessary to define the Text, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(string _text, int _groupID, DataClient _dataClient, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         PrepareSend(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, _typeShipping, _typeHoldConnection);
+      }
+
+
+
+      /// <summary>
+      /// To send float to a client, it is necessary to define the Number, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(float _number, int _groupID, DataClient _dataClient){
+         PrepareSend(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None);
+      }
+      /// <summary>
+      /// To send float to a client, it is necessary to define the Number, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(float _number, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         PrepareSend(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, _typeShipping, _typeHoldConnection);
+      }
+      /// <summary>
+      /// To send float to a client, it is necessary to define the Number, GroupID and DataClient, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+      /// </summary>
+      public static void Send(float _number, int _groupID, DataClient _dataClient, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         PrepareSend(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, _typeShipping, _typeHoldConnection);
+      }
+
+
+
+
+      static void PrepareSend(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
          if(Status == ServerStatusConnection.Running){
-            _byte ??= ""u8.ToArray();
             if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, _dataClient.PrivateKeyAES != null ? TypeContent.Foreground : TypeContent.Background, Utility.IndexShipping++, _dataClient))
                lostPackets++;
             else
@@ -175,18 +238,132 @@ namespace Nethostfire {
          }
       }
 
+
+
       /// <summary>
-      /// To send bytes to a group client, it is necessary to define the bytes, GroupID and ConcurrentBag DataClient, the other sending resources such as TypeShipping, SkipDataClient and HoldConnection are optional.
+      /// To send bytes to a group client, it is necessary to define the Bytes, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
       /// </summary>
-      public static void SendBytesGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
-         Parallel.ForEach(_dataClients.Where(item => item.IP != (_skipDataClient?.IP)), _dataClient => SendBytes(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      public static void SendGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients){
+         Parallel.ForEach(_dataClients, _dataClient => Send(_byte, _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None));
       }
       /// <summary>
-      /// To send bytes to all clients, it is necessary to define the bytes, GroupID, the other sending resources such as TypeShipping, SkipDataClient and HoldConnection are optional.
+      /// To send bytes to a group client, it is necessary to define the Bytes, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
       /// </summary>
-      public static void SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
-         Parallel.ForEach(DataClients.Values.Where(item => item.IP != (_skipDataClient?.IP)), _dataClient => SendBytes(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      public static void SendGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         Parallel.ForEach(_dataClients, _dataClient => Send(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection));
       }
+      /// <summary>
+      /// To send bytes to a group client, it is necessary to define the Bytes, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         Parallel.ForEach(_dataClients, _dataClient => Send(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+
+
+
+
+      /// <summary>
+      /// To send string to a group client, it is necessary to define the Text, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(string _text, int _groupID, ConcurrentQueue<DataClient> _dataClients){
+         Parallel.ForEach(_dataClients, _dataClient => Send(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None));
+      }
+      /// <summary>
+      /// To send string to a group client, it is necessary to define the Text, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(string _text, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         Parallel.ForEach(_dataClients, _dataClient => Send(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+      /// <summary>
+      /// To send string to a group client, it is necessary to define the Text, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(string _text, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         Parallel.ForEach(_dataClients, _dataClient => Send(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+
+
+
+      /// <summary>
+      /// To send float to a group client, it is necessary to define the Number, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(float _number, int _groupID, ConcurrentQueue<DataClient> _dataClients){
+         Parallel.ForEach(_dataClients, _dataClient => Send(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None));
+      }
+      /// <summary>
+      /// To send float to a group client, it is necessary to define the Number, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(float _number, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         Parallel.ForEach(_dataClients, _dataClient => Send(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+      /// <summary>
+      /// To send float to a group client, it is necessary to define the Number, GroupID and ConcurrentQueue DataClient, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendGroup(float _number, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         Parallel.ForEach(_dataClients, _dataClient => Send(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+
+
+
+      /// <summary>
+      /// To send bytes to all clients, it is necessary to define the Bytes, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(byte[] _byte, int _groupID){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(_byte, _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None));
+      }
+      /// <summary>
+      /// To send bytes to all clients, it is necessary to define the Bytes, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+      /// <summary>
+      /// To send bytes to all clients, it is necessary to define the Bytes, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(byte[] _byte, int _groupID, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(_byte, _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+
+
+      /// <summary>
+      /// To send string to all clients, it is necessary to define the Text, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(string _text, int _groupID){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None));
+      }
+      /// <summary>
+      /// To send string to all clients, it is necessary to define the Text, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(string _text, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+      /// <summary>
+      /// To send string to all clients, it is necessary to define the Text, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(string _text, int _groupID, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(Encoding.UTF8.GetBytes(_text), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+
+
+      /// <summary>
+      /// To send float to all clients, it is necessary to define the Number, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(float _number, int _groupID){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, TypeShipping.None, TypeHoldConnection.None));
+      }
+      /// <summary>
+      /// To send float to all clients, it is necessary to define the Number, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(float _number, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+      /// <summary>
+      /// To send float to all clients, it is necessary to define the Number, GroupID, the other sending resources such as TypeShipping, SkipDataClient and TypeHoldConnection are optional.
+      /// </summary>
+      public static void SendAll(float _number, int _groupID, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+         Parallel.ForEach(DataClients.Values, _dataClient => Send(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _dataClient, _typeShipping, _typeHoldConnection));
+      }
+
+
 
       /// <summary>
       /// To disconnect a client from server, it is necessary to inform the DataClient.
@@ -354,13 +531,13 @@ namespace Nethostfire {
                               case TypeShipping.RSA:
                                  _dataClient = new DataClient() {IP = _ip, TimeLastPacket = Environment.TickCount, Time = Environment.TickCount, PublicKeyRSA = Encoding.ASCII.GetString(_data.Item1)};
                                  WaitDataClients.TryAdd(_ip, _dataClient);
-                                 SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
+                                 Send(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAServer), 0, _dataClient, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
                               break;
                               case TypeShipping.AES:
                                  if(WaitDataClients.TryGetValue(_ip, out var _waitDataClient)){
                                     if(DataClients.TryAdd(_ip, _waitDataClient))
                                     if(WaitDataClients.TryRemove(_ip, out _)){
-                                       SendBytes(Utility.PrivateKeyAESServer, 1, _waitDataClient, TypeShipping.AES, TypeHoldConnection.NotEnqueue);
+                                       Send(Utility.PrivateKeyAESServer, 1, _waitDataClient, TypeShipping.AES, TypeHoldConnection.NotEnqueue);
                                        _waitDataClient.PrivateKeyAES = _data.Item1;       // Client connected
                                        Utility.RunOnMainThread(() => OnConnectedClient?.Invoke(_waitDataClient));
                                        Utility.ShowLog(_waitDataClient.IP + " connected to the server.");

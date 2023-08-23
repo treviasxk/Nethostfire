@@ -140,12 +140,74 @@ namespace Nethostfire {
                     ChangeStatus(ClientStatusConnection.ConnectionFail);
             }
         }
+
+
+
         /// <summary>
-        /// To send bytes to server, it is necessary to define the bytes and GroupID, the other sending resources such as TypeShipping and HoldConnection are optional.
+        /// To send bytes to server, it is necessary to define the Bytes and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
         /// </summary>
-        public static void SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+        public static void Send(byte[] _byte, int _groupID){
+            PrepareSend(_byte, _groupID, TypeShipping.None, TypeHoldConnection.None);
+        }
+        /// <summary>
+        /// To send bytes to server, it is necessary to define the Bytes and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+            PrepareSend(_byte, _groupID, _typeShipping, _typeHoldConnection);
+        }
+        /// <summary>
+        /// To send bytes to server, it is necessary to define the Bytes and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(byte[] _byte, int _groupID, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+            PrepareSend(_byte, _groupID, _typeShipping, _typeHoldConnection);
+        }
+
+
+
+        /// <summary>
+        /// To send string to server, it is necessary to define the Text and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(string _text, int _groupID){
+            PrepareSend(Encoding.UTF8.GetBytes(_text), _groupID, TypeShipping.None, TypeHoldConnection.None);
+        }
+        /// <summary>
+        /// To send string to server, it is necessary to define the Text and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(string _text, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+            PrepareSend(Encoding.UTF8.GetBytes(_text), _groupID, _typeShipping, _typeHoldConnection);
+        }
+        /// <summary>
+        /// To send string to server, it is necessary to define the Text and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(string _text, int _groupID, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+            PrepareSend(Encoding.UTF8.GetBytes(_text), _groupID, _typeShipping, _typeHoldConnection);
+        }
+
+
+
+        /// <summary>
+        /// To send float to server, it is necessary to define the Number and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(float _number, int _groupID){
+            PrepareSend(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, TypeShipping.None, TypeHoldConnection.None);
+        }
+        /// <summary>
+        /// To send float to server, it is necessary to define the Number and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(float _number, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
+            PrepareSend(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _typeShipping, _typeHoldConnection);
+        }
+        /// <summary>
+        /// To send float to server, it is necessary to define the Number and GroupID, the other sending resources such as TypeShipping and TypeHoldConnection are optional.
+        /// </summary>
+        public static void Send(float _number, int _groupID, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None, TypeShipping _typeShipping = TypeShipping.None){
+            PrepareSend(Encoding.Unicode.GetBytes(_number.ToString()), _groupID, _typeShipping, _typeHoldConnection);
+        }
+
+
+
+        static void PrepareSend(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, TypeHoldConnection _typeHoldConnection = TypeHoldConnection.None){
             if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
-                _byte ??= ""u8.ToArray();
                 if(!Utility.Send(Socket, _byte, _groupID, _typeShipping, _typeHoldConnection, Status == ClientStatusConnection.Connected ? TypeContent.Foreground : TypeContent.Background, Utility.IndexShipping++))
                     lostPackets++;
                 packetsSent += _byte.Length;
@@ -208,7 +270,7 @@ namespace Nethostfire {
                                         switch(_data.Item4){
                                             case TypeShipping.RSA:
                                                 publicKeyRSA = Encoding.ASCII.GetString(_data.Item1);
-                                                SendBytes(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, TypeHoldConnection.NotEnqueue);
+                                                Send(Utility.PrivateKeyAESClient, 1, TypeShipping.AES, TypeHoldConnection.NotEnqueue);
                                             break;
                                             case TypeShipping.AES:
                                                 privateKeyAES = _data.Item1;
@@ -271,7 +333,7 @@ namespace Nethostfire {
                         privateKeyAES = null;
                         Utility.listHoldConnectionClient.Clear();
                         timeLastPacket = Environment.TickCount;
-                        SendBytes(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
+                        Send(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
                         Utility.ShowLog("Connecting on " + host);
                     break;
                     case ClientStatusConnection.Connected:

@@ -249,7 +249,7 @@ namespace Nethostfire {
                             if(_dataClient.ListHoldConnectionQueue.TryRemove(_indexID, out _))
                                 if(_dataClient.ListHoldConnectionQueue.Count > 0){
                                     var _lhcq = _dataClient.ListHoldConnectionQueue.ElementAt(0).Value;
-                                    UDpServer.SendBytes(_lhcq.Bytes, _lhcq.GroupID, _dataClient, _lhcq.TypeShipping, TypeHoldConnection.NotEnqueue);
+                                    UDpServer.Send(_lhcq.Bytes, _lhcq.GroupID, _dataClient, _lhcq.TypeShipping, TypeHoldConnection.NotEnqueue);
                             }
 
                     return (""u8.ToArray(), 0, TypeContent.Background, TypeShipping.None, _indexID);
@@ -257,12 +257,11 @@ namespace Nethostfire {
 
                 type = new byte[_byte[3]];
                 type = _byte.Skip(5).Take(_byte[3]).ToArray();
-                _groupID = BitConverter.ToInt16(type, 0);
-
+                _groupID = BitConverter.ToInt16(type, 0);                       // getting value of groupid
 
                 type = new byte[_byte[4]];
                 type = _byte.Skip(5 + _byte[3]).Take(_byte[4]).ToArray();
-                _indexID = BitConverter.ToInt32(type, 0);
+                _indexID = BitConverter.ToInt32(type, 0);                       // getting value of indexid
                 
                 data = new byte[_byte.Length - _byte[3] - _byte[4] - 5];
                 _byte.Skip(5 + _byte[3] +  _byte[4]).ToArray().CopyTo(data,0);
@@ -312,7 +311,7 @@ namespace Nethostfire {
                 return (null, 0, TypeContent.Background, TypeShipping.None, 0);
 
             try{
-                if(_byte[0] == 1 || _byte[0] == 2){                                          // return auto
+                if(_byte[0] == 1 || _byte[0] == 2){                         // return auto
                     byte[] data2 = new byte[_byte[4] + 2];
                     data2[0] = 3;                                           // Hold Connection respond
                     data2[1] = _byte[4];                                    // The size of indexID
