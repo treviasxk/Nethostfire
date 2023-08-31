@@ -9,17 +9,18 @@ using Nethostfire;
 
 public class NethostfireService : MonoBehaviour{
     [Header("Nethostfire")]
-    GUIStyle TextStyle = new();
+    GUIStyle TextStyle;
     Material mat;
-    List<ChartGraph> ListGraph = new();
+    List<ChartGraph> ListGraph;
     ChartGraph Latency, FPS;
     float tmp, count;
 
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    [RuntimeInitializeOnLoadMethod]
     static void Init(){
         bool ShowDebug = UDpClient.ShowDebugConsole;
-        Application.quitting -= null;
+        Application.quitting -= OnApplicationQuit;
+        Application.quitting += OnApplicationQuit;
         UDpClient.ShowDebugConsole = false;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
@@ -42,10 +43,12 @@ public class NethostfireService : MonoBehaviour{
 
     void Start(){
         DontDestroyOnLoad(gameObject);
-        if(!Utility.UnityBatchMode){
+        if(!Application.isBatchMode){
             mat = new Material(Shader.Find("Hidden/Internal-Colored"));
             Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
             FPS = CreateGraph(500, "FPS", new Rect(170, 46, 100, 37));
+            ListGraph  = new();
+            TextStyle = new();
             TextStyle.fontSize = 10;
             TextStyle.alignment = TextAnchor.UpperLeft;
             TextStyle.padding.left = 3;
@@ -53,7 +56,7 @@ public class NethostfireService : MonoBehaviour{
         }
     }
 
-    void OnApplicationQuit(){
+    static void OnApplicationQuit(){
         UDpClient.DisconnectServer();
         UDpServer.Stop();
     }
@@ -74,20 +77,19 @@ public class NethostfireService : MonoBehaviour{
     }
 
     void OnGUI(){
-        if(!Application.isBatchMode)
-            if(UDpClient.ShowUnityNetworkStatistics){
-                GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
-                GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Packets Size Received: " + UDpClient.PacketsBytesReceived + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Packets Size Sent: " + UDpClient.PacketsBytesSent + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Buffer Main Thread: " + Utility.ListRunOnMainThread.Count + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Connect Time Out: " + UDpClient.ConnectTimeOut + "</color>", TextStyle);
-                GUILayout.Label("<color=white>Receive And Send Time Out: " + UDpClient.ReceiveAndSendTimeOut + "</color>", TextStyle);
-                for(int i = 0; i < ListGraph.Count; i++)
-                    ShowGraph(ListGraph[i]);
-            }
+        if(!Application.isBatchMode && UDpClient.ShowUnityNetworkStatistics){
+            GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
+            GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Size Received: " + UDpClient.PacketsBytesReceived + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Size Sent: " + UDpClient.PacketsBytesSent + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Buffer Main Thread: " + Utility.ListRunOnMainThread.Count + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Connect Time Out: " + UDpClient.ConnectTimeOut + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Receive And Send Time Out: " + UDpClient.ReceiveAndSendTimeOut + "</color>", TextStyle);
+            for(int i = 0; i < ListGraph.Count; i++)
+                ShowGraph(ListGraph[i]);
+        }
     }
 
 
