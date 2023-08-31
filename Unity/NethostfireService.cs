@@ -18,10 +18,11 @@ public class NethostfireService : MonoBehaviour{
 
     [RuntimeInitializeOnLoadMethod]
     static void Init(){
-        bool ShowDebug = UDpClient.ShowDebugConsole;
-        Application.quitting -= OnApplicationQuit;
-        Application.quitting += OnApplicationQuit;
-        UDpClient.ShowDebugConsole = false;
+        Application.quitting -= OnQuitting;
+        Application.quitting += OnQuitting;
+        bool ShowDebug = Utility.ShowDebugConsole;
+        Utility.ShowDebugConsole = false;
+        Utility.Quitting = false;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
         UDpClient.OnClientStatus = null;
@@ -32,7 +33,7 @@ public class NethostfireService : MonoBehaviour{
         UDpServer.OnReceivedBytes = null;
         UDpServer.OnServerStatus = null;
         UDpServer.OnShippedBytes = null;
-        UDpClient.ShowDebugConsole = ShowDebug;
+        Utility.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();
         Utility.BlockUdpDuplicationClientReceive.Clear();
@@ -59,7 +60,8 @@ public class NethostfireService : MonoBehaviour{
         }
     }
 
-    static void OnApplicationQuit() {
+    static void OnQuitting() {
+        Utility.Quitting = true;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
     }

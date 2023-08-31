@@ -171,9 +171,10 @@ namespace Nethostfire {
         public static ConcurrentQueue<HoldConnectionQueue> listHoldConnectionClientQueue = new ConcurrentQueue<HoldConnectionQueue>();
         static Aes AES;
         public static Process Process = Process.GetCurrentProcess();
+        public static bool Quitting = false;
 
         public static void RunOnMainThread(Action _action){
-            if(RunningInUnity)
+            if(RunningInUnity && Quitting == false)
                 ListRunOnMainThread.Enqueue(_action);
             else
                 _action?.Invoke();
