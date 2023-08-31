@@ -12,6 +12,7 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using UnityEngine;
 
 namespace Nethostfire {
     /// <summary>
@@ -160,6 +161,7 @@ namespace Nethostfire {
         public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionQueueClient = new();
         public static int IndexShipping = 1;
         static Aes AES;
+        public static string GetVersion {get {return Application.version;}}
         public static Process Process = Process.GetCurrentProcess();
 
         public static void RunOnMainThread(Action _action){

@@ -44,15 +44,11 @@ public class NethostfireService : MonoBehaviour{
     void Start(){
         DontDestroyOnLoad(gameObject);
         if(!Application.isBatchMode){
+            ListGraph  = new();
+            TextStyle = new(){fontSize = 10, alignment = TextAnchor.UpperLeft, padding = new RectOffset(3, 0, 3, 0)};
             mat = new Material(Shader.Find("Hidden/Internal-Colored"));
             Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
             FPS = CreateGraph(500, "FPS", new Rect(170, 46, 100, 37));
-            ListGraph  = new();
-            TextStyle = new();
-            TextStyle.fontSize = 10;
-            TextStyle.alignment = TextAnchor.UpperLeft;
-            TextStyle.padding.left = 3;
-            TextStyle.padding.top = 3;
         }
     }
 
@@ -78,7 +74,7 @@ public class NethostfireService : MonoBehaviour{
 
     void OnGUI(){
         if(!Application.isBatchMode && UDpClient.ShowUnityNetworkStatistics){
-            GUILayout.Label("<color=white><b>Network Statistics</b></color>", TextStyle);
+            GUILayout.Label("<color=white><b>Nethostfire " + Utility.GetVersion + "</b></color>", TextStyle);
             GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
             GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
             GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);

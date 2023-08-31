@@ -8,7 +8,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace Nethostfire {
    public class UDpServer {
