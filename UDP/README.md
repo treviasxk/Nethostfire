@@ -30,7 +30,6 @@
     - [UDpServer.OnDisconnectedClient](#OnDisconnectedClient)
     - [UDpServer.ServerStatusConnection](#OnServerStatus)
     - [UDpServer.OnReceivedBytes](#OnReceivedBytesClient);
-    - [UDpServer.OnShippedBytes](#OnShippedBytesClient);
 - UDpClient
     - [UDpClient.Connect](#UDpClientConnect)
     - [UDpClient.SendBytes](#UDpClientSendBytes)
@@ -47,7 +46,6 @@
     - [UDpClient.ShowDebugConsole](#ShowDebugConsole)
     - [UDpClient.Ping](#Ping)
     - [UDpClient.OnReceivedBytes](#OnReceivedBytesServer)
-    - [UDpClient.OnShippedBytes](#OnShippedBytesServer);
     - [UDpClient.ClientStatusConnection](#OnClientStatus)
     - [UDpClient.PublicKeyRSA](#PublicKeyRSA)
     - [UDpClient.PrivateKeyAES](#PrivateKeyAES)
@@ -451,22 +449,6 @@ static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataCl
 ```
 OnReceivedBytesClient an event that returns bytes received, [GroupID](#GroupID) and [DataClient](#DataClient) whenever the received bytes by clients, with it you can manipulate the bytes received.
 
------
-
-<a name="OnShippedBytesClient"></a>
-### UDpServer.OnShippedBytes
-`Event`
-```cs
-static void Main(string[] args){
-    UDpServer.OnShippedBytes += OnShippedBytesClient;
-}
-
-static void OnShippedBytesClient(int _groupID, DataClient _dataClient){
-    Console.WriteLine("[SHIPPED] GroupID: {0} to {1}", _groupID, _dataClient.IP);
-}
-```
-OnShippedBytes is an event that returns a groupID and DataClient whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
-
 
 ## Client
 <a name="UDpClientConnect"></a>
@@ -587,22 +569,6 @@ static void OnReceivedBytesServer(byte[] _byte, int _groupID){
 }
 ```
 OnReceivedBytesServer an event that returns bytes received and [GroupID](#GroupID) whenever the received bytes by clients, with it you can manipulate the bytes received.
-
------
-
-<a name="OnShippedBytesServer"></a>
-### UDpClient.OnShippedBytes
-`Event`
-```cs
-static void Main(string[] args){
-    UDpClient.OnShippedBytes += OnShippedBytesServer;
-}
-
-static void OnShippedBytesServer(int _groupID){
-    Console.WriteLine("[SHIPPED] GroupID: {0} to server", _groupID);
-}
-```
-OnShippedBytes is an event that returns a groupID whenever the package arrives at its destination. The only packets that trigger this event are those shipped with HoldConnection Auto, Manual, and Enqueue.
 
 -----
 
@@ -782,9 +748,8 @@ _Encryption/Decryprion Speed may vary depending on your machine's performance._
 ### TypeHoldConnection
 
 • TypeHoldConnection.None - Value default. (No effect)
-• TypeHoldConnection.Auto - With Auto, when the packet arrives at its destination, the Client/Server will automatically respond back confirming receipt.
-• TypeHoldConnection.Manual - With Manual, when the packet arrives at its destination, it is necessary that the Client/Server responds back by sending any byte for the same GroupID received. If it doesn't respond, the client/server that sent the Manual will be stuck in a send loop.
-• TypeHoldConnection.Enqueue - With Enqueue the bytes are adds in a queue and sent 1 packet at a time, sending is done with HoldConnection in Auto. This feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms.
+• TypeHoldConnection.NotEnqueue - With NotEnqueue, shipments are sent to their destination without packet loss, shipments will not be sent in a queue to improve performance. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
+• TypeHoldConnection.Enqueue - With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
 
 -----
 

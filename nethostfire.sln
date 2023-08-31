@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nethostfire", "Nethostfire.csproj", "{99A8D6E2-66CA-4D10-96B3-1E5E8BEDCAC0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nethostfire", "Nethostfire.csproj", "{BCBD7217-0718-4558-AA58-9B90A5B05454}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{99A8D6E2-66CA-4D10-96B3-1E5E8BEDCAC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{99A8D6E2-66CA-4D10-96B3-1E5E8BEDCAC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{99A8D6E2-66CA-4D10-96B3-1E5E8BEDCAC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{99A8D6E2-66CA-4D10-96B3-1E5E8BEDCAC0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCBD7217-0718-4558-AA58-9B90A5B05454}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCBD7217-0718-4558-AA58-9B90A5B05454}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCBD7217-0718-4558-AA58-9B90A5B05454}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCBD7217-0718-4558-AA58-9B90A5B05454}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {57B52EAD-A0A8-4F45-873F-EBF9BCBDB540}
+		SolutionGuid = {7880068D-F0DC-49B9-BE63-51A7DE3B67F6}
 	EndGlobalSection
 EndGlobal
