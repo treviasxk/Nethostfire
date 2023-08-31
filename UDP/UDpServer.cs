@@ -107,21 +107,21 @@ namespace Nethostfire {
                throw new Exception(Utility.ShowLog("Could not start the server, check that the port "+ _port + " is not blocked, or that you have other software using that port."));
             }
             if(ServerReceiveUDPThread == null){
-                    ServerReceiveUDPThread = new Thread(ServerReceiveUDP)
-                    {
-                        IsBackground = true,
-                        Priority = ThreadPriority.Highest
-                    };
-                    ServerReceiveUDPThread.SetApartmentState(ApartmentState.MTA);
+               ServerReceiveUDPThread = new Thread(ServerReceiveUDP)
+               {
+                  IsBackground = true,
+                  Priority = ThreadPriority.Highest
+               };
+               ServerReceiveUDPThread.SetApartmentState(ApartmentState.MTA);
                ServerReceiveUDPThread.Start();
             }
             if(CheckOnlineThread == null){
-                    CheckOnlineThread = new Thread(CheckOnline)
-                    {
-                        IsBackground = true,
-                        Priority = ThreadPriority.Highest
-                    };
-                    CheckOnlineThread.SetApartmentState(ApartmentState.MTA);
+               CheckOnlineThread = new Thread(CheckOnline)
+               {
+                  IsBackground = true,
+                  Priority = ThreadPriority.Highest
+               };
+               CheckOnlineThread.SetApartmentState(ApartmentState.MTA);
                CheckOnlineThread.Start();
             }
          }else

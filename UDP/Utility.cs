@@ -163,9 +163,10 @@ namespace Nethostfire {
         static Aes AES;
         public static string GetVersion {get {return Application.version;}}
         public static Process Process = Process.GetCurrentProcess();
+        public static bool Quitting = false;
 
         public static void RunOnMainThread(Action _action){
-            if(RunningInUnity)
+            if(RunningInUnity && Quitting == false)
                 ListRunOnMainThread.Enqueue(_action);
             else
                 _action?.Invoke();

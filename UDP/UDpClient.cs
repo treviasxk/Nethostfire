@@ -324,6 +324,7 @@ namespace Nethostfire {
                     lostPackets = 0;
                 }
 
+                
                 Utility.RunOnMainThread(() => OnClientStatus?.Invoke(Status));
 
                 switch(_status){

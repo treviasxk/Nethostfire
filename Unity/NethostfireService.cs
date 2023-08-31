@@ -18,10 +18,11 @@ public class NethostfireService : MonoBehaviour{
 
     [RuntimeInitializeOnLoadMethod]
     static void Init(){
-        bool ShowDebug = UDpClient.ShowDebugConsole;
-        Application.quitting -= OnApplicationQuit;
-        Application.quitting += OnApplicationQuit;
-        UDpClient.ShowDebugConsole = false;
+        Application.quitting -= OnQuitting;
+        Application.quitting += OnQuitting;
+        bool ShowDebug = Utility.ShowDebugConsole;
+        Utility.Quitting = false;
+        Utility.ShowDebugConsole = false;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
         UDpClient.OnClientStatus = null;
@@ -30,9 +31,15 @@ public class NethostfireService : MonoBehaviour{
         UDpServer.OnDisconnectedClient = null;
         UDpServer.OnReceivedBytes = null;
         UDpServer.OnServerStatus = null;
-        UDpClient.ShowDebugConsole = ShowDebug;
+        Utility.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();
+    }
+
+    static void OnQuitting(){
+        Utility.Quitting = true;
+        UDpClient.DisconnectServer();
+        UDpServer.Stop();
     }
 
     void Awake(){
@@ -50,11 +57,6 @@ public class NethostfireService : MonoBehaviour{
             Latency = CreateGraph(300, "PING", new Rect(170, 4, 100, 37));
             FPS = CreateGraph(500, "FPS", new Rect(170, 46, 100, 37));
         }
-    }
-
-    static void OnApplicationQuit(){
-        UDpClient.DisconnectServer();
-        UDpServer.Stop();
     }
 
     void Update() {
