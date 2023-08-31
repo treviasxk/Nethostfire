@@ -16,10 +16,11 @@ public class NethostfireService : MonoBehaviour{
     float tmp, count;
 
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    [RuntimeInitializeOnLoadMethod]
     static void Init(){
         bool ShowDebug = UDpClient.ShowDebugConsole;
-        Application.quitting -= null;
+        Application.quitting -= OnApplicationQuit;
+        Application.quitting += OnApplicationQuit;
         UDpClient.ShowDebugConsole = false;
         UDpClient.DisconnectServer();
         UDpServer.Stop();
@@ -58,7 +59,7 @@ public class NethostfireService : MonoBehaviour{
         }
     }
 
-    void OnApplicationQuit(){
+    static void OnApplicationQuit() {
         UDpClient.DisconnectServer();
         UDpServer.Stop();
     }
