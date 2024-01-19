@@ -23,14 +23,14 @@ public class NethostfireService : MonoBehaviour{
         bool ShowDebug = Utility.ShowDebugConsole;
         Utility.Quitting = false;
         Utility.ShowDebugConsole = false;
-        UDpClient.DisconnectServer();
-        UDpServer.Stop();
-        UDpClient.OnClientStatus = null;
-        UDpClient.OnReceivedBytes = null;
-        UDpServer.OnConnectedClient = null;
-        UDpServer.OnDisconnectedClient = null;
-        UDpServer.OnReceivedBytes = null;
-        UDpServer.OnServerStatus = null;
+        UDP.Client.DisconnectServer();
+        UDP.Server.Stop();
+        UDP.Client.OnClientStatus = null;
+        UDP.Client.OnReceivedBytes = null;
+        UDP.Server.OnConnectedClient = null;
+        UDP.Server.OnDisconnectedClient = null;
+        UDP.Server.OnReceivedBytes = null;
+        UDP.Server.OnServerStatus = null;
         Utility.ShowDebugConsole = ShowDebug;
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();
@@ -38,8 +38,8 @@ public class NethostfireService : MonoBehaviour{
 
     static void OnQuitting(){
         Utility.Quitting = true;
-        UDpClient.DisconnectServer();
-        UDpServer.Stop();
+        UDP.Client.DisconnectServer();
+        UDP.Server.Stop();
     }
 
     void Awake(){
@@ -62,11 +62,11 @@ public class NethostfireService : MonoBehaviour{
     void Update() {
         if(tmp + 1 < Time.time){ 
             tmp = Time.time;
-            if(UDpServer.ShowUnityNetworkStatistics && UDpServer.Status == ServerStatusConnection.Running)
-                Utility.ShowLog("FPS: " + count + " PPS: " + UDpServer.PacketsPerSeconds + " LostPackets: " + UDpServer.LostPackets + " BufferMainThread: " + Utility.ListRunOnMainThread.Count + " PacketsSizeReceived: " + UDpServer.PacketsBytesReceived + " PacketsSizeSent: " + UDpServer.PacketsBytesSent);
+            if(UDP.Server.ShowUnityNetworkStatistics && UDP.Server.Status == ServerStatusConnection.Running)
+                Utility.ShowLog("FPS: " + count + " PPS: " + UDP.Server.PacketsPerSeconds + " LostPackets: " + UDP.Server.LostPackets + " BufferMainThread: " + Utility.ListRunOnMainThread.Count + " PacketsSizeReceived: " + UDP.Server.PacketsBytesReceived + " PacketsSizeSent: " + UDP.Server.PacketsBytesSent);
             if(!Utility.UnityBatchMode){
                 AddValueGraph(count, FPS);
-                AddValueGraph(UDpClient.Ping, Latency);
+                AddValueGraph(UDP.Client.Ping, Latency);
             }
             count = 0;
         }
@@ -75,16 +75,16 @@ public class NethostfireService : MonoBehaviour{
     }
 
     void OnGUI(){
-        if(!Application.isBatchMode && UDpClient.ShowUnityNetworkStatistics){
+        if(!Application.isBatchMode && UDP.Client.ShowUnityNetworkStatistics){
             GUILayout.Label("<color=white><b>Nethostfire " + Utility.GetVersion + "</b></color>", TextStyle);
-            GUILayout.Label("<color=white>Status: " + UDpClient.Status + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Lost Packets: " + UDpClient.LostPackets + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Peer Seconds: " + UDpClient.PacketsPerSeconds + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Size Received: " + UDpClient.PacketsBytesReceived + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Packets Size Sent: " + UDpClient.PacketsBytesSent + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Status: " + UDP.Client.Status + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Lost Packets: " + UDP.Client.LostPackets + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Peer Seconds: " + UDP.Client.PacketsPerSeconds + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Size Received: " + UDP.Client.PacketsBytesReceived + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Packets Size Sent: " + UDP.Client.PacketsBytesSent + "</color>", TextStyle);
             GUILayout.Label("<color=white>Buffer Main Thread: " + Utility.ListRunOnMainThread.Count + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Connect Time Out: " + UDpClient.ConnectTimeOut + "</color>", TextStyle);
-            GUILayout.Label("<color=white>Receive And Send Time Out: " + UDpClient.ReceiveAndSendTimeOut + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Connect Time Out: " + UDP.Client.ConnectTimeOut + "</color>", TextStyle);
+            GUILayout.Label("<color=white>Receive And Send Time Out: " + UDP.Client.ReceiveAndSendTimeOut + "</color>", TextStyle);
             for(int i = 0; i < ListGraph.Count; i++)
                 ShowGraph(ListGraph[i]);
         }
@@ -100,7 +100,7 @@ public class NethostfireService : MonoBehaviour{
     }
 
     void AddValueGraph(float value, ChartGraph graph){
-        if(UDpClient.ShowUnityNetworkStatistics){
+        if(UDP.Client.ShowUnityNetworkStatistics){
             graph.value = value;
             float b = graph.windowRect.height / graph.maxValue;
             value = b*value;

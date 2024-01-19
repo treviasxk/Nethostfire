@@ -1,54 +1,54 @@
 
 # Documentation Server and Client - UDP
-- UDpServer
-    - [UDpServer.Start](#UDpServerStart)
-    - [UDpServer.Restart](#UDpServerRestart)
-    - [UDpServer.Stop](#UDpServerStop)
-    - [UDpServer.SendBytes](#UDpServerSendBytes)
-    - [UDpServer.SendBytesGroup](#SendBytesGroup)
-    - [UDpServer.SendBytesAll](#SendBytesAll)
-    - [UDpServer.DisconnectClient](#DisconnectClient)
-    - [UDpServer.DisconnectClientGroup](#DisconnectClientGroup)
-    - [UDpServer.DisconnectClientAll](#DisconnectClientAll)
-    - [UDpServer.ChangeLimitMaxByteSizeGroupID](#ChangeLimitMaxByteSizeGroupID)
-    - [UDpServer.ChangeLimitMaxPacketsPerSecondsGroupID](#ChangeLimitMaxPacketsPerSecondsGroupID)
-    - [UDpServer.ChangeBlockIP](#ChangeBlockIP)
-    - [UDpServer.Socket](#Socket)
-    - [UDpServer.LimitMaxByteReceive](#LimitMaxByteReceive)
-    - [UDpServer.LimitMaxPacketsPerSeconds](#LimitMaxPacketsPerSeconds)
-    - [UDpServer.Status](#Status)
-    - [UDpServer.LostPackets](#LostPackets)
-    - [UDpServer.MaxClients](#MaxClients)
-    - [UDpServer.PacketsPerSeconds](#PacketsPerSeconds)
-    - [UDpServer.PacketsBytesReceived](#PacketsBytesReceived)
-    - [UDpServer.PacketsBytesSent](#PacketsBytesSent)
-    - [UDpServer.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
-    - [UDpServer.ShowUnityNetworkStatistics](#UdpServerShowUnityNetworkStatistics)
-    - [UDpServer.ClientsCount](#ClientsCount)
-    - [UDpServer.ShowDebugConsole](#ShowDebugConsole)
-    - [UDpServer.OnConnectedClient](#OnConnectedClient)
-    - [UDpServer.OnDisconnectedClient](#OnDisconnectedClient)
-    - [UDpServer.ServerStatusConnection](#OnServerStatus)
-    - [UDpServer.OnReceivedBytes](#OnReceivedBytesClient);
-- UDpClient
-    - [UDpClient.Connect](#UDpClientConnect)
-    - [UDpClient.SendBytes](#UDpClientSendBytes)
-    - [UDpClient.DisconnectServer](#DisconnectServer)
-    - [UDpClient.Socket](#Socket)
-    - [UDpClient.Status](#UDpClientStatus)
-    - [UDpClient.LostPackets](#UDpClientLostPackets)
-    - [UDpClient.PacketsPerSeconds](#UDpClientPacketsPerSeconds)
-    - [UDpClient.PacketsBytesReceived](#UDpClientPacketsBytesReceived)
-    - [UDpClient.PacketsBytesSent](#UDpClientPacketsBytesSent)
-    - [UDpClient.ReceiveAndSendTimeOut](#UDpClientReceiveAndSendTimeOut)
-    - [UDpClient.ConnectTimeOut](#ConnectTimeOut)
-    - [UDpClient.ShowUnityNetworkStatistics](#ShowUnityNetworkStatistics)
-    - [UDpClient.ShowDebugConsole](#ShowDebugConsole)
-    - [UDpClient.Ping](#Ping)
-    - [UDpClient.OnReceivedBytes](#OnReceivedBytesServer)
-    - [UDpClient.ClientStatusConnection](#OnClientStatus)
-    - [UDpClient.PublicKeyRSA](#PublicKeyRSA)
-    - [UDpClient.PrivateKeyAES](#PrivateKeyAES)
+- UDP.Server
+    - [UDP.Server.Start](#UDP.ServerStart)
+    - [UDP.Server.Restart](#UDP.ServerRestart)
+    - [UDP.Server.Stop](#UDP.ServerStop)
+    - [UDP.Server.SendBytes](#UDP.ServerSendBytes)
+    - [UDP.Server.SendBytesGroup](#SendBytesGroup)
+    - [UDP.Server.SendBytesAll](#SendBytesAll)
+    - [UDP.Server.DisconnectClient](#DisconnectClient)
+    - [UDP.Server.DisconnectClientGroup](#DisconnectClientGroup)
+    - [UDP.Server.DisconnectClientAll](#DisconnectClientAll)
+    - [UDP.Server.ChangeLimitMaxByteSizeGroupID](#ChangeLimitMaxByteSizeGroupID)
+    - [UDP.Server.ChangeLimitMaxPacketsPerSecondsGroupID](#ChangeLimitMaxPacketsPerSecondsGroupID)
+    - [UDP.Server.ChangeBlockIP](#ChangeBlockIP)
+    - [UDP.Server.Socket](#Socket)
+    - [UDP.Server.LimitMaxByteReceive](#LimitMaxByteReceive)
+    - [UDP.Server.LimitMaxPacketsPerSeconds](#LimitMaxPacketsPerSeconds)
+    - [UDP.Server.Status](#Status)
+    - [UDP.Server.LostPackets](#LostPackets)
+    - [UDP.Server.MaxClients](#MaxClients)
+    - [UDP.Server.PacketsPerSeconds](#PacketsPerSeconds)
+    - [UDP.Server.PacketsBytesReceived](#PacketsBytesReceived)
+    - [UDP.Server.PacketsBytesSent](#PacketsBytesSent)
+    - [UDP.Server.ReceiveAndSendTimeOut](#ReceiveAndSendTimeOut)
+    - [UDP.Server.ShowUnityNetworkStatistics](#UdpServerShowUnityNetworkStatistics)
+    - [UDP.Server.ClientsCount](#ClientsCount)
+    - [UDP.Server.ShowDebugConsole](#ShowDebugConsole)
+    - [UDP.Server.OnConnectedClient](#OnConnectedClient)
+    - [UDP.Server.OnDisconnectedClient](#OnDisconnectedClient)
+    - [UDP.Server.ServerStatusConnection](#OnServerStatus)
+    - [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient);
+- UDP.Client
+    - [UDP.Client.Connect](#UDP.ClientConnect)
+    - [UDP.Client.SendBytes](#UDP.ClientSendBytes)
+    - [UDP.Client.DisconnectServer](#DisconnectServer)
+    - [UDP.Client.Socket](#Socket)
+    - [UDP.Client.Status](#UDP.ClientStatus)
+    - [UDP.Client.LostPackets](#UDP.ClientLostPackets)
+    - [UDP.Client.PacketsPerSeconds](#UDP.ClientPacketsPerSeconds)
+    - [UDP.Client.PacketsBytesReceived](#UDP.ClientPacketsBytesReceived)
+    - [UDP.Client.PacketsBytesSent](#UDP.ClientPacketsBytesSent)
+    - [UDP.Client.ReceiveAndSendTimeOut](#UDP.ClientReceiveAndSendTimeOut)
+    - [UDP.Client.ConnectTimeOut](#ConnectTimeOut)
+    - [UDP.Client.ShowUnityNetworkStatistics](#ShowUnityNetworkStatistics)
+    - [UDP.Client.ShowDebugConsole](#ShowDebugConsole)
+    - [UDP.Client.Ping](#Ping)
+    - [UDP.Client.OnReceivedBytes](#OnReceivedBytesServer)
+    - [UDP.Client.ClientStatusConnection](#OnClientStatus)
+    - [UDP.Client.PublicKeyRSA](#PublicKeyRSA)
+    - [UDP.Client.PrivateKeyAES](#PrivateKeyAES)
 - Others
     - [SymmetricSizeRSA](#SymmetricSizeRSA)
     - [ServerStatusConnection](#ServerStatusConnection)
@@ -60,56 +60,56 @@
     - [GroupID](#GroupID)
     - [ShippingPreparation](#ShippingPreparation)
 
-## UDpServer
+## UDP.Server
 
-<a name="UDpServerStart"></a>
-### UDpServer.Start
-`UDpServer.Start(IPAddress _ip, int _port, int _symmetricSizeRSA = 86)`
+<a name="UDP.ServerStart"></a>
+### UDP.Server.Start
+`UDP.Server.Start(IPAddress _ip, int _port, int _symmetricSizeRSA = 86)`
 ```cs
-UDpServer.Start(IPAddress.Any, 25000, 16);
+UDP.Server.Start(IPAddress.Any, 25000, 16);
 ```
-Start the server with specific IP, Port and sets the size of [SymmetricSizeRSA](#SymmetricSizeRSA) if needed. If the server has already been started and then stopped you can call ``UDpServer.Start();`` without defining _host and _symmetricSizeRSA to start the server with the previous settings.
+Start the server with specific IP, Port and sets the size of [SymmetricSizeRSA](#SymmetricSizeRSA) if needed. If the server has already been started and then stopped you can call ``UDP.Server.Start();`` without defining _host and _symmetricSizeRSA to start the server with the previous settings.
 
 -----
 
-<a name="UDpServerRestart"></a>
-### UDpServer.Restart
-`UDpServer.Restart()`
+<a name="UDP.ServerRestart"></a>
+### UDP.Server.Restart
+`UDP.Server.Restart()`
 ```cs
-UDpServer.Restart();
+UDP.Server.Restart();
 ```
 If the server is running, you can restart it, all connected clients will be disconnected from the server and new RSA and AES keys will be generated again.
 
 -----
 
-<a name="UDpServerStop"></a>
-### UDpServer.Stop
-`UDpServer.Stop()`
+<a name="UDP.ServerStop"></a>
+### UDP.Server.Stop
+`UDP.Server.Stop()`
 ```cs
-UDpServer.Stop();
+UDP.Server.Stop();
 ```
 If the server is running, you can stop it, all connected clients will be disconnected from the server and if you start the server again new RSA and AES keys will be generated.
 
 -----
 
-<a name="UDpServerSendBytes"></a>
-### UDpServer.SendBytes
-`UDpServer.SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
+<a name="UDP.ServerSendBytes"></a>
+### UDP.Server.SendBytes
+`UDP.Server.SendBytes(byte[] _byte, int _groupID, DataClient _dataClient, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
    // Sending only groupID to client, without encryption and without HoldConnection
-   UDpServer.SendBytes(null, 4, _dataClient);
+   UDP.Server.SendBytes(null, 4, _dataClient);
 
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
 
    // Sending bytes with groupID to client, without encryption and without HoldConnection
-   UDpServer.SendBytes(_byte, 4, _dataClient);
+   UDP.Server.SendBytes(_byte, 4, _dataClient);
 
    // Sending bytes with groupID to client, with encryption AES and without HoldConnection
-   UDpServer.SendBytes(_byte, 4, _dataClient, TypeShipping.AES);
+   UDP.Server.SendBytes(_byte, 4, _dataClient, TypeShipping.AES);
 
    // Sending bytes with groupID to client, with encryption RSA and with HoldConnection
-   UDpServer.SendBytes(_byte, 4, _dataClient, TypeShipping.RSA, true);
+   UDP.Server.SendBytes(_byte, 4, _dataClient, TypeShipping.RSA, true);
 }
 ```
 To send bytes to a client, it is necessary to define the bytes, [GroupID](#GroupID) and [DataClient](#DataClient), the other sending resources such as [TypeShipping](#TypeShipping) and [HoldConnection](#HoldConnection) are optional.
@@ -117,22 +117,22 @@ To send bytes to a client, it is necessary to define the bytes, [GroupID](#Group
 -----
 
 <a name="SendBytesGroup"></a>
-### UDpServer.SendBytesGroup
-`UDpServer.SendBytesGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
+### UDP.Server.SendBytesGroup
+`UDP.Server.SendBytesGroup(byte[] _byte, int _groupID, ConcurrentQueue<DataClient> _dataClients, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
 ```cs
 using System.Collections.Concurrent;
 static ConcurrentQueue<DataClient> PlayersLobby = new ConcurrentQueue<DataClient>();
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
    // Sending only groupID to all clients on the list, without encryption and without HoldConnection
-   UDpServer.SendBytesGroup(null, 4, _dataClient);
+   UDP.Server.SendBytesGroup(null, 4, _dataClient);
 
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Play Game");
 
    // Sending bytes with groupID to all clients on the list
-   UDpServer.SendBytesGroup(_byte, 4, PlayersLobby);
+   UDP.Server.SendBytesGroup(_byte, 4, PlayersLobby);
 
    // Sending bytes with groupID to all clients on the list, except for the sending client.
-   UDpServer.SendBytesGroup(_byte, 4, PlayersLobby, _skipDataClient: _dataClient);
+   UDP.Server.SendBytesGroup(_byte, 4, PlayersLobby, _skipDataClient: _dataClient);
 }
 ```
 To send bytes to a group client, it is necessary to define the bytes, [GroupID](#GroupID) and [List DataClient](#DataClient), the other sending resources such as [TypeShipping](#TypeShipping), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
@@ -140,20 +140,20 @@ To send bytes to a group client, it is necessary to define the bytes, [GroupID](
 -----
 
 <a name="SendBytesAll"></a>
-### UDpServer.SendBytesAll
-`UDpServer.SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
+### UDP.Server.SendBytesAll
+`UDP.Server.SendBytesAll(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, DataClient _skipDataClient = null, bool _holdConnection = false)`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
    // Sending only groupID to all clients connected, without encryption and without HoldConnection
-   UDpServer.SendBytesAll(null, 4, _dataClient);
+   UDP.Server.SendBytesAll(null, 4, _dataClient);
 
    var _bytes = System.Text.Encoding.ASCII.GetBytes("Play Game");
 
    // Sending bytes with groupID to all clients connected.
-   UDpServer.SendBytesAll(_byte, 4);
+   UDP.Server.SendBytesAll(_byte, 4);
 
    // Sending bytes with groupID to all clients connected, except for the sending client.
-   UDpServer.SendBytesAll(_byte, 4, PlayersLobby, _skipDataClient: _dataClient);
+   UDP.Server.SendBytesAll(_byte, 4, PlayersLobby, _skipDataClient: _dataClient);
 }
 ```
 To send bytes to all clients, it is necessary to define the bytes, [GroupID](#GroupID), the other sending resources such as [TypeShipping](#TypeShipping), SkipDataClient and [HoldConnection](#HoldConnection) are optional.
@@ -161,11 +161,11 @@ To send bytes to all clients, it is necessary to define the bytes, [GroupID](#Gr
 -----
 
 <a name="DisconnectClient"></a>
-### UDpServer.DisconnectClient
-`UDpServer.DisconnectClient(DataClient _dataClient)`
+### UDP.Server.DisconnectClient
+`UDP.Server.DisconnectClient(DataClient _dataClient)`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  UDpServer.DisconnectClient(_dataClient);
+  UDP.Server.DisconnectClient(_dataClient);
 }
 ```
 To disconnect a client from server, it is necessary to inform the [DataClient](#DataClient).
@@ -173,13 +173,13 @@ To disconnect a client from server, it is necessary to inform the [DataClient](#
 -----
 
 <a name="DisconnectClientGroup"></a>
-### UDpServer.DisconnectClientGroup
-`UDpServer.DisconnectClientGroup(<List>DataClient _dataClient)`
+### UDP.Server.DisconnectClientGroup
+`UDP.Server.DisconnectClientGroup(<List>DataClient _dataClient)`
 ```cs
 using System.Collections.Concurrent;
 static ConcurrentQueue<DataClient> AFKPlayers = new ConcurrentQueue<DataClient>();
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  UDpServer.DisconnectClientGroup(AFKPlayers);
+  UDP.Server.DisconnectClientGroup(AFKPlayers);
 }
 ```
 To disconnect a group clients from server, it is necessary to inform the [List DataClient](#DataClient).
@@ -187,11 +187,11 @@ To disconnect a group clients from server, it is necessary to inform the [List D
 -----
 
 <a name="DisconnectClientAll"></a>
-### UDpServer.DisconnectClientAll
-`UDpServer.DisconnectClientAll()`
+### UDP.Server.DisconnectClientAll
+`UDP.Server.DisconnectClientAll()`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  UDpServer.DisconnectClientAll();
+  UDP.Server.DisconnectClientAll();
 }
 ```
 To disconnect alls clients from server.
@@ -199,32 +199,32 @@ To disconnect alls clients from server.
 -----
 
 <a name="ChangeLimitMaxByteSizeGroupID"></a>
-### UDpServer.ChangeLimitMaxByteSizeGroupID
-`UDpServer.ChangeLimitMaxByteSizeGroupID(int _groupID, int _limitBytes)`
+### UDP.Server.ChangeLimitMaxByteSizeGroupID
+`UDP.Server.ChangeLimitMaxByteSizeGroupID(int _groupID, int _limitBytes)`
 ```cs
-UDpServer.ChangeLimitMaxByteSizeGroupID(4, 12);
+UDP.Server.ChangeLimitMaxByteSizeGroupID(4, 12);
 ```
-The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a [GroupID](#GroupID) that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value _limitBytes is 0 which is unlimited.
+The ChangeLimitMaxByteSizeGroupID will change the maximum limit of bytes of a [GroupID](#GroupID) that the server will read when receiving the bytes, if the packet bytes is greater than the limit, the server will not call the [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value _limitBytes is 0 which is unlimited.
 
 -----
 
 <a name="ChangeLimitMaxPacketsPerSecondsGroupID"></a>
-### UDpServer.ChangeLimitMaxPacketsPerSecondsGroupID
-`UDpServer.ChangeLimitMaxPacketsPerSecondsGroupID(int _groupID, int _limitPPS)`
+### UDP.Server.ChangeLimitMaxPacketsPerSecondsGroupID
+`UDP.Server.ChangeLimitMaxPacketsPerSecondsGroupID(int _groupID, int _limitPPS)`
 ```cs
-UDpServer.ChangeLimitMaxPacketsPerSecondsGroupID(4, 60);
+UDP.Server.ChangeLimitMaxPacketsPerSecondsGroupID(4, 60);
 ```
-The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a [GroupID](#GroupID), if the packets is greater than the limit in 1 second, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is _limitBytes 0 which is unlimited.
+The ChangeLimitMaxPacketsPerSecondsGroupID will change the maximum limit of Packets per seconds (PPS) of a [GroupID](#GroupID), if the packets is greater than the limit in 1 second, the server will not call the [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is _limitBytes 0 which is unlimited.
 
 -----
 
 <a name="ChangeBlockIP"></a>
-### UDpServer.ChangeBlockIP
-`UDpServer.ChangeBlockIP(IPEndPoint _ip, int _time)`
+### UDP.Server.ChangeBlockIP
+`UDP.Server.ChangeBlockIP(IPEndPoint _ip, int _time)`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
   // IP blocked per 1 hour
-  UDpServer.ChangeBlockIP(_dataClient.IP, 60000 * 60);
+  UDP.Server.ChangeBlockIP(_dataClient.IP, 60000 * 60);
 }
 ```
 ChangeBlockIP blocks a specific IP for the time defined in milliseconds. If the time is 0 the IP will be removed from the server's blocked IP list.
@@ -232,11 +232,11 @@ ChangeBlockIP blocks a specific IP for the time defined in milliseconds. If the 
 -----
 
 <a name="ClientsCount"></a>
-### UDpServer.ClientsCount
+### UDP.Server.ClientsCount
 `Read-Only Variable`
 ```cs
 static void OnConnectedClient(DataClient _dataClient){
-    int onlines = UDpServer.ClientsCount;
+    int onlines = UDP.Server.ClientsCount;
     Console.WriteLine("Has a total of {0} players connected.", onlines);
 }
 ```
@@ -245,33 +245,33 @@ The ClientsCount is the total number of clients connected to the server.
 -----
 
 <a name="LimitMaxByteReceive"></a>
-### UDpServer.LimitMaxByteReceive
+### UDP.Server.LimitMaxByteReceive
 `Write/Read Variable`
 ```cs
 // Limit in 12 bytes;
-UDpServer.LimitMaxByteReceive = 12;
+UDP.Server.LimitMaxByteReceive = 12;
 ```
-The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
+The LimitMaxByteReceive will change the maximum limit of bytes that the server will read when receiving, if the packet bytes is greater than the limit, the server will not call the [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
 
 -----
 
 <a name="LimitMaxPacketsPerSeconds"></a>
-### UDpServer.LimitMaxPacketsPerSeconds
+### UDP.Server.LimitMaxPacketsPerSeconds
 `Write/Read Variable`
 ```cs
 // Limit in 60 pps;
-UDpServer.LimitMaxPacketsPerSeconds = 60;
+UDP.Server.LimitMaxPacketsPerSeconds = 60;
 ```
-The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
+The LimitMaxPacketsPerSeconds will change the maximum limit of Packets per seconds (PPS), if the packets is greater than the limit in 1 second, the server will not call the [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient) event with the received bytes. The default value is 0 which is unlimited.
 
 -----
 
 <a name="LostPackets"></a>
-### UDpServer.LostPackets
+### UDP.Server.LostPackets
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  int LostPackets = UDpServer.LostPackets;
+  int LostPackets = UDP.Server.LostPackets;
   Console.WriteLine("{0} packets lost", LostPackets);
 }
 ```
@@ -280,21 +280,21 @@ LostPackets is the number of packets lost.
 -----
 
 <a name="MaxClients"></a>
-### UDpServer.MaxClients
+### UDP.Server.MaxClients
 `Write/Read Variable`
 ```cs
-UDpServer.MaxClients = 32; // Maximum 32 Clients
+UDP.Server.MaxClients = 32; // Maximum 32 Clients
 ```
 MaxClients is the maximum number of clients that can connect to the server. If you have many connected clients and you change the value below the number of connected clients, they will not be disconnected, the server will block new connections until the number of connected clients is below or equal to the limit.
 
 -----
 
 <a name="PacketsPerSeconds"></a>
-### UDpServer.PacketsPerSeconds
+### UDP.Server.PacketsPerSeconds
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  string packetsPerSeconds = UDpServer.PacketsPerSeconds;
+  string packetsPerSeconds = UDP.Server.PacketsPerSeconds;
   Console.WriteLine("{0} Packets Per Seconds", packetsPerSeconds);
 }
 ```
@@ -303,11 +303,11 @@ PacketsPerSeconds is the amount of packets per second that happen when the serve
 -----
 
 <a name="PacketsBytesReceived"></a>
-### UDpServer.PacketsBytesReceived
+### UDP.Server.PacketsBytesReceived
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  string packetsBytesReceived = UDpServer.PacketsBytesReceived;
+  string packetsBytesReceived = UDP.Server.PacketsBytesReceived;
   Console.WriteLine("Received: {0}", packetsBytesReceived);
 }
 ```
@@ -316,11 +316,11 @@ PacketsBytesReceived is the amount of bytes received by the server.
 -----
 
 <a name="PacketsBytesSent"></a>
-### UDpServer.PacketsBytesSent
+### UDP.Server.PacketsBytesSent
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
-  string packetsBytesSent = UDpServer.PacketsBytesSent;
+  string packetsBytesSent = UDP.Server.PacketsBytesSent;
   Console.WriteLine("Sent: {0}", packetsBytesSent);
 }
 ```
@@ -329,22 +329,22 @@ PacketsBytesSent is the amount of bytes sent by the server.
 -----
 
 <a name="ReceiveAndSendTimeOut"></a>
-### UDpServer.ReceiveAndSendTimeOut
+### UDP.Server.ReceiveAndSendTimeOut
 `Write/Read Variable`
 ```cs
-UDpServer.ReceiveAndSendTimeOut = 2000;
+UDP.Server.ReceiveAndSendTimeOut = 2000;
 ```
 ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiving, if any packet exceeds that sending the server will ignore the receiving or sending. The default and recommended value is 1000.
 
 -----
 
 <a name="ShowDebugConsole"></a>
-### UDpServer.ShowDebugConsole or UDpClient.ShowDebugConsole
+### UDP.Server.ShowDebugConsole or UDP.Client.ShowDebugConsole
 `Write/Read Variable`
 ```cs
-UDpServer.ShowDebugConsole = false;
+UDP.Server.ShowDebugConsole = false;
 // Or
-UDpClient.ShowDebugConsole = false;
+UDP.Client.ShowDebugConsole = false;
 ```
 ![Preview](/Images/DebugConsole.png)
 
@@ -353,7 +353,7 @@ The ShowDebugConsole when declaring false, the logs in Console.Write and Debug.L
 -----
 
 <a name="Socket"></a>
-### UDpServer.Socket or UDpClient.Socket
+### UDP.Server.Socket or UDP.Client.Socket
 `Write/Read Variable`
 
 The Socket is a `System.Net.Sockets.UdpClient` variable. This is the main communication variable between Client and server.
@@ -372,24 +372,24 @@ When using Nethostfire in Unity and when set the value of ShowUnityNetworkStatis
 -----
 
 <a name="Status"></a>
-### UDpServer.Status
+### UDP.Server.Status
 `Write/Read Variable`
 ```cs
-if(UDpServer.Status == ServerStatusConnection.Running){
-    // UDpServer Running.
+if(UDP.Server.Status == ServerStatusConnection.Running){
+    // UDP.Server Running.
 }
 ```
-The Status is an enum [UDpServer.ServerStatusConnection](#ServerStatusConnection) with it you can know the current state of the server.
+The Status is an enum [UDP.Server.ServerStatusConnection](#ServerStatusConnection) with it you can know the current state of the server.
 
 -----
 
 <a name="OnConnectedClient"></a>
-### UDpServer.OnConnectedClient
+### UDP.Server.OnConnectedClient
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpServer.OnConnectedClient += OnConnectedClient;
-    UDpServer.Start(IPAddress.Any, 25000);
+    UDP.Server.OnConnectedClient += OnConnectedClient;
+    UDP.Server.Start(IPAddress.Any, 25000);
 }
 
 static void OnConnectedClient(DataClient _dataClient){
@@ -401,12 +401,12 @@ OnConnectedClient is an event that you can use to receive the [DataClient](#Data
 -----
 
 <a name="OnDisconnectedClient"></a>
-### UDpServer.OnDisconnectedClient
+### UDP.Server.OnDisconnectedClient
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpServer.OnDisconnectedClient += OnDisconnectedClient;
-    UDpServer.Start(IPAddress.Any, 25000);
+    UDP.Server.OnDisconnectedClient += OnDisconnectedClient;
+    UDP.Server.Start(IPAddress.Any, 25000);
 }
 
 static void OnDisconnectedClient(DataClient _dataClient){
@@ -418,29 +418,29 @@ OnDisconnectedClient is an event that you can use to receive the [DataClient](#D
 -----
 
 <a name="OnServerStatus"></a>
-### UDpServer.ServerStatusConnection
+### UDP.Server.ServerStatusConnection
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpServer.ServerStatusConnection += OnServerStatus;
-    UDpServer.Start(IPAddress.Any, 25000);
+    UDP.Server.ServerStatusConnection += OnServerStatus;
+    UDP.Server.Start(IPAddress.Any, 25000);
 }
 
 static void OnServerStatus(ServerStatusConnection _status){
-    Console.WriteLine("UDpServer Status: " + _status);
+    Console.WriteLine("UDP.Server Status: " + _status);
 }
 ```
-OnServerStatus is an event that returns [UDpServer.ServerStatusConnection](#ServerStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
+OnServerStatus is an event that returns [UDP.Server.ServerStatusConnection](#ServerStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
 
 -----
 
 <a name="OnReceivedBytesClient"></a>
-### UDpServer.OnReceivedBytes
+### UDP.Server.OnReceivedBytes
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpServer.OnReceivedBytes += OnReceivedBytesClient;
-    UDpServer.Start(IPAddress.Any, 25000);
+    UDP.Server.OnReceivedBytes += OnReceivedBytesClient;
+    UDP.Server.Start(IPAddress.Any, 25000);
 }
 
 static void OnReceivedBytesClient(byte[] _byte, int _groupID, DataClient _dataClient){
@@ -451,54 +451,54 @@ OnReceivedBytesClient an event that returns bytes received, [GroupID](#GroupID) 
 
 
 ## Client
-<a name="UDpClientConnect"></a>
-### UDpClient.Connect
+<a name="UDP.ClientConnect"></a>
+### UDP.Client.Connect
 `Connect(IPEndPoint _host, int _symmetricSizeRSA = 86)`
 ```cs
-UDpClient.Connect(IPAddress.Parse("127.0.0.1"), 25000, 20);
+UDP.Client.Connect(IPAddress.Parse("127.0.0.1"), 25000, 20);
 ```
 Connect to a server with IP, Port and sets the size of [SymmetricSizeRSA](#SymmetricSizeRSA) if needed.
 
 -----
 
-<a name="UDpClientSendBytes"></a>
-### UDpClient.SendBytes
+<a name="UDP.ClientSendBytes"></a>
+### UDP.Client.SendBytes
 `SendBytes(byte[] _byte, int _groupID, TypeShipping _typeShipping = TypeShipping.None, bool _holdConnection = false)`
 ```cs
 var _bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
 
 // Sending only groupID, without encryption and without HoldConnection
-UDpClient.SendBytes(null, 11);
+UDP.Client.SendBytes(null, 11);
 
 // Sending bytes with groupID 4 to server, without encryption and without HoldConnection
-UDpClient.SendBytes(_byte, 4);
+UDP.Client.SendBytes(_byte, 4);
 
 // Sending bytes with groupID 4 to server, with encryption AES and without HoldConnection
-UDpClient.SendBytes(_byte, 4, TypeShipping.AES);
+UDP.Client.SendBytes(_byte, 4, TypeShipping.AES);
 
 // Sending bytes with groupID 4 to server, with encryption RSA and with HoldConnection
-UDpClient.SendBytes(_byte, 4, TypeShipping.RSA, true);
+UDP.Client.SendBytes(_byte, 4, TypeShipping.RSA, true);
 ```
 To send bytes to server, it is necessary to define the bytes and [GroupID](#GroupID), the other sending resources such as [TypeShipping](#TypeShipping) and [HoldConnection](#HoldConnection) are optional.
 
 -----
 
 <a name="DisconnectServer"></a>
-### UDpClient.DisconnectServer
-`UDpClient.DisconnectServer()`
+### UDP.Client.DisconnectServer
+`UDP.Client.DisconnectServer()`
 ```cs
-UDpClient.DisconnectServer();
+UDP.Client.DisconnectServer();
 ```
 With DisconnectServer the client will be disconnected from the server.
 
 -----
 
-<a name="UDpClientLostPackets"></a>
-### UDpClient.LostPackets
+<a name="UDP.ClientLostPackets"></a>
+### UDP.Client.LostPackets
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesServer(byte[] _byte, int _groupID, DataClient _dataClient){
-  int LostPackets = UDpClient.LostPackets;
+  int LostPackets = UDP.Client.LostPackets;
   Console.WriteLine("{0} packets lost", LostPackets);
 }
 ```
@@ -506,12 +506,12 @@ LostPackets is the number of packets lost.
 
 -----
 
-<a name="UDpClientPacketsPerSeconds"></a>
-### UDpClient.PacketsPerSeconds
+<a name="UDP.ClientPacketsPerSeconds"></a>
+### UDP.Client.PacketsPerSeconds
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesServer(byte[] _byte, int _groupID, DataClient _dataClient){
-  string packetsPerSeconds = UDpClient.PacketsPerSeconds;
+  string packetsPerSeconds = UDP.Client.PacketsPerSeconds;
   Console.WriteLine("{0} Packets Per Seconds", packetsPerSeconds);
 }
 ```
@@ -519,12 +519,12 @@ PacketsPerSeconds is the amount of packets per second that happen when the clien
 
 -----
 
-<a name="UDpClientPacketsBytesReceived"></a>
-### UDpClient.PacketsBytesReceived
+<a name="UDP.ClientPacketsBytesReceived"></a>
+### UDP.Client.PacketsBytesReceived
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesServer(byte[] _byte, int _groupID, DataClient _dataClient){
-  string packetsBytesReceived = UDpClient.PacketsBytesReceived;
+  string packetsBytesReceived = UDP.Client.PacketsBytesReceived;
   Console.WriteLine("Received: {0}", packetsBytesReceived);
 }
 ```
@@ -532,12 +532,12 @@ PacketsBytesReceived is the amount of bytes received by the client.
 
 -----
 
-<a name="UDpClientPacketsBytesSent"></a>
-### UDpClient.PacketsBytesSent
+<a name="UDP.ClientPacketsBytesSent"></a>
+### UDP.Client.PacketsBytesSent
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesServer(byte[] _byte, int _groupID, DataClient _dataClient){
-  string packetsBytesSent = UDpClient.PacketsBytesSent;
+  string packetsBytesSent = UDP.Client.PacketsBytesSent;
   Console.WriteLine("Sent: {0}", packetsBytesSent);
 }
 ```
@@ -545,23 +545,23 @@ PacketsBytesSent is the amount of bytes sent by the client.
 
 -----
 
-<a name="UDpClientReceiveAndSendTimeOut"></a>
-### UDpClient.ReceiveAndSendTimeOut
+<a name="UDP.ClientReceiveAndSendTimeOut"></a>
+### UDP.Client.ReceiveAndSendTimeOut
 `Write/Read Variable`
 ```cs
-UDpClient.ReceiveAndSendTimeOut = 2000;
+UDP.Client.ReceiveAndSendTimeOut = 2000;
 ```
 ReceiveAndSendTimeOut defines the timeout in milliseconds for sending and receiving, if any packet exceeds that sending the client will ignore the receiving or sending. The default and recommended value is 1000.
 
 -----
 
 <a name="OnReceivedBytesServer"></a>
-### UDpClient.OnReceivedBytes
+### UDP.Client.OnReceivedBytes
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpClient.OnReceivedBytes += OnReceivedBytesServer;
-    UDpClient.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+    UDP.Client.OnReceivedBytes += OnReceivedBytesServer;
+    UDP.Client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
 }
 
 static void OnReceivedBytesServer(byte[] _byte, int _groupID){
@@ -573,28 +573,28 @@ OnReceivedBytesServer an event that returns bytes received and [GroupID](#GroupI
 -----
 
 <a name="OnClientStatus"></a>
-### UDpClient.ClientStatusConnection
+### UDP.Client.ClientStatusConnection
 `Event`
 ```cs
 static void Main(string[] args){
-    UDpClient.ClientStatusConnection += OnClientStatus;
-    UDpServer.Start(IPAddress.Any, 25000);
+    UDP.Client.ClientStatusConnection += OnClientStatus;
+    UDP.Server.Start(IPAddress.Any, 25000);
 }
 
 static void OnClientStatus(ClientStatusConnection _status){
     Console.WriteLine("Client Status: " + _status);
 }
 ```
-OnClientStatus is an event that returns [UDpClient.ClientStatusConnection](#ClientStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
+OnClientStatus is an event that returns [UDP.Client.ClientStatusConnection](#ClientStatusConnection) whenever the status changes, with which you can use it to know the current status of the server.
 
 -----
 
 <a name="Ping"></a>
-### UDpClient.Ping
+### UDP.Client.Ping
 `Read-Only Variable`
 ```cs
 static void OnReceivedBytesServer(byte[] _byte, int _groupID, DataClient _dataClient){
-  string ping = UDpClient.Ping;
+  string ping = UDP.Client.Ping;
   Console.WriteLine("PING: {0}ms", ping);
 }
 ```
@@ -603,12 +603,12 @@ Ping returns an integer value, this value is per milliseconds
 -----
 
 <a name="PublicKeyRSA"></a>
-### UDpClient.PublicKeyRSA
+### UDP.Client.PublicKeyRSA
 `Read-Only Variable`
 ```cs
 static void OnClientStatus(ClientStatusConnection _status){
     if(_status == ClientStatusConnection.Connected){
-        string publicKeyRSA = UDpClient.PublicKeyRSA;
+        string publicKeyRSA = UDP.Client.PublicKeyRSA;
         Console.WriteLine("Public Key RSA: {0}", publicKeyRSA);
     }
 }
@@ -618,12 +618,12 @@ PublicKeyRSA returns the RSA public key obtained by the server after connecting.
 -----
 
 <a name="PrivateKeyAES"></a>
-### UDpClient.PrivateKeyAES
+### UDP.Client.PrivateKeyAES
 `Read-Only Variable`
 ```cs
 static void OnClientStatus(ClientStatusConnection _status){
     if(_status == ClientStatusConnection.Connected){
-        string privateKeyAES = UDpClient.PrivateKeyAES;
+        string privateKeyAES = UDP.Client.PrivateKeyAES;
         Console.WriteLine("Private Key AES: {0}", privateKeyAES);
     }
 }
@@ -632,33 +632,33 @@ PrivateKeyAES returns the AES private key obtained by the server after connectin
 
 -----
 
-<a name="UDpClientStatus"></a>
-### UDpClient.Status
+<a name="UDP.ClientStatus"></a>
+### UDP.Client.Status
 `Write/Read Variable`
 ```cs
-if(UDpClient.Status == ClientStatusConnection.Connected){
+if(UDP.Client.Status == ClientStatusConnection.Connected){
     // Client Connected.
 }
 ```
-The Status is an enum [UDpClient.ClientStatusConnection](#ClientStatusConnection) with it you can know the current state of the client.
+The Status is an enum [UDP.Client.ClientStatusConnection](#ClientStatusConnection) with it you can know the current state of the client.
 
 -----
 
 <a name="ConnectTimeOut"></a>
-### UDpClient.ConnectTimeOut
+### UDP.Client.ConnectTimeOut
 `Write/Read Variable`
 ```cs
-UDpClient.ConnectTimeOut = 15000; // 15s
+UDP.Client.ConnectTimeOut = 15000; // 15s
 ```
 ConnectTimeOut is the time the client will be reconnecting with the server, the time is defined in milliseconds, if the value is 0 the client will be reconnecting infinitely. The default value is 10000.
 
 -----
 
 <a name="ShowUnityNetworkStatistics"></a>
-### UDpClient.ShowUnityNetworkStatistics
+### UDP.Client.ShowUnityNetworkStatistics
 `Write/Read Variable`
 ```cs
-UDpClient.ShowUnityNetworkStatistics = true;
+UDP.Client.ShowUnityNetworkStatistics = true;
 ```
 
 ![Preview](/Images/NetworkStatistics.png)
@@ -696,12 +696,12 @@ public class DataClient{
     public byte[] PrivateKeyAES = null; // Private AES key
 }
 ```
-The DataClient class is used to store data from a client on the server. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events [UDpServer.OnReceivedBytes](#OnReceivedBytesClient), [UDpClient.OnReceivedBytes](#OnReceivedBytesServer), [UDpServer.OnConnectedClient](#OnConnectedClient) and [UDpServer.OnDisconnectedClient](#OnDisconnectedClient)
+The DataClient class is used to store data from a client on the server. It is with this class that the server uses to define a client. The DataClients can be obtained with the following server events [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient), [UDP.Client.OnReceivedBytes](#OnReceivedBytesServer), [UDP.Server.OnConnectedClient](#OnConnectedClient) and [UDP.Server.OnDisconnectedClient](#OnDisconnectedClient)
 
 -----
 
 <a name="ServerStatusConnection"></a>
-### UDpServer.ServerStatusConnection
+### UDP.Server.ServerStatusConnection
 ```cs
 public enum ServerStatusConnection{
     Stopped = 0,
@@ -711,7 +711,7 @@ public enum ServerStatusConnection{
     Restarting = 4,
 }
 ```
-The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the [UDpServer.Status](#Status) variable or with the event [UDpServer.ServerStatusConnection](#OnServerStatus)
+The ServerStatusConnection is used to define server states. The ServerStatusConnection can be obtained by the [UDP.Server.Status](#Status) variable or with the event [UDP.Server.ServerStatusConnection](#OnServerStatus)
 
 -----
 
@@ -766,13 +766,13 @@ public enum ClientStatusConnection{
     MaxClientExceeded = 6, // The server has exceeded the limit of connected clients
 }
 ```
-The ClientStatusConnection is used to define client states. The ClientStatusConnection can be obtained by the [UDpClient.Status](#UDpClientStatus) variable or with the event [UDpClient.ClientStatusConnection](#OnClientStatus)
+The ClientStatusConnection is used to define client states. The ClientStatusConnection can be obtained by the [UDP.Client.Status](#UDP.ClientStatus) variable or with the event [UDP.Client.ClientStatusConnection](#OnClientStatus)
 
 ## FAQ
 
 <a name="GroupID"></a>
 ### GroupID
-GroupID is a way to organize your shipments with high performance, whenever you send bytes with the UDpServer or Client the GroupID will be obtained in the following events: [UDpServer.OnReceivedBytes](#OnReceivedBytesClient) and [UDpClient.OnReceivedBytes](#OnReceivedBytesServer).
+GroupID is a way to organize your shipments with high performance, whenever you send bytes with the UDP.Server or Client the GroupID will be obtained in the following events: [UDP.Server.OnReceivedBytes](#OnReceivedBytesClient) and [UDP.Client.OnReceivedBytes](#OnReceivedBytesServer).
 
 -----
 
@@ -781,4 +781,4 @@ GroupID is a way to organize your shipments with high performance, whenever you 
 
 ![Preview](/Images/ShippingPreparation.png)
 
-After the message "Hello World!" was sent with [UDpClient.SendBytes](#UDpClientSendBytes), the bytes were sorted before being sent, for Nethostfire features to work.
+After the message "Hello World!" was sent with [UDP.Client.SendBytes](#UDP.ClientSendBytes), the bytes were sorted before being sent, for Nethostfire features to work.
