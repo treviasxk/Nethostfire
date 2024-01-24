@@ -370,7 +370,7 @@ namespace Nethostfire {
          /// </summary>
          public static void DisconnectClient(DataClient _dataClient){
             if(Status == ServerStatusConnection.Running)
-               Utility.SendPing(Socket, new byte[]{0},_dataClient);
+               Utility.SendPing(Socket, [0],_dataClient);
          }
          /// <summary>
          /// To disconnect a group clients from server, it is necessary to inform the List DataClient.
@@ -378,7 +378,7 @@ namespace Nethostfire {
          public static void DisconnectClientGroup(ConcurrentQueue<DataClient> _dataClients){
             Parallel.ForEach(_dataClients, dataClient => {
                if(Status == ServerStatusConnection.Running)
-                  Utility.SendPing(Socket, new byte[]{0}, dataClient);
+                  Utility.SendPing(Socket, [0], dataClient);
             });
          }
          /// <summary>
@@ -387,7 +387,7 @@ namespace Nethostfire {
          public static void DisconnectClientAll(){
             Parallel.ForEach(DataClients, item => {
                if(Status == ServerStatusConnection.Running)
-                  Utility.SendPing(Socket, new byte[]{0}, item.Value);
+                  Utility.SendPing(Socket, [0], item.Value);
             });
             DataClients.Clear();
             WaitDataClients.Clear();
@@ -405,7 +405,7 @@ namespace Nethostfire {
                   ListBlockedIPs.TryRemove(_ip, out _);
             }else{
                ListBlockedIPs.TryAdd(_ip, _time + Environment.TickCount);
-               Utility.SendPing(Socket, new byte[]{2}, new DataClient(){IP = _ip});
+               Utility.SendPing(Socket, [2], new DataClient(){IP = _ip});
             }
          }
 
@@ -418,10 +418,10 @@ namespace Nethostfire {
                }
                else{
                   if(DataClients.TryRemove(_ip, out var _dataClient))
-                     Utility.SendPing(Socket, new byte[]{2}, _dataClient);
+                     Utility.SendPing(Socket, [2], _dataClient);
                   
                   if(WaitDataClients.TryRemove(_ip, out var _waitDataClient))
-                     Utility.SendPing(Socket, new byte[]{2}, _waitDataClient);
+                     Utility.SendPing(Socket, [2], _waitDataClient);
                   
                   return true;
                } 
@@ -499,14 +499,14 @@ namespace Nethostfire {
                            case 1:
                               _dataClient.Ping = Environment.TickCount - _dataClient.Time - 1000;
                               _dataClient.Time = Environment.TickCount;
-                              Utility.SendPing(Socket, new byte[]{1}, _dataClient);
+                              Utility.SendPing(Socket, [1], _dataClient);
                            break;
                         }
                      }
                   }else{
                      if(DataClients.Count >= maxClients){
-                        Utility.SendPing(Socket, new byte[]{3}, new DataClient(){IP = _ip});
-                        data = new byte[]{};
+                        Utility.SendPing(Socket, [3], new DataClient(){IP = _ip});
+                        data = [];
                      }
                   }
 

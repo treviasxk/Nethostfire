@@ -748,8 +748,8 @@ _Encryption/Decryprion Speed may vary depending on your machine's performance._
 ### TypeHoldConnection
 
 • TypeHoldConnection.None - Value default. (No effect)
-• TypeHoldConnection.NotEnqueue - With NotEnqueue, shipments are sent to their destination without packet loss, shipments will not be sent in a queue to improve performance. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
-• TypeHoldConnection.Enqueue - With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
+• TypeHoldConnection.NotEnqueue - With NotEnqueue, shipments are sent to their destination without packet loss, shipments will not be sent in a queue to improve performance. 
+• TypeHoldConnection.Enqueue - With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms. 
 
 -----
 

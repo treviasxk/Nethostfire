@@ -46,6 +46,7 @@ namespace Nethostfire {
         /// Private AES key
         /// </summary>
         public byte[] PrivateKeyAES = null;
+        public readonly List<int> ListIndex = new();
         public readonly ConcurrentDictionary<int, HoldConnection> ListHoldConnection = new();
         public readonly ConcurrentDictionary<int, HoldConnection> ListHoldConnectionQueue = new();
     }
@@ -56,11 +57,11 @@ namespace Nethostfire {
     public enum TypeHoldConnection {
         None = 0,
         /// <summary>
-        /// With NotEnqueue, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
+        /// With NotEnqueue, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance.
         /// </summary>
         NotEnqueue = 1,
         /// <summary>
-        /// With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms. (PS: it is possible that the same byte is received twice, increase the value of ReceiveAndSendTimeOut if this happens)
+        /// With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms.
         /// </summary>
         Enqueue = 2,
     }
@@ -156,9 +157,9 @@ namespace Nethostfire {
         public static int receiveAndSendTimeOut = 1000;
         public static bool RunningInUnity = false, ShowDebugConsole = true, UnityBatchMode = false, UnityEditorMode = false;
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
+        public static List<int> listIndex = new();
         public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionClient = new();
         public static ConcurrentDictionary<int, HoldConnection> listHoldConnectionQueueClient = new();
-        public static List<int> listIndex = new();
         public static int IndexShipping = 1;
         static Aes AES;
         public static string GetVersion {get {return UnityEngine.Application.version;}}
@@ -255,7 +256,7 @@ namespace Nethostfire {
                                     UDP.Server.Send(_lhcq.Bytes, _lhcq.GroupID, _dataClient, _lhcq.TypeShipping, TypeHoldConnection.NotEnqueue);
                             }
 
-                    return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None, _indexID);
+                    return ([], 0, TypeContent.Background, TypeShipping.None, _indexID);
                 }
 
                 type = new byte[_byte[3]];
@@ -272,7 +273,7 @@ namespace Nethostfire {
                 _TypeShipping = (TypeShipping)_byte[2];
                 _typeContent = (TypeContent)_byte[1];
             }catch{
-                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None, 0);
+                return ([], 0, TypeContent.Background, TypeShipping.None, 0);
             }
 
             if(_typeContent == TypeContent.Background)
@@ -321,15 +322,20 @@ namespace Nethostfire {
                     type.CopyTo(data2, 2);                                  // IndexID
                     SendPing(_udpClient, data2, _dataClient);
                 }
-                if(!listIndex.Contains(_indexID)){
-                    listIndex.Add(_indexID);
-                    return (data.Length > 1 ? data : new byte[]{}, _groupID, _typeContent, _TypeShipping, _indexID);
+
+                if(_dataClient != null){
+                    if(!_dataClient.ListIndex.Contains(_indexID)){
+                        _dataClient.ListIndex.Add(_indexID);
+                        return (data.Length > 1 ? data : [], _groupID, _typeContent, _TypeShipping, _indexID);
+                    }
                 }else{
-                    return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None, 0);
+                    if(!listIndex.Contains(_indexID)){
+                        listIndex.Add(_indexID);
+                        return (data.Length > 1 ? data : [], _groupID, _typeContent, _TypeShipping, _indexID);
+                    }
                 }
-            }catch{
-                return (new byte[]{}, 0, TypeContent.Background, TypeShipping.None, 0);
-            }
+            }catch{}
+            return ([], 0, TypeContent.Background, TypeShipping.None, 0);
         }
         
         public static byte[] ByteToSend(byte[] _byte, int _groupID, TypeShipping _TypeShipping, TypeHoldConnection _typeHoldConnection, TypeContent _typeContent, int _indexID, DataClient _dataClient = null){
@@ -352,14 +358,14 @@ namespace Nethostfire {
                     _byte = EncryptRSA(_byte, _dataClient != null ? _dataClient.PublicKeyRSA : UDP.Client.PublicKeyRSA);
                 break;
                 case TypeShipping.Base64:
-                    _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                    _byte = EncryptBase64(_byte) == "" ? [] : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
                 break;
                 case TypeShipping.Compress:
                     _byte = Compress(_byte);
                 break;
                 case TypeShipping.OnlyBase64:
                     if(_dataClient == null)
-                    _byte = EncryptBase64(_byte) == "" ? new byte[]{} : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
+                    _byte = EncryptBase64(_byte) == "" ? [] : System.Text.Encoding.ASCII.GetBytes(EncryptBase64(_byte));
                 break;
                 case TypeShipping.OnlyCompress:
                     if(_dataClient == null)
@@ -368,7 +374,7 @@ namespace Nethostfire {
             }
 
              if(_TypeShipping != TypeShipping.None && _byte.Length == 0)
-                return new byte[]{};
+                return [];
 
             try{
                 byte[] groupID = BitConverter.GetBytes(_groupID);
@@ -388,7 +394,7 @@ namespace Nethostfire {
                 return data;
             }
             catch{
-                return new byte[]{};
+                return [];
             }
         }
 
@@ -450,32 +456,26 @@ namespace Nethostfire {
         }
         private static byte[] EncryptRSA(byte[] _byte, string _publicKeyRSA){
             using var RSA = new RSACryptoServiceProvider();
-            try
-            {
+            try{
                 RSA.FromXmlString(_publicKeyRSA);
                 return RSA.Encrypt(_byte, true);
-            }
-            catch
-            {
+            }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
                 if (b < _byte.Length)
                     ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
-                return new byte[]{};
+                return [];
             }
         }
         private static byte[] DecryptRSA(byte[] _byte, string _privateKeyRSA){
             using var RSA = new RSACryptoServiceProvider();
-            try
-            {
+            try{
                 RSA.FromXmlString(_privateKeyRSA);
                 return RSA.Decrypt(_byte, true);
-            }
-            catch
-            {
+            }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
                 if (b < _byte.Length)
                     ShowLog("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes.");
-                return new byte[]{};
+                return [];
             }
         }
         private static byte[] EncryptAES(byte[] _byte, byte[] _privateKeyAES){
@@ -484,7 +484,7 @@ namespace Nethostfire {
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
             }
             catch{
-                return new byte[]{};
+                return [];
             }
         }
         private static byte[] DecryptAES(byte[] _byte, byte[] _privateKeyAES){
@@ -493,7 +493,7 @@ namespace Nethostfire {
                 return encryptor.TransformFinalBlock(_byte, 0, _byte.Length);
             }
             catch{
-                return new byte[]{};
+                return [];
             }
         }
         private static string EncryptBase64(byte[] _byte){
@@ -507,7 +507,7 @@ namespace Nethostfire {
             try{
                 return Convert.FromBase64String(_text);
             }catch{
-                return new byte[]{};
+                return [];
             }
         }
         private static byte[] Compress(byte[] _byte){
@@ -518,19 +518,18 @@ namespace Nethostfire {
                 }
                 return output.ToArray();
             }catch{
-                return new byte[]{};
+                return [];
             }
         }
         private static byte[] Decompress(byte[] data){
             try{
                 MemoryStream input = new(data);
                 MemoryStream output = new();
-                using (DeflateStream dstream = new(input, CompressionMode.Decompress)){
+                using(DeflateStream dstream = new(input, CompressionMode.Decompress))
                     dstream.CopyTo(output);
-                }
                 return output.ToArray();
             }catch{
-                return new byte[]{};
+                return [];
             }
         }
         private static byte[] GetHashMD5(byte[] _byte){
@@ -538,7 +537,7 @@ namespace Nethostfire {
                 MD5 md5 = MD5.Create();
                 return md5.ComputeHash(_byte);
             }catch{
-                return new byte[]{};
+                return [];
             }
         }
         public static string ShowLog(string Message){
