@@ -32,6 +32,7 @@ public class NethostfireService : MonoBehaviour{
         UDP.Server.OnReceivedBytes = null;
         UDP.Server.OnServerStatus = null;
         Utility.ShowDebugConsole = ShowDebug;
+        Utility.listHoldConnectionQueueClient.Clear();
         Utility.listHoldConnectionClient.Clear();
         Utility.ListRunOnMainThread.Clear();
     }

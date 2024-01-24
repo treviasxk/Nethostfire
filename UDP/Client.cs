@@ -126,13 +126,14 @@ namespace Nethostfire {
                 if(Status == ClientStatusConnection.Connected || Status == ClientStatusConnection.Connecting){
                     if(Status == ClientStatusConnection.Connected)
                         ChangeStatus(ClientStatusConnection.Disconnecting);
-                    Utility.SendPing(Socket, new byte[]{0});
+                    Utility.SendPing(Socket, [0]);
                     Socket.Close();
                     Socket = null;
                     SendOnlineThread = null;
                     ClientReceiveUDPThread = null;
                     publicKeyRSA = null;
                     privateKeyAES = null;
+                    Utility.listIndex.Clear();
                     Utility.listHoldConnectionClient.Clear();
                     if(Status == ClientStatusConnection.Disconnecting)
                         ChangeStatus(ClientStatusConnection.Disconnected);
@@ -289,7 +290,7 @@ namespace Nethostfire {
                     // Enviando byte 1 para o server, para dizer que está online
                     if(Status == ClientStatusConnection.Connected){
                         pingTmp = Environment.TickCount;
-                        Utility.SendPing(Socket, new byte[]{1});
+                        Utility.SendPing(Socket, [1]);
                     }
                     // Verificando se o ultimo ping com o server é de 3000ms
                     if(Environment.TickCount - timeLastPacket > 3000 && Status == ClientStatusConnection.Connected)
@@ -331,6 +332,7 @@ namespace Nethostfire {
                         case ClientStatusConnection.Connecting:
                             publicKeyRSA = null;
                             privateKeyAES = null;
+                            Utility.listIndex.Clear();
                             Utility.listHoldConnectionClient.Clear();
                             timeLastPacket = Environment.TickCount;
                             Send(Encoding.ASCII.GetBytes(Utility.PublicKeyRSAClient), 0, TypeShipping.RSA, TypeHoldConnection.NotEnqueue);
