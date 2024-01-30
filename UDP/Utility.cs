@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -90,8 +92,10 @@ namespace Nethostfire {
     class Utility{
         public static string? PublicKeyRSA, PrivateKeyRSA;
         public static byte[]? PrivateKeyAES;
+        public static bool UnityBatchMode, UnityEditorMode, RunningInUnity, Quitting;
+        public static ConcurrentQueue<Action> ListRunOnMainThread = new();
+        public static Process Process = Process.GetCurrentProcess();
         static Aes AES = Aes.Create();
-
 
         // Transforma pacote e enviar.
         public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
@@ -276,7 +280,7 @@ namespace Nethostfire {
                         PublicKeyRSA = RSA.ToXmlString(false);
                         PrivateKeyAES = GetHashMD5(Encoding.ASCII.GetBytes(PrivateKeyRSA));
                     }else
-                        throw new Nethostfire(ShowLog("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6)));
+                        throw new Nethostfire("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6));
                 }
             }
         }
@@ -292,7 +296,7 @@ namespace Nethostfire {
                 }catch{
                     var b = ((RSA.KeySize - 384) / 8) + 6;
                     if(b < bytes.Length)
-                        throw new Nethostfire(ShowLog("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes."));
+                        throw new Nethostfire("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
                     return [];
                 }
         }
@@ -307,7 +311,7 @@ namespace Nethostfire {
             }catch{
                 var b = ((RSA.KeySize - 384) / 8) + 6;
                 if(b < bytes.Length)
-                    throw new Nethostfire(ShowLog("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes."));
+                    throw new Nethostfire("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes.");
                 return [];
             }
         }
@@ -385,16 +389,68 @@ namespace Nethostfire {
             }
         }
 
-        public static string ShowLog(string Message){
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.Write("[NETHOSTFIRE] ");
-            Console.ForegroundColor = ConsoleColor.Gray;
-            Console.Write(DateTime.Now + " ");
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine(Message);
-            return Message;
+        public static string ShowLog(string message){
+            if(RunningInUnity && !UnityBatchMode)
+                ShowUnityLog(message);
+            else{
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.Write("[NETHOSTFIRE] ");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.Write(DateTime.Now + " ");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine(message);
+            }
+            return message;
         }
 
+        //================= Funções com dll da Unity =================
+
+        public static void RunOnMainThread(Action _action){
+            if(RunningInUnity && Quitting == false)
+                ListRunOnMainThread.Enqueue(_action);
+            else
+                _action?.Invoke();
+        }
+
+        public static void ThisMainThread() {
+            while(ListRunOnMainThread.TryDequeue(out var _action))
+                if(UnityBatchMode){
+                    Parallel.Invoke(() =>{
+                        _action?.Invoke();
+                    });
+                }else
+                    _action?.Invoke();
+        }
+
+        static void ShowUnityLog(string Message){
+            UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
+        }
+
+        public static void StartUnity(UDP.Client? client = null, UDP.Server? server = null){
+            try{
+                LoadUnity(client, server);
+                RunningInUnity = true;
+                if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    if(UnityBatchMode || !RunningInUnity)
+                        Process.PriorityClass = ProcessPriorityClass.High;
+            }catch{}
+        }
+
+        
+        public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
+            UnityBatchMode = UnityEngine.Application.isBatchMode;
+            UnityEditorMode = UnityEngine.Application.isEditor;
+            if(!UnityEngine.GameObject.Find("Nethostfire")){
+                if(UnityBatchMode)
+                    Console.Clear();
+                UnityEngine.GameObject runThreadUnity = new("Nethostfire");
+                var service = runThreadUnity.AddComponent<NethostfireService>();
+            }
+            if(client != null)
+                NethostfireService.Client = client;
+            if(server != null)
+                NethostfireService.Server = server;
+        }
     }
 
     class Nethostfire : Exception{

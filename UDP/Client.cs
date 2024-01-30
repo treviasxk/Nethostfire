@@ -6,18 +6,21 @@ using static Nethostfire.Utility;
 namespace Nethostfire {
     public partial class UDP{
         public class Client{
+            IPEndPoint? IPEndPoint;
+            DataClient dataServer = new();
             int connectTimeout = 3000, connectingTimeout = 10000;
+            bool showLogDebug = true, showUnityNetworkStatistics;
             ClientStatus CurrentClientStatus = ClientStatus.Disconnected;
             long connectingTimeoutTmp;
             public int ConnectTimeout {get{return connectTimeout;} set{connectTimeout = value;}}
             public int ConnectingTimeout {get{return connectingTimeout;} set{connectingTimeout = value;}}
+            public bool ShowLogDebug {get{return showLogDebug;} set{showLogDebug = value;}}
             public int Ping {get {return dataServer.Ping;}}
             public Action<ClientStatus>? OnStatus;
             public Action<byte[], int>? OnReceivedBytes;
             public ClientStatus Status {get{return CurrentClientStatus;}} 
+            public bool ShowUnityNetworkStatistics {get{return showUnityNetworkStatistics;} set{showUnityNetworkStatistics = value;}}
             public UdpClient? Socket;
-            IPEndPoint? IPEndPoint;
-            DataClient dataServer = new();
             public void Connect(IPAddress ip, int port, int symmetricSizeRSA = 86){
                 if(Socket == null){
                     Socket = new UdpClient();
@@ -142,10 +145,12 @@ namespace Nethostfire {
             }
 
             void ChangeStatus(ClientStatus status){
+                StartUnity(client: this);
                 if(status != CurrentClientStatus){
                     connectingTimeoutTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     CurrentClientStatus = status;
 
+                    if(showLogDebug)
                     switch(status){
                         case ClientStatus.Connecting:
                             ShowLog("Connecting on " + IPEndPoint);

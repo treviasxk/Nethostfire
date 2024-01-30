@@ -7,17 +7,21 @@ using static Nethostfire.Utility;
 namespace Nethostfire {
     public partial class UDP{
         public class Server{
-            int connectedTimeout = 3000;
-            ServerStatus CurrentServerStatus = ServerStatus.Stopped;
-            public int ConnectedTimeout {get{return connectedTimeout;} set{connectedTimeout = value;}}
-            public Action<IPEndPoint>? OnConnected;
-            public Action<IPEndPoint>? OnDisconnected;
-            public Action<byte[], int, IPEndPoint>? OnReceivedBytes;
-            public ServerStatus Status {get{return CurrentServerStatus;}} 
-            public UdpClient? Socket;
             IPEndPoint? IPEndPoint;
             ConcurrentDictionary<IPEndPoint, DataClient> DataClients = new();
             ConcurrentDictionary<IPEndPoint, DataClient> QueuingClients = new();
+            int connectedTimeout = 3000;
+            bool showLogDebug = true, showUnityNetworkStatistics;
+            ServerStatus CurrentServerStatus = ServerStatus.Stopped;
+            public int ConnectedTimeout {get{return connectedTimeout;} set{connectedTimeout = value;}}
+            public bool ShowLogDebug {get{return showLogDebug;} set{showLogDebug = value;}}
+            public bool ShowUnityNetworkStatistics {get{return showUnityNetworkStatistics;} set{showUnityNetworkStatistics = value;}}
+            public Action<IPEndPoint>? OnConnected;
+            public Action<IPEndPoint>? OnDisconnected;
+            public Action<byte[], int, IPEndPoint>? OnReceivedBytes;
+            public Action<ServerStatus>? OnStatus;
+            public ServerStatus Status {get{return CurrentServerStatus;}} 
+            public UdpClient? Socket;
             public ICollection<IPEndPoint> Clients {get{return DataClients.Keys;}}
             public void Start(IPAddress ip, int port, int symmetricSizeRSA = 86){
                 if(Socket == null){
@@ -38,7 +42,7 @@ namespace Nethostfire {
                         ChangeStatus(ServerStatus.Running);
                     }catch{
                         Stop();
-                        throw new Nethostfire(ShowLog("Could not start the server, check that the port "+ IPEndPoint?.Port + " is not blocked, or that you have other software using that port."));
+                        throw new Nethostfire("Could not start the server, check that the port "+ IPEndPoint?.Port + " is not blocked, or that you have other software using that port.");
                     }
                 }
             }
@@ -47,9 +51,9 @@ namespace Nethostfire {
                 while(Socket != null){
                     // Check timer connection.
                     Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + connectedTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)), item =>{
-                        if(DataClients.TryRemove(item.Key, out _)){
-                            ShowLog(item.Key + " Disconnected!");
-                        }
+                        if(DataClients.TryRemove(item.Key, out _))
+                            if(showLogDebug)
+                                ShowLog(item.Key + " Disconnected!");
                     });
 
                     // Hold Connection
@@ -130,7 +134,8 @@ namespace Nethostfire {
                                 QueuingClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                                 if(QueuingClients.TryRemove(ip, out DataClient? dataClient)){
                                     DataClients.TryAdd(ip, dataClient);
-                                    ShowLog(ip + " connected to the server.");
+                                    if(showLogDebug)
+                                        ShowLog(ip + " connected to the server.");
                                     OnConnected?.Invoke(ip);
                                     SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
                                 }
@@ -142,9 +147,11 @@ namespace Nethostfire {
             }
 
             void ChangeStatus(ServerStatus status){
+                StartUnity(server: this);
                 if(status != CurrentServerStatus){
                     CurrentServerStatus = status;
 
+                    if(showLogDebug)
                     switch(status){
                         case ServerStatus.Initializing:
                             ShowLog("Initializing server...");
@@ -162,6 +169,7 @@ namespace Nethostfire {
                             ShowLog("Server stopped.");
                         break;
                     }
+                    OnStatus?.Invoke(status);
                 }
             }
         }
