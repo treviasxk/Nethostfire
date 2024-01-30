@@ -1,3 +1,9 @@
+// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
+// Github:              https://github.com/treviasxk
+// Paypal:              trevias@live.com
+// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
+
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -92,7 +98,7 @@ namespace Nethostfire {
     class Utility{
         public static string? PublicKeyRSA, PrivateKeyRSA;
         public static byte[]? PrivateKeyAES;
-        public static bool UnityBatchMode, UnityEditorMode, RunningInUnity, Quitting;
+        public static bool UnityBatchMode, RunningInUnity, Quitting;
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
         public static Process Process = Process.GetCurrentProcess();
         static Aes AES = Aes.Create();
@@ -250,7 +256,7 @@ namespace Nethostfire {
                 //bytes2[2] = indexID
                 if(_typeShipping > 1){
                     byte[] _bytes2 = new byte[bytes[3] + 2];                                                // IndexID size + 2 slot
-                    _bytes2[0] = 1;                                                                        // Code
+                    _bytes2[0] = 1;                                                                         // Code
                     _bytes2[1] = bytes[3];                                                                  // The size of indexID
                     bytes.Skip(4 + bytes[2]).Take(bytes[3]).ToArray().CopyTo(_bytes2, 2);                   // IndexID
                     // Hold Connection respond
@@ -439,17 +445,18 @@ namespace Nethostfire {
         
         public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
             UnityBatchMode = UnityEngine.Application.isBatchMode;
-            UnityEditorMode = UnityEngine.Application.isEditor;
             if(!UnityEngine.GameObject.Find("Nethostfire")){
                 if(UnityBatchMode)
                     Console.Clear();
                 UnityEngine.GameObject runThreadUnity = new("Nethostfire");
-                var service = runThreadUnity.AddComponent<NethostfireService>();
+                runThreadUnity.AddComponent<NethostfireService>();
             }
-            if(client != null)
-                NethostfireService.Client = client;
-            if(server != null)
-                NethostfireService.Server = server;
+
+            if(client != null && !NethostfireService.ListClient.Contains(client))
+                NethostfireService.ListClient.Add(client);
+
+            if(server != null && !NethostfireService.ListServer.Contains(server))
+                NethostfireService.ListServer.Add(server);
         }
     }
 
