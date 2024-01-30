@@ -1,24 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+
   <ItemGroup>
     <Reference Include="Unity/UnityEngine.dll">
       <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>
-  <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <TargetFramework>netstandard2.1</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Version>2.3.1.0</Version>
-    <AssemblyVersion>2.3.1.0</AssemblyVersion>
-    <FileVersion>2.3.1.0</FileVersion>
-    <Company>treviasxk</Company>
-    <Authors>Trevias Xk</Authors>
-    <Product>Nethostfire</Product>
-    <Description>Nethostfire is a library (netstandard2.1) to create UDP server and client in C#, with encryption support, Unity 3D integration and several other advanced features to facilitate communication between client and server.</Description>
-    <Copyright>Trevias Xk © 2023</Copyright>
-    <RootNamespace>Nethostfire</RootNamespace>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-    <InvariantGlobalization>false</InvariantGlobalization>
-  </PropertyGroup>
+
 </Project>
