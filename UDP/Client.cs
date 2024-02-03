@@ -15,7 +15,7 @@ namespace Nethostfire {
             IPEndPoint? IPEndPoint;
             DataClient dataServer = new();
             int connectTimeout = 3000, connectingTimeout = 10000;
-            bool showLogDebug = true, showUnityNetworkStatistics;
+            bool showLogDebug = true;
             ClientStatus CurrentClientStatus = ClientStatus.Disconnected;
             long connectingTimeoutTmp;
             public int ConnectTimeout {get{return connectTimeout;} set{connectTimeout = value;}}
@@ -25,7 +25,6 @@ namespace Nethostfire {
             public Action<ClientStatus>? OnStatus;
             public Action<byte[], int>? OnReceivedBytes;
             public ClientStatus Status {get{return CurrentClientStatus;}} 
-            public bool ShowUnityNetworkStatistics {get{return showUnityNetworkStatistics;} set{showUnityNetworkStatistics = value;}}
             public UdpClient? Socket;
 
             /// <summary>

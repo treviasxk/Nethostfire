@@ -17,11 +17,10 @@ namespace Nethostfire {
             ConcurrentDictionary<IPEndPoint, DataClient> DataClients = new();
             ConcurrentDictionary<IPEndPoint, DataClient> QueuingClients = new();
             int connectedTimeout = 3000;
-            bool showLogDebug = true, showUnityNetworkStatistics;
+            bool showLogDebug = true;
             ServerStatus CurrentServerStatus = ServerStatus.Stopped;
             public int ConnectedTimeout {get{return connectedTimeout;} set{connectedTimeout = value;}}
             public bool ShowLogDebug {get{return showLogDebug;} set{showLogDebug = value;}}
-            public bool ShowUnityNetworkStatistics {get{return showUnityNetworkStatistics;} set{showUnityNetworkStatistics = value;}}
             public Action<IPEndPoint>? OnConnected;
             public Action<IPEndPoint>? OnDisconnected;
             public Action<byte[], int, IPEndPoint>? OnReceivedBytes;

@@ -51,15 +51,14 @@ namespace Nethostfire {
         // 1 = Respond
         None = 2,
         /// <summary>
-        /// With NotEnqueue, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance.
+        /// With WithoutPacketLoss, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance.
         /// </summary>
-        NotEnqueue = 3,
+        WithoutPacketLoss = 3,
         /// <summary>
-        /// With Enqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 1ms and 1000ms.
+        /// With WithoutPacketLossEnqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 0ms and 1000ms.
         /// </summary>
-        Enqueue = 4,
+        WithoutPacketLossEnqueue = 4,
     }
-
 
     /// <summary>
     /// The TypeShipping is used to define the type of encryption of the bytes when being sent.
@@ -173,13 +172,15 @@ namespace Nethostfire {
                 bytes.CopyTo(_bytes, 4 + _indexID.Length + _groupID.Length);    // bytes
 
                 // Hold Connection
-                if(typeShipping == TypeShipping.NotEnqueue)
+                if(typeShipping == TypeShipping.WithoutPacketLoss)
                     dataClient.ListHoldConnection.TryAdd(dataClient.IndexID, _bytes);
                 
-                if(typeShipping == TypeShipping.Enqueue){
+                if(typeShipping == TypeShipping.WithoutPacketLossEnqueue){
                     dataClient.QueuingHoldConnection.TryAdd(dataClient.IndexID, _bytes);
-                    dataClient.IndexID++;
-                    return [];
+                    if(dataClient.QueuingHoldConnection.Count != 1){
+                        dataClient.IndexID++;
+                        return [];
+                    }
                 }
 
                 dataClient.IndexID++;
