@@ -34,6 +34,7 @@ namespace Nethostfire {
             /// </summary>
             public void Start(IPAddress ip, int port, int symmetricSizeRSA = 86){
                 if(Socket == null){
+                    StartUnity(server: this);
                     ChangeStatus(ServerStatus.Initializing);
                     Socket = new UdpClient();
                     GenerateKey(symmetricSizeRSA);
@@ -324,7 +325,6 @@ namespace Nethostfire {
             }
 
             void ChangeStatus(ServerStatus status){
-                StartUnity(server: this);
                 if(status != CurrentServerStatus){
                     CurrentServerStatus = status;
 

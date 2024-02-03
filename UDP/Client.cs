@@ -32,6 +32,7 @@ namespace Nethostfire {
             /// </summary>
             public void Connect(IPAddress ip, int port, int symmetricSizeRSA = 86){
                 if(Socket == null){
+                    StartUnity(client: this);
                     Socket = new UdpClient();
                     GenerateKey(symmetricSizeRSA);
                     try{
@@ -210,7 +211,6 @@ namespace Nethostfire {
             }
 
             void ChangeStatus(ClientStatus status){
-                StartUnity(client: this);
                 if(status != CurrentClientStatus){
                     connectingTimeoutTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     CurrentClientStatus = status;

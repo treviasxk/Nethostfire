@@ -448,11 +448,11 @@ namespace Nethostfire {
         
         public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
             UnityBatchMode = UnityEngine.Application.isBatchMode;
+
             if(!UnityEngine.GameObject.Find("Nethostfire")){
                 if(UnityBatchMode)
                     Console.Clear();
-                UnityEngine.GameObject runThreadUnity = new("Nethostfire");
-                runThreadUnity.AddComponent<NethostfireService>();
+                new UnityEngine.GameObject("Nethostfire").AddComponent<NethostfireService>();
             }
 
             if(client != null && !ListClient.Contains(client))
