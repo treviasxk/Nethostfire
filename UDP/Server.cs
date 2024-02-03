@@ -12,7 +12,7 @@ using static Nethostfire.Utility;
 
 namespace Nethostfire {
     public partial class UDP{
-        public class Server{
+        public class Server : IDisposable{
             IPEndPoint? IPEndPoint;
             ConcurrentDictionary<IPEndPoint, DataClient> DataClients = new();
             ConcurrentDictionary<IPEndPoint, DataClient> QueuingClients = new();
@@ -29,6 +29,10 @@ namespace Nethostfire {
             public ServerStatus Status {get{return CurrentServerStatus;}} 
             public UdpClient? Socket;
             public ICollection<IPEndPoint> Clients {get{return DataClients.Keys;}}
+
+            /// <summary>
+            /// Start the server with specific IP, Port and sets the size of SymmetricSizeRSA if needed. If the server has already been started and then stopped you can call Server.Start(); without defining _host and _symmetricSizeRSA to start the server with the previous settings.
+            /// </summary>
             public void Start(IPAddress ip, int port, int symmetricSizeRSA = 86){
                 if(Socket == null){
                     ChangeStatus(ServerStatus.Initializing);
@@ -77,8 +81,12 @@ namespace Nethostfire {
                 }
             }
 
+            /// <summary>
+            /// All connected clients will be disconnected from the server.
+            /// </summary>
             public void Stop(){
                 if(Socket != null){
+                    ChangeStatus(ServerStatus.Stopping);
                     Socket.Close();
                     Socket = null;
                     DataClients.Clear();
@@ -87,10 +95,174 @@ namespace Nethostfire {
                 }
             }
 
-            public void Send(byte[] bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
-                if(Status == ServerStatus.Running)
+
+            /// <summary>
+            /// To send bytes to a client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(byte[] bytes, int groupID, IPEndPoint ip) => SendPrepare(bytes, groupID, ip);
+            /// <summary>
+            /// To send bytes to a client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(byte[] bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPrepare(bytes, groupID, ip, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send bytes to a client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void Send(byte[] bytes, int groupID, IPEndPoint ip, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPrepare(bytes, groupID, ip, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send string to a client, it is necessary to define the Text, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(string text, int groupID, IPEndPoint ip) => SendPrepare(text, groupID, ip);
+            /// <summary>
+            /// To send string to a client, it is necessary to define the Text, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(string text, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPrepare(text, groupID, ip, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send string to a client, it is necessary to define the Text, GroupID and IP, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void Send(string text, int groupID, IPEndPoint ip, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPrepare(text, groupID, ip, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send float to a client, it is necessary to define the Value, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(float value, int groupID, IPEndPoint ip) => SendPrepare(value, groupID, ip);
+            /// <summary>
+            /// To send float to a client, it is necessary to define the Value, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(float value, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPrepare(value, groupID, ip, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send float to a client, it is necessary to define the Value, GroupID and IP, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void Send(float value, int groupID, IPEndPoint ip, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPrepare(value, groupID, ip, typeEncrypt, typeShipping);
+
+
+            /// <summary>
+            /// To send bytes to a group client, it is necessary to define the Bytes, GroupID and IPs, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendGroup(byte[] bytes, int groupID, ConcurrentQueue<IPEndPoint> IPs) => SendGroupPrepare(bytes, groupID, IPs);
+            /// <summary>
+            /// To send bytes to a group client, it is necessary to define the Bytes, GroupID and IPs, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendGroup(byte[] bytes, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroupPrepare(bytes, groupID, IPs, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send bytes to a group client, it is necessary to define the Bytes, GroupID and IPs, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void SendGroup(byte[] bytes, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroupPrepare(bytes, groupID, IPs, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send string to a group client, it is necessary to define the Text, GroupID and IPs, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendGroup(string text, int groupID, ConcurrentQueue<IPEndPoint> IPs) => SendGroupPrepare(text, groupID, IPs);
+            /// <summary>
+            /// To send string to a group client, it is necessary to define the Text, GroupID and IPs, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendGroup(string text, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroupPrepare(text, groupID, IPs, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send string to a group client, it is necessary to define the Text, GroupID and IPs, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void SendGroup(string text, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroupPrepare(text, groupID, IPs, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send float to a group client, it is necessary to define the Value, GroupID and IPs, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendGroup(float value, int groupID, ConcurrentQueue<IPEndPoint> IPs) => SendGroupPrepare(value, groupID, IPs);
+            /// <summary>
+            /// To send float to a group client, it is necessary to define the Value, GroupID and IPs, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendGroup(float value, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroupPrepare(value, groupID, IPs, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send float to a group client, it is necessary to define the Value, GroupID and IPs, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void SendGroup(float value, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroupPrepare(value, groupID, IPs, typeEncrypt, typeShipping);
+
+
+            /// <summary>
+            /// To send bytes to all client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendAll(byte[] bytes, int groupID) => SendAllPrepare(bytes, groupID);
+            /// <summary>
+            /// To send bytes to all client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendAll(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAllPrepare(bytes, groupID, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send bytes to all client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void SendAll(byte[] bytes, int groupID, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAllPrepare(bytes, groupID, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send string to all client, it is necessary to define the Text, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendAll(string text, int groupID) => SendAllPrepare(text, groupID);
+            /// <summary>
+            /// To send string to all client, it is necessary to define the Text, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendAll(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAllPrepare(text, groupID, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send string to all client, it is necessary to define the Text, GroupID and IP, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void SendAll(string text, int groupID, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAllPrepare(text, groupID, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send float to all client, it is necessary to define the Value, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendAll(float value, int groupID) => SendAllPrepare(value, groupID);
+            /// <summary>
+            /// To send float to all client, it is necessary to define the Value, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void SendAll(float value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAllPrepare(value, groupID, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send float to all client, it is necessary to define the Value, GroupID and IP, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void SendAll(float value, int groupID, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAllPrepare(value, groupID, typeEncrypt, typeShipping);
+
+            // Send to one IP
+            void SendPrepare(byte[] bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running && bytes != null)
                     SendPacket(Socket, bytes, groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
             }
+
+            void SendPrepare(string text, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running && text != null)
+                    SendPacket(Socket, Encoding.UTF8.GetBytes(text), groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
+            }
+
+            void SendPrepare(float value, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running)
+                    SendPacket(Socket, BitConverter.GetBytes(value), groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
+            }
+
+            // Send to group IPs
+            void SendGroupPrepare(byte[] bytes, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running && bytes != null)
+                    Parallel.ForEach(IPs, ip => SendPrepare(bytes, groupID, ip, typeEncrypt, typeShipping));
+            }
+
+            void SendGroupPrepare(string text, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running && text != null)
+                    Parallel.ForEach(IPs, ip => SendPrepare(Encoding.UTF8.GetBytes(text), groupID, ip, typeEncrypt, typeShipping));
+            }
+
+            void SendGroupPrepare(float value, int groupID, ConcurrentQueue<IPEndPoint> IPs, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running)
+                    Parallel.ForEach(IPs, ip => SendPrepare(BitConverter.GetBytes(value), groupID, ip, typeEncrypt, typeShipping));
+            }
+
+            // Send to all IPs
+            void SendAllPrepare(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running && bytes != null)
+                    Parallel.ForEach(DataClients.Keys, ip => SendPrepare(bytes, groupID, ip, typeEncrypt, typeShipping));
+            }
+
+            void SendAllPrepare(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running && text != null)
+                    Parallel.ForEach(DataClients.Keys, ip => SendPrepare(Encoding.UTF8.GetBytes(text), groupID, ip, typeEncrypt, typeShipping));
+            }
+
+            void SendAllPrepare(float value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ServerStatus.Running)
+                    Parallel.ForEach(DataClients.Keys, ip => SendPrepare(BitConverter.GetBytes(value), groupID, ip, typeEncrypt, typeShipping));
+            }
+
 
             async void ReceivePackage(){
                 while(Socket != null){
@@ -118,7 +290,7 @@ namespace Nethostfire {
                             // Connected
                             if(data.HasValue)
                                 if(data.Value.Item4 != 0)
-                                    OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
+                                    RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip));
                             return;
                             
                         }else
@@ -175,8 +347,22 @@ namespace Nethostfire {
                             ShowLog("Server stopped.");
                         break;
                     }
-                    OnStatus?.Invoke(status);
+                    RunOnMainThread(() => OnStatus?.Invoke(status));
                 }
+            }
+
+            /// <summary>
+            /// Clear all events, data and free memory.
+            /// </summary>
+            public void Dispose(){
+                // Is need clear events first to can clean ListRunMainThread in NethostfireService
+                OnReceivedBytes = null;
+                OnStatus = null;
+                bool showLog = ShowLogDebug;
+                ShowLogDebug = false;
+                Stop();
+                ShowLogDebug = showLog;
+                GC.SuppressFinalize(this);
             }
         }
     }

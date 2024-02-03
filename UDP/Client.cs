@@ -11,7 +11,7 @@ using static Nethostfire.Utility;
 
 namespace Nethostfire {
     public partial class UDP{
-        public class Client{
+        public class Client : IDisposable{
             IPEndPoint? IPEndPoint;
             DataClient dataServer = new();
             int connectTimeout = 3000, connectingTimeout = 10000;
@@ -27,6 +27,10 @@ namespace Nethostfire {
             public ClientStatus Status {get{return CurrentClientStatus;}} 
             public bool ShowUnityNetworkStatistics {get{return showUnityNetworkStatistics;} set{showUnityNetworkStatistics = value;}}
             public UdpClient? Socket;
+
+            /// <summary>
+            /// Connect to a server with IP, Port and sets the size of SymmetricSizeRSA if needed.
+            /// </summary>
             public void Connect(IPAddress ip, int port, int symmetricSizeRSA = 86){
                 if(Socket == null){
                     Socket = new UdpClient();
@@ -80,6 +84,10 @@ namespace Nethostfire {
                 }
             }
 
+
+            /// <summary>
+            /// With Disconnect the client will be disconnected from the server.
+            /// </summary>
             public void Disconnect(){
                 if(Socket != null){
                     ChangeStatus(ClientStatus.Disconnecting);
@@ -90,10 +98,62 @@ namespace Nethostfire {
                 }
             }
 
-            public void Send(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
-                if(Status == ClientStatus.Connected)
+            
+            /// <summary>
+            /// To send bytes to server, it is necessary to define the Bytes and GroupID, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(byte[] bytes, int groupID) => SendPrepare(bytes, groupID);
+            /// <summary>
+            /// To send bytes to server, it is necessary to define the Bytes and GroupID, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPrepare(bytes, groupID, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send bytes to server, it is necessary to define the Bytes and GroupID, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void Send(byte[] bytes, int groupID, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPrepare(bytes, groupID, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send string to server, it is necessary to define the Text and GroupID, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(string text, int groupID) => SendPrepare(text, groupID);
+            /// <summary>
+            /// To send string to server, it is necessary to define the Text and GroupID, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPrepare(text, groupID, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send string to server, it is necessary to define the Text and GroupID, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void Send(string text, int groupID, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPrepare(text, groupID, typeEncrypt, typeShipping);
+
+            /// <summary>
+            /// To send float to server, it is necessary to define the Value and GroupID, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(float value, int groupID) => SendPrepare(value, groupID);
+            /// <summary>
+            /// To send float to server, it is necessary to define the Value and GroupID, the other sending resources such as TypeEncrypt and TypeShipping are optional.
+            /// </summary>
+            public void Send(float value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPrepare(value, groupID, typeEncrypt, typeShipping);
+            /// <summary>
+            /// To send float to server, it is necessary to define the Value and GroupID, the other sending resources such as TypeShipping and TypeEncrypt are optional.
+            /// </summary>
+            public void Send(float value, int groupID, TypeShipping typeShipping = TypeShipping.None, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPrepare(value, groupID, typeEncrypt, typeShipping);
+
+
+            void SendPrepare(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ClientStatus.Connected && bytes != null)
                     SendPacket(Socket, bytes, groupID, dataServer, typeEncrypt, typeShipping);
             }
+
+            void SendPrepare(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ClientStatus.Connected && text != null)
+                    SendPacket(Socket, Encoding.UTF8.GetBytes(text), groupID, dataServer, typeEncrypt, typeShipping);
+            }
+
+            void SendPrepare(float value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
+                if(Status == ClientStatus.Connected)
+                    SendPacket(Socket, BitConverter.GetBytes(value), groupID, dataServer, typeEncrypt, typeShipping);
+            }
+
 
             async void ReceivePackage(){
                 while(Socket != null){
@@ -124,7 +184,7 @@ namespace Nethostfire {
                         var data = BytesToReceive(Socket, bytes, dataServer, Status == ClientStatus.Connected);
                         if(data.HasValue)
                         if(Status == ClientStatus.Connected){
-                            OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                            RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2));
                         }else
                         if(Status == ClientStatus.Connecting){
                             // Check RSA server and send AES client
@@ -180,10 +240,23 @@ namespace Nethostfire {
                             ShowLog("The maximum number of connected clients has been exceeded!");
                         break;
                     }
-                    OnStatus?.Invoke(status);
+                    RunOnMainThread(() => OnStatus?.Invoke(status));
                 }
             }
 
+            /// <summary>
+            /// Clear all events, data and free memory.
+            /// </summary>
+            public void Dispose(){
+                // Is need clear events first to can clean ListRunMainThread in NethostfireService
+                OnReceivedBytes = null;
+                OnStatus = null;
+                bool showLog = ShowLogDebug;
+                ShowLogDebug = false;
+                Disconnect();
+                ShowLogDebug = showLog;
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }

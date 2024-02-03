@@ -8,44 +8,25 @@ using UnityEngine;
 using Nethostfire;
 
 public partial class NethostfireService : MonoBehaviour{
-    public static List<UDP.Client> ListClient = new();
-    public static List<UDP.Server> ListServer = new();
 
     [RuntimeInitializeOnLoadMethod]
     static void Init(){
-        Utility.Quitting = false;
         Application.quitting -= OnQuitting;
         Application.quitting += OnQuitting;
-
-        // Reset all client in enter play mode
-        foreach(var Client in ListClient){
-            bool ShowDebug = Client.ShowLogDebug;
-            Client.ShowLogDebug = false;
-            Client.Disconnect();
-            Client.OnReceivedBytes = null;
-            Client.OnStatus = null;
-            Client.ShowLogDebug = ShowDebug;
-        }
-
-
-        // Reset all server in enter play mode
-        foreach(var Server in ListServer){
-            bool ShowDebug = Server.ShowLogDebug;
-            Server.ShowLogDebug = false;
-            Server.Stop();
-            Server.OnReceivedBytes = null;
-            Server.OnStatus = null;
-            Server.ShowLogDebug = ShowDebug;
-        }
+        Dispose();
     }
 
-    // Disconnect and stop all servers, clients when exit play mode
-    static void OnQuitting(){
-        Utility.Quitting = true;
-        foreach(var Client in ListClient)
-            Client.Disconnect();
-        foreach(var Server in ListServer)
-            Server.Stop();
+    static void Dispose(){
+        // Reset all server in enter play mode
+        foreach(var Server in Utility.ListServer)
+            Server.Dispose();
+        
+        // Reset all client in enter play mode
+        foreach(var Client in Utility.ListClient)
+            Client.Dispose();
+
+        // Clear actions main thread
+        Utility.ListRunOnMainThread.Clear();
     }
 
     // Resolve hight usage cpu
@@ -55,4 +36,7 @@ public partial class NethostfireService : MonoBehaviour{
     
     // Run events in MainThread
     void Update() => Utility.ThisMainThread();
+
+    // Disconnect and stop all servers, clients when exit play mode
+    static void OnQuitting() => Dispose();
 }

@@ -98,9 +98,11 @@ namespace Nethostfire {
     class Utility{
         public static string? PublicKeyRSA, PrivateKeyRSA;
         public static byte[]? PrivateKeyAES;
-        public static bool UnityBatchMode, RunningInUnity, Quitting;
+        public static bool UnityBatchMode, RunningInUnity;
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
         public static Process Process = Process.GetCurrentProcess();
+        public static List<UDP.Client> ListClient = new();
+        public static List<UDP.Server> ListServer = new();
         static Aes AES = Aes.Create();
 
         // Transforma pacote e enviar.
@@ -108,7 +110,7 @@ namespace Nethostfire {
             if(socket != null){
                 bytes = BytesToSend(bytes, groupID, typeEncrypt, typeShipping, dataClient, background);
                 if(bytes.Length > 1)
-                    socket?.Send(bytes, bytes.Length, ip);
+                    try{socket?.Send(bytes, bytes.Length, ip);}catch{}
             }
         }
 
@@ -412,7 +414,7 @@ namespace Nethostfire {
         //================= Funções com dll da Unity =================
 
         public static void RunOnMainThread(Action _action){
-            if(RunningInUnity && Quitting == false)
+            if(RunningInUnity)
                 ListRunOnMainThread.Enqueue(_action);
             else
                 _action?.Invoke();
@@ -452,11 +454,11 @@ namespace Nethostfire {
                 runThreadUnity.AddComponent<NethostfireService>();
             }
 
-            if(client != null && !NethostfireService.ListClient.Contains(client))
-                NethostfireService.ListClient.Add(client);
+            if(client != null && !ListClient.Contains(client))
+                ListClient.Add(client);
 
-            if(server != null && !NethostfireService.ListServer.Contains(server))
-                NethostfireService.ListServer.Add(server);
+            if(server != null && !ListServer.Contains(server))
+                ListServer.Add(server);
         }
     }
 
