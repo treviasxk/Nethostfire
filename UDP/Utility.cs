@@ -15,14 +15,28 @@ using System.Text;
 
 namespace Nethostfire {
     class DataClient{
+        // Public key RSA to encrypt bytes
         public string? PublicKeyRSA;
+        // Private key AES to encrypt bytes
         public byte[]? PrivateKeyAES;
+        // Timer to check if client is connected
         public long LastTimer;
+        // Timer to check packets interval
+        public long MaxPPSTimer;
+        // Ping
         public int Ping;
+        // IndexID to send bytes
         public int IndexID;
-        public List<int> ListIndex = new();
+        // List to check packets duplications
+        public HashSet<int> ListIndex = new();
+        // List shippiments without packet loss
         public readonly ConcurrentDictionary<int, byte[]> ListHoldConnection = new();
+        // List shippiments without packet loss queued
         public readonly ConcurrentDictionary<int, byte[]> QueuingHoldConnection = new();
+        // Limit max receive pps
+        public int LimitMaxPPS;
+        // Limit max receive pps for GroupID
+        public readonly ConcurrentDictionary<int, int> LimitMaxPPSGroupID = new();
     }
 
     public enum ServerStatus{
@@ -100,8 +114,8 @@ namespace Nethostfire {
         public static bool UnityBatchMode, RunningInUnity;
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
         public static Process Process = Process.GetCurrentProcess();
-        public static List<UDP.Client> ListClient = new();
-        public static List<UDP.Server> ListServer = new();
+        public static HashSet<UDP.Client> ListClient = new();
+        public static HashSet<UDP.Server> ListServer = new();
         static Aes AES = Aes.Create();
 
         // Transforma pacote e enviar.
@@ -190,20 +204,29 @@ namespace Nethostfire {
             return [];
         }
 
-        public static (byte[], int, TypeEncrypt, int)? BytesToReceive(UdpClient socket, byte[] bytes, DataClient? dataClient, bool clientExist, IPEndPoint? ip = null){
+        static bool CheckDDOS(DataClient dataClient, bool background){
+            long TimerNow = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+            // background is allow only 1000ms for packets, to presev performance and atack DDOS
+            if(dataClient.LimitMaxPPS == 0 && !background || TimerNow > dataClient.MaxPPSTimer + (background ? 1000 : (1000 / dataClient.LimitMaxPPS))){
+                dataClient.MaxPPSTimer = TimerNow;
+                return false;
+            }
+            return true;
+        }
+
+        public static (byte[], int, TypeEncrypt, int)? BytesToReceive(UdpClient socket, byte[] bytes, DataClient dataClient, IPEndPoint? ip = null){
             try{
                 if(bytes.Length <= 1)
                     return null;
 
                 // Receive respond hold connection
                 if(bytes[0] == 1){
-                    if(dataClient != null){
-                        int indexID = BitConverter.ToInt16(bytes.Skip(2).Take(bytes[1]).ToArray());
-                        dataClient.ListHoldConnection.TryRemove(indexID, out _);
-                        if(dataClient.QueuingHoldConnection.TryRemove(indexID, out _))
-                            if(dataClient.QueuingHoldConnection.Count > 0)
-                                SendPing(socket, dataClient.QueuingHoldConnection.ElementAt(0).Value);
-                    }
+                    int indexID = BitConverter.ToInt16(bytes.Skip(2).Take(bytes[1]).ToArray());
+                    dataClient.ListHoldConnection.TryRemove(indexID, out _);
+                    if(dataClient.QueuingHoldConnection.TryRemove(indexID, out _))
+                        if(dataClient.QueuingHoldConnection.Count > 0)
+                            SendPing(socket, dataClient.QueuingHoldConnection.ElementAt(0).Value);
+                
                     return null;
                 }
 
@@ -218,13 +241,11 @@ namespace Nethostfire {
                 int _groupID = BitConverter.ToInt16(bytes.Skip(4).Take(bytes[2]).ToArray());
                 int _indexID = BitConverter.ToInt16(bytes.Skip(4 + bytes[2]).Take(bytes[3]).ToArray());
 
+                if(CheckDDOS(dataClient, _background))
+                    return null;
+
                 // Check if the packet is background
                 if(_background){
-
-                    // The background will only be executed if the client is not exist.
-                    if(clientExist)
-                        return null;
-
                     // Decompress AES
                     if(_groupID == 0)
                         _bytes = Decompress(_bytes);
@@ -267,12 +288,10 @@ namespace Nethostfire {
                 }
                 
                 // Check packets duplication
-                if(dataClient != null){
-                    if(!dataClient.ListIndex.Contains(_indexID))
-                        dataClient.ListIndex.Add(_indexID);
-                    else
-                        return null;
-                }
+                if(!dataClient.ListIndex.Contains(_indexID))
+                    dataClient.ListIndex.Add(_indexID);
+                else
+                    return null;
                 
                 return (_bytes, _groupID, _typeEncrypt, _typeShipping);
             }catch{}

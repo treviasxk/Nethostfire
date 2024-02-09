@@ -57,32 +57,8 @@ namespace Nethostfire {
                 }
             }
 
-            private void Service(){
-                while(Socket != null){
-                    // Check timer connection.
-                    Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + connectedTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)), item =>{
-                        if(DataClients.TryRemove(item.Key, out _))
-                            if(showLogDebug)
-                                ShowLog(item.Key + " Disconnected!");
-                    });
-
-                    // Hold Connection
-                    Parallel.ForEach(DataClients.Where(item => item.Value.ListHoldConnection.Count > 0), item => {
-                        Parallel.ForEach(item.Value.ListHoldConnection.Values, bytes => {
-                            SendPing(Socket, bytes, item.Key);
-                        });
-                    });
-
-                    // Queuing Hold Connection
-                    Parallel.ForEach(DataClients.Where(item => item.Value.QueuingHoldConnection.Count > 0), item => {
-                        SendPing(Socket, item.Value.QueuingHoldConnection.ElementAt(0).Value, item.Key);
-                    });
-                    Thread.Sleep(1000);
-                }
-            }
-
             /// <summary>
-            /// All connected clients will be disconnected from the server.
+            /// The server will be stopped.
             /// </summary>
             public void Stop(){
                 if(Socket != null){
@@ -95,6 +71,40 @@ namespace Nethostfire {
                 }
             }
 
+
+            /// <summary>
+            /// All received PPS in a IP will be limited.
+            /// </summary>
+            public void ChangeLimitMaxPPS(int value, IPEndPoint ip){
+                if(DataClients.TryGetValue(ip, out DataClient? dataClient))
+                    dataClient.LimitMaxPPS = value;
+            }
+
+            /// <summary>
+            /// All received PPS of groupID in a IP will be limited.
+            /// </summary>
+            public void ChangeLimitMaxPPS(int value, int groupID, IPEndPoint ip){
+                if(DataClients.TryGetValue(ip, out DataClient? dataClient))
+                    if(value == 0)
+                        dataClient.LimitMaxPPSGroupID.TryRemove(groupID, out _);
+                    else
+                        if(dataClient.LimitMaxPPSGroupID.ContainsKey(groupID))
+                            dataClient.LimitMaxPPSGroupID[groupID] = value;
+                        else
+                            dataClient.LimitMaxPPSGroupID.TryAdd(groupID, value);
+            }
+
+
+            /// <summary>
+            /// To disconnect a client from server, it is necessary to inform the IP.
+            /// </summary>
+            public void Disconnect(IPEndPoint ip){
+                if(DataClients.TryRemove(ip, out _)){
+                    if(showLogDebug)
+                        ShowLog(ip + " Disconnected!");
+                    SendPing(Socket, [0], ip);
+                }
+            }
 
             /// <summary>
             /// To send bytes to a client, it is necessary to define the Bytes, GroupID and IP, the other sending resources such as TypeEncrypt and TypeShipping are optional.
@@ -272,45 +282,56 @@ namespace Nethostfire {
                     IPEndPoint ip = receivedResult.RemoteEndPoint;
 
                     Parallel.Invoke(()=>{
-                        // item1 = bytes
-                        // item2 = groupID
-                        // item3 = typeEncrypt
-                        // item4 = typeShipping
-                        var data = BytesToReceive(Socket, bytes, DataClients.ContainsKey(ip) ? DataClients[ip] : null, DataClients.ContainsKey(ip), ip);
-                        if(DataClients.ContainsKey(ip)){
+                        // Connected
+                        if(DataClients.TryGetValue(ip, out var dataClient)){
                             // Commands
                             if(bytes.Length == 1){
-                                // Confirm Online
-                                if(bytes[0] == 1){
-                                    DataClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                                    SendPing(Socket, [1], ip);
+                                switch(bytes[0]){
+                                    case 0: // Force disconnect
+                                        Disconnect(ip);
+                                    return;
+                                    case 1: // Confirm Online
+                                        DataClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                        SendPing(Socket, [1], ip);
+                                    return;
                                 }
-                                return;
                             }
-                            // Connected
-                            if(data.HasValue)
-                                if(data.Value.Item4 != 0)
-                                    RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip));
+                            // item1 = bytes
+                            // item2 = groupID
+                            // item3 = typeEncrypt
+                            // item4 = typeShipping
+                            var data = BytesToReceive(Socket, bytes, dataClient, ip);
+                            if(data.HasValue && data.Value.Item4 != 0)
+                                RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip));
                             return;
-                            
-                        }else
-                        // Connecting client
-                        if(data.HasValue){
+                        }else{
+                            if(QueuingClients.TryGetValue(ip, out var _queuingClients))
+                                dataClient = _queuingClients;
+                            else
+                                dataClient = new DataClient();
+
+
+                            // item1 = bytes
+                            // item2 = groupID
+                            // item3 = typeEncrypt
+                            // item4 = typeShipping
+                            var data = BytesToReceive(Socket, bytes, dataClient, ip);        
                             // Check RSA client received and send RSA server
-                            if(data.Value.Item4 == 0 && data.Value.Item2 == 0){
+                            if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){
                                 string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
-                                if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>") && PublicKeyRSA != null){
-                                    DataClient dataClient = new DataClient(){PublicKeyRSA = PublicKeyRSAClient};
+                                if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
+                                    dataClient.PublicKeyRSA = PublicKeyRSAClient;
                                     QueuingClients.TryAdd(ip, dataClient);
                                     SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
                                 }
                                 return;
                             }
                             // Check AES client, send AES server and connect client
-                            if(data.Value.Item4 == 0 && data.Value.Item2 == 1 && QueuingClients.ContainsKey(ip) && PrivateKeyAES != null){
-                                QueuingClients[ip].PrivateKeyAES = data.Value.Item1;
-                                QueuingClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                                if(QueuingClients.TryRemove(ip, out DataClient? dataClient)){
+                            if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
+                                dataClient.PrivateKeyAES = data.Value.Item1;
+                                dataClient.MaxPPSTimer = 0;
+                                dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                if(QueuingClients.TryRemove(ip, out _)){
                                     DataClients.TryAdd(ip, dataClient);
                                     if(showLogDebug)
                                         ShowLog(ip + " connected to the server.");
@@ -321,6 +342,30 @@ namespace Nethostfire {
                             }
                         }
                     });
+                }
+            }
+
+            void Service(){
+                while(Socket != null){
+                    // Check timer connection.
+                    Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + connectedTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)), item =>{
+                        if(DataClients.TryRemove(item.Key, out _))
+                            if(showLogDebug)
+                                ShowLog(item.Key + " Disconnected!");
+                    });
+
+                    // Hold Connection
+                    Parallel.ForEach(DataClients.Where(item => item.Value.ListHoldConnection.Count > 0), item => {
+                        Parallel.ForEach(item.Value.ListHoldConnection.Values, bytes => {
+                            SendPing(Socket, bytes, item.Key);
+                        });
+                    });
+
+                    // Queuing Hold Connection
+                    Parallel.ForEach(DataClients.Where(item => item.Value.QueuingHoldConnection.Count > 0), item => {
+                        SendPing(Socket, item.Value.QueuingHoldConnection.ElementAt(0).Value, item.Key);
+                    });
+                    Thread.Sleep(1000);
                 }
             }
 

@@ -53,37 +53,6 @@ namespace Nethostfire {
                 }
             }
 
-            private void Service(){
-                while(Socket != null){
-                    // Connect or reconnect client
-                    if(Status == ClientStatus.Connecting && PublicKeyRSA != null && PrivateKeyAES != null)
-                        if(connectingTimeoutTmp + connectingTimeout > (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) || connectingTimeout == 0){
-                            SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataServer, background: true);
-                        }else{
-                            // Connection failed
-                            ChangeStatus(ClientStatus.ConnectionFail);
-                        }
-
-                    // Check last timer connected and request ping value
-                    if(Status == ClientStatus.Connected){
-                        if(dataServer.LastTimer + connectTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
-                            ChangeStatus(ClientStatus.Connecting);
-                        }
-                        SendPing(Socket, [1]);
-
-                        // Hold Connection
-                        Parallel.ForEach(dataServer.ListHoldConnection.Values, bytes => {
-                            SendPing(Socket, bytes);
-                        });
-
-                        // Queuing Hold Connection
-                        if(dataServer.QueuingHoldConnection.Count > 0)
-                            SendPing(Socket, dataServer.QueuingHoldConnection.ElementAt(0).Value);
-                    }
-                    Thread.Sleep(1000);
-                }
-            }
-
 
             /// <summary>
             /// With Disconnect the client will be disconnected from the server.
@@ -171,17 +140,23 @@ namespace Nethostfire {
                     Parallel.Invoke(()=>{
                         // Update ping and timer connection
                         if(bytes.Length == 1){
-                            long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                            dataServer.Ping = Convert.ToInt32(Timer - dataServer.LastTimer);
-                            dataServer.LastTimer = Timer;
-                            return;
+                            switch(bytes[0]){
+                                case 0: // Disconnect from server
+                                    Disconnect();
+                                return;
+                                case 1: // Update ping
+                                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                    dataServer.Ping = Convert.ToInt32(Timer - dataServer.LastTimer);
+                                    dataServer.LastTimer = Timer;
+                                return;
+                            }
                         }
-
+                        
                         // item1 = bytes
                         // item2 = groupID
                         // item3 = typeEncrypt
                         // item4 = typeShipping
-                        var data = BytesToReceive(Socket, bytes, dataServer, Status == ClientStatus.Connected);
+                        var data = BytesToReceive(Socket, bytes, dataServer);
                         if(data.HasValue)
                         if(Status == ClientStatus.Connected){
                             RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2));
@@ -190,10 +165,8 @@ namespace Nethostfire {
                             // Check RSA server and send AES client
                             if(data.Value.Item4 == 0 && data.Value.Item2 == 0){
                                 string PublicKeyRSA = Encoding.ASCII.GetString(data.Value.Item1);
-                                if(PublicKeyRSA.StartsWith("<RSAKeyValue>") && PublicKeyRSA.EndsWith("</RSAKeyValue>") && PrivateKeyAES != null){
+                                if(PublicKeyRSA.StartsWith("<RSAKeyValue>") && PublicKeyRSA.EndsWith("</RSAKeyValue>") && PrivateKeyAES != null)
                                     dataServer.PublicKeyRSA = PublicKeyRSA;
-                                    SendPacket(Socket, PrivateKeyAES, 1, dataServer, background: true); // groupID: 1 = AES
-                                }
                                 return;
                             }
                             // Check AES server and connect
@@ -207,6 +180,40 @@ namespace Nethostfire {
                             }
                         }                        
                     });
+                }
+            }
+
+            void Service(){
+                while(Socket != null){
+                    // Connect or reconnect client
+                    if(Status == ClientStatus.Connecting && PublicKeyRSA != null && PrivateKeyAES != null)
+                        if(connectingTimeoutTmp + connectingTimeout > (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) || connectingTimeout == 0){
+                            if(dataServer.PublicKeyRSA == null)
+                                SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataServer, background: true);
+                            else
+                                SendPacket(Socket, PrivateKeyAES, 1, dataServer, background: true); // groupID: 1 = AES
+                        }else{
+                            // Connection failed
+                            ChangeStatus(ClientStatus.ConnectionFail);
+                        }
+
+                    // Check last timer connected and request ping value
+                    if(Status == ClientStatus.Connected){
+                        if(dataServer.LastTimer + connectTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
+                            ChangeStatus(ClientStatus.Connecting);
+                        }
+                        SendPing(Socket, [1]);
+
+                        // Hold Connection
+                        Parallel.ForEach(dataServer.ListHoldConnection.Values, bytes => {
+                            SendPing(Socket, bytes);
+                        });
+
+                        // Queuing Hold Connection
+                        if(dataServer.QueuingHoldConnection.Count > 0)
+                            SendPing(Socket, dataServer.QueuingHoldConnection.ElementAt(0).Value);
+                    }
+                    Thread.Sleep(1000);
                 }
             }
 
@@ -224,6 +231,7 @@ namespace Nethostfire {
                             ShowLog("Connected!");
                         break;
                         case ClientStatus.ConnectionFail:
+                            dataServer = new();
                             ShowLog("Unable to connect to the server.");
                         break;
                         case ClientStatus.Disconnecting:
