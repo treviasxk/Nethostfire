@@ -13,20 +13,56 @@ using static Nethostfire.Utility;
 namespace Nethostfire {
     public partial class UDP{
         public class Server : IDisposable{
+            public UdpClient? Socket;
             IPEndPoint? IPEndPoint;
+            ConcurrentDictionary<IPAddress, long> ipBlockeds = new();
             ConcurrentDictionary<IPEndPoint, DataClient> DataClients = new();
             ConcurrentDictionary<IPEndPoint, DataClient> QueuingClients = new();
-            int connectedTimeout = 3000;
-            bool showLogDebug = true;
             ServerStatus CurrentServerStatus = ServerStatus.Stopped;
-            public int ConnectedTimeout {get{return connectedTimeout;} set{connectedTimeout = value;}}
-            public bool ShowLogDebug {get{return showLogDebug;} set{showLogDebug = value;}}
+
+            /// <summary>
+            /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000)
+            /// </summary>
+            public int ConnectedTimeout {get; set;} = 3000;
+
+            /// <summary>
+            /// OnConnected is an event that you can use to receive the IP whenever a client connected.
+            /// </summary>
             public Action<IPEndPoint>? OnConnected;
+
+            /// <summary>
+            /// OnDisconnected is an event that you can use to receive the IP whenever a client disconnected.
+            /// </summary>
             public Action<IPEndPoint>? OnDisconnected;
+
+            /// <summary>
+            /// OnReceivedBytes an event that returns bytes received, GroupID and IP whenever the received bytes by clients, with it you can manipulate the bytes received.
+            /// </summary>
             public Action<byte[], int, IPEndPoint>? OnReceivedBytes;
+
+            /// <summary>
+            /// OnStatus is an event that returns ServerStatus whenever the status changes, with which you can use it to know the current status of the server.
+            /// </summary>
             public Action<ServerStatus>? OnStatus;
+
+            /// <summary>
+            /// The Status is an enum ServerStatus with it you can know the current state of the server.
+            /// </summary>
             public ServerStatus Status {get{return CurrentServerStatus;}} 
-            public UdpClient? Socket;
+
+            /// <summary>
+            /// The ShowLogDebug when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
+            /// </summary>
+            public bool ShowLogDebug {get; set;} = true;
+
+            /// <summary>
+            /// MaxClients is the maximum number of clients that can connect to the server. If you have many connected clients and you change the value below the number of connected clients, they will not be disconnected, the server will block new connections until the number of connected clients is below or equal to the limit. (The default value is 0, which is unlimited clients)
+            /// </summary>
+            public int MaxClients {get; set;} = 0;
+
+            /// <summary>
+            /// The ClientsCount is all IPs of clients connected to the server.
+            /// </summary>
             public ICollection<IPEndPoint> Clients {get{return DataClients.Keys;}}
 
             /// <summary>
@@ -73,25 +109,36 @@ namespace Nethostfire {
 
 
             /// <summary>
+            /// Blocks a specific IP for the time defined in milliseconds. If the time is 0 the IP will be removed from the server's blocked IP list.
+            /// </summary>
+            public void BlockIP(IPAddress ip, int timer){
+                if(ipBlockeds.ContainsKey(ip))
+                    ipBlockeds[ip] = timer == 0 ? 0 : (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) + timer;
+                else
+                    ipBlockeds.TryAdd(ip, timer == 0 ? 0 : (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) + timer);
+            }
+
+
+            /// <summary>
             /// All received PPS in a IP will be limited.
             /// </summary>
-            public void ChangeLimitMaxPPS(int value, IPEndPoint ip){
+            public void ChangeLimitMaxPPS(int pps, IPEndPoint ip){
                 if(DataClients.TryGetValue(ip, out DataClient? dataClient))
-                    dataClient.LimitMaxPPS = value;
+                    dataClient.LimitMaxPPS = pps;
             }
 
             /// <summary>
             /// All received PPS of groupID in a IP will be limited.
             /// </summary>
-            public void ChangeLimitMaxPPS(int value, int groupID, IPEndPoint ip){
+            public void ChangeLimitMaxPPS(int pps, int groupID, IPEndPoint ip){
                 if(DataClients.TryGetValue(ip, out DataClient? dataClient))
-                    if(value == 0)
+                    if(pps == 0)
                         dataClient.LimitMaxPPSGroupID.TryRemove(groupID, out _);
                     else
                         if(dataClient.LimitMaxPPSGroupID.ContainsKey(groupID))
-                            dataClient.LimitMaxPPSGroupID[groupID] = value;
+                            dataClient.LimitMaxPPSGroupID[groupID] = pps;
                         else
-                            dataClient.LimitMaxPPSGroupID.TryAdd(groupID, value);
+                            dataClient.LimitMaxPPSGroupID.TryAdd(groupID, pps);
             }
 
 
@@ -100,7 +147,7 @@ namespace Nethostfire {
             /// </summary>
             public void Disconnect(IPEndPoint ip){
                 if(DataClients.TryRemove(ip, out _)){
-                    if(showLogDebug)
+                    if(ShowLogDebug)
                         ShowLog(ip + " Disconnected!");
                     SendPing(Socket, [0], ip);
                 }
@@ -276,12 +323,32 @@ namespace Nethostfire {
 
             async void ReceivePackage(){
                 while(Socket != null){
-                    // Receive bytes and ip
-                    var receivedResult = await Socket.ReceiveAsync();
-                    byte[] bytes  = receivedResult.Buffer;
-                    IPEndPoint ip = receivedResult.RemoteEndPoint;
+                    byte[] bytes;
+                    IPEndPoint ip;
 
+                    // Connection alway fail when ip not found, use 'try' is necessary.
+                    try{
+                        // Receive bytes and ip
+                        var receivedResult = await Socket.ReceiveAsync();
+                        bytes  = receivedResult.Buffer;
+                        ip = receivedResult.RemoteEndPoint;
+                    }catch{
+                        continue;
+                    }
+
+                    if(bytes != null && ip != null)
                     Parallel.Invoke(()=>{
+                        long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                        // Check IP blocked.
+                        if(ipBlockeds.TryGetValue(ip.Address, out var timer)){
+                            if(timer == 0 || timer > Timer){
+                                QueuingClients.TryRemove(ip, out _);
+                                SendPing(Socket, [3], ip);
+                                return;
+                            }else
+                                ipBlockeds.TryRemove(ip.Address, out _);
+                        }
+
                         // Connected
                         if(DataClients.TryGetValue(ip, out var dataClient)){
                             // Commands
@@ -291,7 +358,7 @@ namespace Nethostfire {
                                         Disconnect(ip);
                                     return;
                                     case 1: // Confirm Online
-                                        DataClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                        DataClients[ip].LastTimer = Timer;
                                         SendPing(Socket, [1], ip);
                                     return;
                                 }
@@ -305,12 +372,16 @@ namespace Nethostfire {
                                 RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip));
                             return;
                         }else{
+                            // clients max execedeed
+                            if(MaxClients != 0 && Clients.Count >= MaxClients){
+                                SendPing(Socket, [2], ip);
+                                return;
+                            }
+
                             if(QueuingClients.TryGetValue(ip, out var _queuingClients))
                                 dataClient = _queuingClients;
                             else
                                 dataClient = new DataClient();
-
-
                             // item1 = bytes
                             // item2 = groupID
                             // item3 = typeEncrypt
@@ -321,8 +392,12 @@ namespace Nethostfire {
                                 string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
                                 if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
                                     dataClient.PublicKeyRSA = PublicKeyRSAClient;
-                                    QueuingClients.TryAdd(ip, dataClient);
-                                    SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
+                                    dataClient.LastTimer = Timer;
+                                    if(QueuingClients.TryAdd(ip, dataClient)){
+                                        if(ShowLogDebug)
+                                            ShowLog("[SERVER] " + ip + " Connecting...");
+                                        SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
+                                    }
                                 }
                                 return;
                             }
@@ -330,13 +405,14 @@ namespace Nethostfire {
                             if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
                                 dataClient.PrivateKeyAES = data.Value.Item1;
                                 dataClient.MaxPPSTimer = 0;
-                                dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                dataClient.LastTimer = Timer;
                                 if(QueuingClients.TryRemove(ip, out _)){
-                                    DataClients.TryAdd(ip, dataClient);
-                                    if(showLogDebug)
-                                        ShowLog(ip + " connected to the server.");
-                                    OnConnected?.Invoke(ip);
-                                    SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
+                                    if(DataClients.TryAdd(ip, dataClient)){
+                                        if(ShowLogDebug)
+                                            ShowLog("[SERVER] " + ip + " Connected!");
+                                        OnConnected?.Invoke(ip);
+                                        SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
+                                    }
                                 }
                                 return;
                             }
@@ -347,11 +423,19 @@ namespace Nethostfire {
 
             void Service(){
                 while(Socket != null){
-                    // Check timer connection.
-                    Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + connectedTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)), item =>{
+                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                    // Check timer connection dataClients.
+                    Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < Timer), item =>{
                         if(DataClients.TryRemove(item.Key, out _))
-                            if(showLogDebug)
-                                ShowLog(item.Key + " Disconnected!");
+                            if(ShowLogDebug)
+                                ShowLog("[SERVER] " + item.Key + " Disconnected!");
+                    });
+
+                    // Check timer connection queuingClients.
+                    Parallel.ForEach(QueuingClients.Where(item => item.Value.LastTimer + ConnectedTimeout < Timer), item =>{
+                        if(QueuingClients.TryRemove(item.Key, out _))
+                            if(ShowLogDebug)
+                                ShowLog("[SERVER] " + item.Key + " Connection lost!");
                     });
 
                     // Hold Connection
@@ -373,22 +457,22 @@ namespace Nethostfire {
                 if(status != CurrentServerStatus){
                     CurrentServerStatus = status;
 
-                    if(showLogDebug)
+                    if(ShowLogDebug)
                     switch(status){
                         case ServerStatus.Initializing:
-                            ShowLog("Initializing server...");
+                            ShowLog("[SERVER] Initializing...");
                         break;
                         case ServerStatus.Running:
-                            ShowLog("Server initialized and hosted on " + IPEndPoint);
+                            ShowLog("[SERVER] Initialized and hosted on " + IPEndPoint);
                         break;
                         case ServerStatus.Restarting:
-                            ShowLog("Restarting server...");
+                            ShowLog("[SERVER] Restarting...");
                         break;
                         case ServerStatus.Stopping:
-                            ShowLog("Stopping Server...");
+                            ShowLog("[SERVER] Stopping...");
                         break;
                         case ServerStatus.Stopped:
-                            ShowLog("Server stopped.");
+                            ShowLog("[SERVER] Stopped.");
                         break;
                     }
                     RunOnMainThread(() => OnStatus?.Invoke(status));

@@ -12,20 +12,46 @@ using static Nethostfire.Utility;
 namespace Nethostfire {
     public partial class UDP{
         public class Client : IDisposable{
+            public UdpClient? Socket;
             IPEndPoint? IPEndPoint;
             DataClient dataServer = new();
-            int connectTimeout = 3000, connectingTimeout = 10000;
-            bool showLogDebug = true;
             ClientStatus CurrentClientStatus = ClientStatus.Disconnected;
             long connectingTimeoutTmp;
-            public int ConnectTimeout {get{return connectTimeout;} set{connectTimeout = value;}}
-            public int ConnectingTimeout {get{return connectingTimeout;} set{connectingTimeout = value;}}
-            public bool ShowLogDebug {get{return showLogDebug;} set{showLogDebug = value;}}
+
+            /// <summary>
+            /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000).
+            /// </summary>
+            public int ConnectTimeout {get; set;} = 3000;
+
+            /// <summary>
+            /// ConnectingTimeout is the time the client will be reconnecting with the server, the time is defined in milliseconds, if the value is 0 the client will be reconnecting infinitely. (The default value is 10000).
+            /// </summary>
+            public int ConnectingTimeout {get; set;} = 10000;
+
+            /// <summary>
+            /// The ShowLogDebug when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
+            /// </summary>
+            public bool ShowLogDebug {get; set;} = true;
+
+            /// <summary>
+            /// Ping returns an integer value, this value is per milliseconds
+            /// </summary>
             public int Ping {get {return dataServer.Ping;}}
+
+            /// <summary>
+            /// OnStatus is an event that returns ClientStatus whenever the status changes, with which you can use it to know the current status of the client.
+            /// </summary>
             public Action<ClientStatus>? OnStatus;
+
+            /// <summary>
+            /// OnReceivedBytes an event that returns bytes received and GroupID whenever the received bytes by server, with it you can manipulate the bytes received.
+            /// </summary>
             public Action<byte[], int>? OnReceivedBytes;
+
+            /// <summary>
+            /// The Status is an enum ClientStatus with it you can know the current state of the client.
+            /// </summary>
             public ClientStatus Status {get{return CurrentClientStatus;}} 
-            public UdpClient? Socket;
 
             /// <summary>
             /// Connect to a server with IP, Port and sets the size of SymmetricSizeRSA if needed.
@@ -128,7 +154,7 @@ namespace Nethostfire {
                 while(Socket != null){
                     byte[] bytes;
 
-                    // Connection client alway fail when ip with server not found, use 'try' is necessary.
+                    // Connection alway fail when ip not found, use 'try' is necessary.
                     try{
                         // Receive bytes
                         var receivedResult = await Socket.ReceiveAsync();
@@ -148,6 +174,12 @@ namespace Nethostfire {
                                     long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                                     dataServer.Ping = Convert.ToInt32(Timer - dataServer.LastTimer);
                                     dataServer.LastTimer = Timer;
+                                return;
+                                case 2: // Max client exceeded
+                                    ChangeStatus(ClientStatus.MaxClientExceeded);
+                                return;
+                                case 3: // IP blocked
+                                    ChangeStatus(ClientStatus.IpBlocked);
                                 return;
                             }
                         }
@@ -185,9 +217,11 @@ namespace Nethostfire {
 
             void Service(){
                 while(Socket != null){
+                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
                     // Connect or reconnect client
                     if(Status == ClientStatus.Connecting && PublicKeyRSA != null && PrivateKeyAES != null)
-                        if(connectingTimeoutTmp + connectingTimeout > (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) || connectingTimeout == 0){
+                        if(connectingTimeoutTmp + ConnectingTimeout > Timer || ConnectingTimeout == 0){
                             if(dataServer.PublicKeyRSA == null)
                                 SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataServer, background: true);
                             else
@@ -199,7 +233,7 @@ namespace Nethostfire {
 
                     // Check last timer connected and request ping value
                     if(Status == ClientStatus.Connected){
-                        if(dataServer.LastTimer + connectTimeout < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond)){
+                        if(dataServer.LastTimer + ConnectTimeout < Timer){
                             ChangeStatus(ClientStatus.Connecting);
                         }
                         SendPing(Socket, [1]);
@@ -221,30 +255,37 @@ namespace Nethostfire {
                 if(status != CurrentClientStatus){
                     connectingTimeoutTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     CurrentClientStatus = status;
+                    
+                    if(status == ClientStatus.IpBlocked || status == ClientStatus.MaxClientExceeded){
+                        bool showLog = ShowLogDebug;
+                        ShowLogDebug = false;
+                        Disconnect();
+                        ShowLogDebug = showLog;
+                    }
 
-                    if(showLogDebug)
+
+                    if(ShowLogDebug)
                     switch(status){
                         case ClientStatus.Connecting:
-                            ShowLog("Connecting on " + IPEndPoint);
+                            ShowLog("[CLIENT] Connecting on " + IPEndPoint);
                         break;
                         case ClientStatus.Connected:
-                            ShowLog("Connected!");
+                            ShowLog("[CLIENT] Connected!");
                         break;
                         case ClientStatus.ConnectionFail:
-                            dataServer = new();
-                            ShowLog("Unable to connect to the server.");
+                            ShowLog("[CLIENT] Unable to connect to the server.");
                         break;
                         case ClientStatus.Disconnecting:
-                            ShowLog("Disconnecting...");
+                            ShowLog("[CLIENT] Disconnecting...");
                         break;
                         case ClientStatus.Disconnected:
-                            ShowLog("Disconnected!");
+                            ShowLog("[CLIENT] Disconnected!");
                         break;
                         case ClientStatus.IpBlocked:
-                            ShowLog("Your IP has been blocked by the server!");
+                            ShowLog("[CLIENT] Your IP has been blocked by the server!");
                         break;
                         case ClientStatus.MaxClientExceeded:
-                            ShowLog("The maximum number of connected clients has been exceeded!");
+                            ShowLog("[CLIENT] The maximum number of connected clients has been exceeded!");
                         break;
                     }
                     RunOnMainThread(() => OnStatus?.Invoke(status));

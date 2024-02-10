@@ -422,9 +422,9 @@ namespace Nethostfire {
                 ShowUnityLog(message);
             else{
                 Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.Write("[NETHOSTFIRE] ");
-                Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write(DateTime.Now + " ");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.Write("[NETHOSTFIRE] ");
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine(message);
             }
