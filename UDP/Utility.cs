@@ -118,7 +118,7 @@ namespace Nethostfire {
         public static HashSet<UDP.Server> ListServer = new();
         static Aes AES = Aes.Create();
 
-        // Transforma pacote e enviar.
+        // Transform packets and send.
         public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
             if(socket != null){
                 bytes = BytesToSend(bytes, groupID, typeEncrypt, typeShipping, dataClient, background);
@@ -127,11 +127,10 @@ namespace Nethostfire {
             }
         }
 
-        // Enviar pacote sem tranformar.
+        // Send packets without transform.
         public static void SendPing(UdpClient? socket, byte[] bytes, IPEndPoint? ip = null){
-            if(socket != null){
+            if(socket != null && bytes.Length != 0)
                 socket?.Send(bytes, bytes.Length, ip);
-            }
         }
 
         public static byte[] BytesToSend(byte[] bytes, int groupID, TypeEncrypt  typeEncrypt, TypeShipping typeShipping, DataClient dataClient, bool background = false){
@@ -189,6 +188,8 @@ namespace Nethostfire {
                 if(typeShipping == TypeShipping.WithoutPacketLoss)
                     dataClient.ListHoldConnection.TryAdd(dataClient.IndexID, _bytes);
                 
+
+                // Queuing Hold Connection
                 if(typeShipping == TypeShipping.WithoutPacketLossEnqueue){
                     dataClient.QueuingHoldConnection.TryAdd(dataClient.IndexID, _bytes);
                     if(dataClient.QueuingHoldConnection.Count != 1){

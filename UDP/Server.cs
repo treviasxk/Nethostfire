@@ -109,15 +109,14 @@ namespace Nethostfire {
 
 
             /// <summary>
-            /// Blocks a specific IP for the time defined in milliseconds. If the time is 0 the IP will be removed from the server's blocked IP list.
+            /// Blocks a specific IP for the time defined in milliseconds. If the time is 0, the IP will be blocked until the server is restarted.
             /// </summary>
-            public void BlockIP(IPAddress ip, int timer){
-                if(ipBlockeds.ContainsKey(ip))
-                    ipBlockeds[ip] = timer == 0 ? 0 : (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) + timer;
-                else
-                    ipBlockeds.TryAdd(ip, timer == 0 ? 0 : (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) + timer);
-            }
+            public void BlockIP(IPAddress ip, int timer = 0) => ipBlockeds.AddOrUpdate(ip, timer == 0 ? 0 : (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) + timer, (ip, timer) => timer == 0 ? 0 : (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) + timer);
 
+            /// <summary>
+            /// Unblock a specific IP if it has been blocked with BlockIP.
+            /// </summary>
+            public void UnlockIP(IPAddress ip) => ipBlockeds.TryRemove(ip, out _);
 
             /// <summary>
             /// All received PPS in a IP will be limited.
@@ -135,10 +134,7 @@ namespace Nethostfire {
                     if(pps == 0)
                         dataClient.LimitMaxPPSGroupID.TryRemove(groupID, out _);
                     else
-                        if(dataClient.LimitMaxPPSGroupID.ContainsKey(groupID))
-                            dataClient.LimitMaxPPSGroupID[groupID] = pps;
-                        else
-                            dataClient.LimitMaxPPSGroupID.TryAdd(groupID, pps);
+                        dataClient.LimitMaxPPSGroupID.AddOrUpdate(groupID, pps, (groupID, pps) => pps);
             }
 
 
@@ -323,6 +319,7 @@ namespace Nethostfire {
 
             async void ReceivePackage(){
                 while(Socket != null){
+                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     byte[] bytes;
                     IPEndPoint ip;
 
@@ -330,25 +327,24 @@ namespace Nethostfire {
                     try{
                         // Receive bytes and ip
                         var receivedResult = await Socket.ReceiveAsync();
-                        bytes  = receivedResult.Buffer;
+                        bytes = receivedResult.Buffer;
                         ip = receivedResult.RemoteEndPoint;
                     }catch{
                         continue;
                     }
 
+                    // Check IP blocked.
+                    if(ipBlockeds.TryGetValue(ip.Address, out var timer)){
+                        if(timer == 0 || timer > Timer){
+                            QueuingClients.TryRemove(ip, out _);
+                            SendPing(Socket, [3], ip);
+                            return;
+                        }else
+                            ipBlockeds.TryRemove(ip.Address, out _);
+                    }
+
                     if(bytes != null && ip != null)
                     Parallel.Invoke(()=>{
-                        long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                        // Check IP blocked.
-                        if(ipBlockeds.TryGetValue(ip.Address, out var timer)){
-                            if(timer == 0 || timer > Timer){
-                                QueuingClients.TryRemove(ip, out _);
-                                SendPing(Socket, [3], ip);
-                                return;
-                            }else
-                                ipBlockeds.TryRemove(ip.Address, out _);
-                        }
-
                         // Connected
                         if(DataClients.TryGetValue(ip, out var dataClient)){
                             // Commands
