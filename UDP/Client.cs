@@ -164,6 +164,9 @@ namespace Nethostfire {
                     }
                     
                     Parallel.Invoke(()=>{
+                        var Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                        // Update time online
+                        dataServer.LastTimer = Timer;
                         // Update ping and timer connection
                         if(bytes.Length == 1){
                             switch(bytes[0]){
@@ -171,9 +174,7 @@ namespace Nethostfire {
                                     Disconnect();
                                 return;
                                 case 1: // Update ping
-                                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                                     dataServer.Ping = Convert.ToInt32(Timer - dataServer.LastTimer);
-                                    dataServer.LastTimer = Timer;
                                 return;
                                 case 2: // Max client exceeded
                                     ChangeStatus(ClientStatus.MaxClientExceeded);
@@ -205,7 +206,7 @@ namespace Nethostfire {
                             if(data.Value.Item4 == 0 && data.Value.Item2 == 1){
                                 if(data.Value.Item1.Length == 16){
                                     dataServer.PrivateKeyAES = data.Value.Item1;
-                                    dataServer.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                    dataServer.LastTimer = Timer;
                                     ChangeStatus(ClientStatus.Connected);
                                 }
                                 return;

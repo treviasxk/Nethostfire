@@ -347,14 +347,15 @@ namespace Nethostfire {
                     Parallel.Invoke(()=>{
                         // Connected
                         if(DataClients.TryGetValue(ip, out var dataClient)){
+                            // Update time online
+                            DataClients[ip].LastTimer = Timer;
                             // Commands
                             if(bytes.Length == 1){
                                 switch(bytes[0]){
                                     case 0: // Force disconnect
                                         Disconnect(ip);
                                     return;
-                                    case 1: // Confirm Online
-                                        DataClients[ip].LastTimer = Timer;
+                                    case 1: // Update ping
                                         SendPing(Socket, [1], ip);
                                     return;
                                 }
