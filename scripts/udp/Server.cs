@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using static Nethostfire.Utility;
+using static Nethostfire.System;
 
 namespace Nethostfire {
     public partial class UDP{
@@ -51,9 +51,9 @@ namespace Nethostfire {
             public ServerStatus Status {get{return CurrentServerStatus;}} 
 
             /// <summary>
-            /// The ShowLogDebug when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
+            /// The DebugLog when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
             /// </summary>
-            public bool ShowLogDebug {get; set;} = true;
+            public bool DebugLog {get; set;} = true;
 
             /// <summary>
             /// MaxClients is the maximum number of clients that can connect to the server. If you have many connected clients and you change the value below the number of connected clients, they will not be disconnected, the server will block new connections until the number of connected clients is below or equal to the limit. (The default value is 0, which is unlimited clients)
@@ -143,8 +143,8 @@ namespace Nethostfire {
             /// </summary>
             public void Disconnect(IPEndPoint ip){
                 if(DataClients.TryRemove(ip, out _)){
-                    if(ShowLogDebug)
-                        ShowLog(ip + " Disconnected!");
+                    if(DebugLog)
+                        ShowLog("[SERVER] " + ip + " Disconnected!");
                     SendPing(Socket, [0], ip);
                 }
             }
@@ -391,7 +391,7 @@ namespace Nethostfire {
                                     dataClient.PublicKeyRSA = PublicKeyRSAClient;
                                     dataClient.LastTimer = Timer;
                                     if(QueuingClients.TryAdd(ip, dataClient)){
-                                        if(ShowLogDebug)
+                                        if(DebugLog)
                                             ShowLog("[SERVER] " + ip + " Connecting...");
                                         SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
                                     }
@@ -405,7 +405,7 @@ namespace Nethostfire {
                                 dataClient.LastTimer = Timer;
                                 if(QueuingClients.TryRemove(ip, out _)){
                                     if(DataClients.TryAdd(ip, dataClient)){
-                                        if(ShowLogDebug)
+                                        if(DebugLog)
                                             ShowLog("[SERVER] " + ip + " Connected!");
                                         OnConnected?.Invoke(ip);
                                         SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
@@ -424,14 +424,14 @@ namespace Nethostfire {
                     // Check timer connection dataClients.
                     Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < Timer), item =>{
                         if(DataClients.TryRemove(item.Key, out _))
-                            if(ShowLogDebug)
+                            if(DebugLog)
                                 ShowLog("[SERVER] " + item.Key + " Disconnected!");
                     });
 
                     // Check timer connection queuingClients.
                     Parallel.ForEach(QueuingClients.Where(item => item.Value.LastTimer + ConnectedTimeout < Timer), item =>{
                         if(QueuingClients.TryRemove(item.Key, out _))
-                            if(ShowLogDebug)
+                            if(DebugLog)
                                 ShowLog("[SERVER] " + item.Key + " Connection lost!");
                     });
 
@@ -453,28 +453,32 @@ namespace Nethostfire {
             void ChangeStatus(ServerStatus status){
                 if(status != CurrentServerStatus){
                     CurrentServerStatus = status;
-
-                    if(ShowLogDebug)
+                    if(DebugLog)
                     switch(status){
                         case ServerStatus.Initializing:
-                            ShowLog("[SERVER] Initializing...");
+                            ShowLog("Initializing...");
                         break;
                         case ServerStatus.Running:
-                            ShowLog("[SERVER] Initialized and hosted on " + IPEndPoint);
+                            ShowLog("Initialized and hosted on " + IPEndPoint);
                         break;
                         case ServerStatus.Restarting:
-                            ShowLog("[SERVER] Restarting...");
+                            ShowLog("Restarting...");
                         break;
                         case ServerStatus.Stopping:
-                            ShowLog("[SERVER] Stopping...");
+                            ShowLog("Stopping...");
                         break;
                         case ServerStatus.Stopped:
-                            ShowLog("[SERVER] Stopped.");
+                            ShowLog("Stopped.");
                         break;
                     }
                     RunOnMainThread(() => OnStatus?.Invoke(status));
                 }
             }
+
+            /// <summary>
+            /// Create a server log, if SaveLog is enabled, the message will be saved in the logs.
+            /// </summary>
+            public void ShowLog(string message) => Log("[SERVER] " + message, SaveLog);
 
             /// <summary>
             /// Clear all events, data and free memory.
@@ -483,10 +487,10 @@ namespace Nethostfire {
                 // Is need clear events first to can clean ListRunMainThread in NethostfireService
                 OnReceivedBytes = null;
                 OnStatus = null;
-                bool showLog = ShowLogDebug;
-                ShowLogDebug = false;
+                bool showLog = DebugLog;
+                DebugLog = false;
                 Stop();
-                ShowLogDebug = showLog;
+                DebugLog = showLog;
                 GC.SuppressFinalize(this);
             }
         }

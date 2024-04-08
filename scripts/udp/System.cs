@@ -57,6 +57,12 @@ namespace Nethostfire {
         MaxClientExceeded = 6,
     }
 
+    public enum MySQLStatus {
+        Connected,
+        Disconnected
+    }
+
+
     /// <summary>
     /// The TypeHoldConnection is a feature to guarantee the sending of udp packets even with packet losses.
     /// </summary>
@@ -108,7 +114,7 @@ namespace Nethostfire {
         OnlyCompress = 6,
     }
 
-    class Utility{
+    class System{
         public static string? PublicKeyRSA, PrivateKeyRSA;
         public static byte[]? PrivateKeyAES;
         public static bool UnityBatchMode, RunningInUnity;
@@ -117,6 +123,7 @@ namespace Nethostfire {
         public static HashSet<UDP.Client> ListClient = new();
         public static HashSet<UDP.Server> ListServer = new();
         static Aes AES = Aes.Create();
+        public static bool SaveLog = true;
 
         // Transform packets and send.
         public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
@@ -418,7 +425,13 @@ namespace Nethostfire {
             }
         }
 
-        public static string ShowLog(string message){
+        public static string Log(string message, bool SaveLog){
+            if(SaveLog){
+                if(!Directory.Exists("logs/"))
+                    Directory.CreateDirectory("logs/");
+                File.AppendAllText("logs/"+ DateTime.Now.ToString("yyyy-MM-dd") +".log", DateTime.Now + " " + "[NETHOSTFIRE] " + message + Environment.NewLine, Encoding.UTF8);
+            }
+            
             if(RunningInUnity && !UnityBatchMode)
                 ShowUnityLog(message);
             else{
@@ -451,9 +464,7 @@ namespace Nethostfire {
                     _action?.Invoke();
         }
 
-        static void ShowUnityLog(string Message){
-            UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
-        }
+        static void ShowUnityLog(string Message) => UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
 
         public static void StartUnity(UDP.Client? client = null, UDP.Server? server = null){
             try{

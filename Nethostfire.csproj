@@ -16,12 +16,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>None</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Unity/UnityEngine.dll">
-      <SpecificVersion>False</SpecificVersion>
+    <PackageReference Include="System.Text.Json" Version="8.0.3" />
+    <Reference Include="plugins/UnityEngine.dll">
+      <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PostBuild" BeforeTargets="PostBuildEvent">
+    <Exec Command="del $(TargetDir)$(TargetName).deps.json" />
+  </Target>
 
 </Project>

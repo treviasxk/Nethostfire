@@ -7,10 +7,10 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using static Nethostfire.Utility;
+using static Nethostfire.System;
 
 namespace Nethostfire {
-    public partial class UDP{
+    public partial class UDP {
         public class Client : IDisposable{
             public UdpClient? Socket;
             IPEndPoint? IPEndPoint;
@@ -29,9 +29,9 @@ namespace Nethostfire {
             public int ConnectingTimeout {get; set;} = 10000;
 
             /// <summary>
-            /// The ShowLogDebug when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
+            /// The DebugLog when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
             /// </summary>
-            public bool ShowLogDebug {get; set;} = true;
+            public bool DebugLog {get; set;} = true;
 
             /// <summary>
             /// Ping returns an integer value, this value is per milliseconds
@@ -258,40 +258,45 @@ namespace Nethostfire {
                     CurrentClientStatus = status;
                     
                     if(status == ClientStatus.IpBlocked || status == ClientStatus.MaxClientExceeded){
-                        bool showLog = ShowLogDebug;
-                        ShowLogDebug = false;
+                        bool showLog = DebugLog;
+                        DebugLog = false;
                         Disconnect();
-                        ShowLogDebug = showLog;
+                        DebugLog = showLog;
                     }
 
 
-                    if(ShowLogDebug)
+                    if(DebugLog)
                     switch(status){
                         case ClientStatus.Connecting:
-                            ShowLog("[CLIENT] Connecting on " + IPEndPoint);
+                            ShowLog("Connecting on " + IPEndPoint);
                         break;
                         case ClientStatus.Connected:
-                            ShowLog("[CLIENT] Connected!");
+                            ShowLog("Connected!");
                         break;
                         case ClientStatus.ConnectionFail:
-                            ShowLog("[CLIENT] Unable to connect to the server.");
+                            ShowLog("Unable to connect to the server.");
                         break;
                         case ClientStatus.Disconnecting:
-                            ShowLog("[CLIENT] Disconnecting...");
+                            ShowLog("Disconnecting...");
                         break;
                         case ClientStatus.Disconnected:
-                            ShowLog("[CLIENT] Disconnected!");
+                            ShowLog("Disconnected!");
                         break;
                         case ClientStatus.IpBlocked:
-                            ShowLog("[CLIENT] Your IP has been blocked by the server!");
+                            ShowLog("Your IP has been blocked by the server!");
                         break;
                         case ClientStatus.MaxClientExceeded:
-                            ShowLog("[CLIENT] The maximum number of connected clients has been exceeded!");
+                            ShowLog("The maximum number of connected clients has been exceeded!");
                         break;
                     }
                     RunOnMainThread(() => OnStatus?.Invoke(status));
                 }
             }
+
+            /// <summary>
+            /// Create a server log, if SaveLog is enabled, the message will be saved in the logs.
+            /// </summary>
+            public void ShowLog(string message) => Log("[CLIENT] " + message, SaveLog);
 
             /// <summary>
             /// Clear all events, data and free memory.
@@ -300,10 +305,10 @@ namespace Nethostfire {
                 // Is need clear events first to can clean ListRunMainThread in NethostfireService
                 OnReceivedBytes = null;
                 OnStatus = null;
-                bool showLog = ShowLogDebug;
-                ShowLogDebug = false;
+                bool showLog = DebugLog;
+                DebugLog = false;
                 Disconnect();
-                ShowLogDebug = showLog;
+                DebugLog = showLog;
                 GC.SuppressFinalize(this);
             }
         }
