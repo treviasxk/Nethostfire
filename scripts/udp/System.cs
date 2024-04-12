@@ -123,6 +123,7 @@ namespace Nethostfire {
         public static HashSet<UDP.Client> ListClient = new();
         public static HashSet<UDP.Server> ListServer = new();
         static Aes AES = Aes.Create();
+        static StreamWriter? fileLog;
         public static bool SaveLog = true;
 
         // Transform packets and send.
@@ -429,7 +430,17 @@ namespace Nethostfire {
             if(SaveLog){
                 if(!Directory.Exists("logs/"))
                     Directory.CreateDirectory("logs/");
-                File.AppendAllText("logs/"+ DateTime.Now.ToString("yyyy-MM-dd") +".log", DateTime.Now + " " + "[NETHOSTFIRE] " + message + Environment.NewLine, Encoding.UTF8);
+                
+                // Message text to bytes
+                var text = DateTime.Now + " " + "[NETHOSTFIRE] " + message;
+                // Location logs
+                var filename = "logs/"+ DateTime.Now.ToString("yyyy-MM-dd") +".log";
+
+                if(fileLog == null)
+                    fileLog = new StreamWriter(filename, true, Encoding.UTF8);
+
+                fileLog.WriteLine(text);
+                fileLog.Flush();
             }
             
             if(RunningInUnity && !UnityBatchMode)
