@@ -164,9 +164,8 @@ namespace Nethostfire {
                     }
                     
                     Parallel.Invoke(()=>{
-                        var Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                         // Update time online
-                        dataServer.LastTimer = Timer;
+                        dataServer.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                         // Update ping and timer connection
                         if(bytes.Length == 1){
                             switch(bytes[0]){
@@ -174,7 +173,7 @@ namespace Nethostfire {
                                     Disconnect();
                                 return;
                                 case 1: // Update ping
-                                    dataServer.Ping = Convert.ToInt32(Timer - dataServer.LastTimer);
+                                    dataServer.Ping = Convert.ToInt32(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - dataServer.LastTimer);
                                 return;
                                 case 2: // Max client exceeded
                                     ChangeStatus(ClientStatus.MaxClientExceeded);
@@ -206,7 +205,7 @@ namespace Nethostfire {
                             if(data.Value.Item4 == 0 && data.Value.Item2 == 1){
                                 if(data.Value.Item1.Length == 16){
                                     dataServer.PrivateKeyAES = data.Value.Item1;
-                                    dataServer.LastTimer = Timer;
+                                    dataServer.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                                     ChangeStatus(ClientStatus.Connected);
                                 }
                                 return;
@@ -218,11 +217,9 @@ namespace Nethostfire {
 
             void Service(){
                 while(Socket != null){
-                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-
                     // Connect or reconnect client
                     if(Status == ClientStatus.Connecting && PublicKeyRSA != null && PrivateKeyAES != null)
-                        if(connectingTimeoutTmp + ConnectingTimeout > Timer || ConnectingTimeout == 0){
+                        if(connectingTimeoutTmp + ConnectingTimeout > DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond || ConnectingTimeout == 0){
                             if(dataServer.PublicKeyRSA == null)
                                 SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataServer, background: true);
                             else
@@ -234,7 +231,7 @@ namespace Nethostfire {
 
                     // Check last timer connected and request ping value
                     if(Status == ClientStatus.Connected){
-                        if(dataServer.LastTimer + ConnectTimeout < Timer){
+                        if(dataServer.LastTimer + ConnectTimeout < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
                             ChangeStatus(ClientStatus.Connecting);
                         }
                         SendPing(Socket, [1]);
@@ -264,8 +261,6 @@ namespace Nethostfire {
                         DebugLog = showLog;
                     }
 
-
-                    if(DebugLog)
                     switch(status){
                         case ClientStatus.Connecting:
                             ShowLog("Connecting on " + IPEndPoint);
@@ -296,7 +291,10 @@ namespace Nethostfire {
             /// <summary>
             /// Create a server log, if SaveLog is enabled, the message will be saved in the logs.
             /// </summary>
-            public void ShowLog(string message) => Log("[CLIENT] " + message, SaveLog);
+            public void ShowLog(string message){
+                if(DebugLog)
+                    Log("[CLIENT] " + message, SaveLog);
+            }
 
             /// <summary>
             /// Clear all events, data and free memory.

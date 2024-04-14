@@ -143,8 +143,7 @@ namespace Nethostfire {
             /// </summary>
             public void Disconnect(IPEndPoint ip){
                 if(DataClients.TryRemove(ip, out _)){
-                    if(DebugLog)
-                        ShowLog("[SERVER] " + ip + " Disconnected!");
+                    ShowLog(ip + " Disconnected!");
                     SendPing(Socket, [0], ip);
                 }
             }
@@ -319,7 +318,6 @@ namespace Nethostfire {
 
             async void ReceivePackage(){
                 while(Socket != null){
-                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     byte[] bytes;
                     IPEndPoint ip;
 
@@ -335,7 +333,7 @@ namespace Nethostfire {
 
                     // Check IP blocked.
                     if(ipBlockeds.TryGetValue(ip.Address, out var timer)){
-                        if(timer == 0 || timer > Timer){
+                        if(timer == 0 || timer > DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond){
                             QueuingClients.TryRemove(ip, out _);
                             SendPing(Socket, [3], ip);
                             return;
@@ -348,7 +346,7 @@ namespace Nethostfire {
                         // Connected
                         if(DataClients.TryGetValue(ip, out var dataClient)){
                             // Update time online
-                            DataClients[ip].LastTimer = Timer;
+                            DataClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                             // Commands
                             if(bytes.Length == 1){
                                 switch(bytes[0]){
@@ -375,43 +373,53 @@ namespace Nethostfire {
                                 return;
                             }
 
-                            if(QueuingClients.TryGetValue(ip, out var _queuingClients))
-                                dataClient = _queuingClients;
-                            else
-                                dataClient = new DataClient();
-                            // item1 = bytes
-                            // item2 = groupID
-                            // item3 = typeEncrypt
-                            // item4 = typeShipping
-                            var data = BytesToReceive(Socket, bytes, dataClient, ip);        
-                            // Check RSA client received and send RSA server
-                            if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){
-                                string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
-                                if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
-                                    dataClient.PublicKeyRSA = PublicKeyRSAClient;
-                                    dataClient.LastTimer = Timer;
-                                    if(QueuingClients.TryAdd(ip, dataClient)){
-                                        if(DebugLog)
-                                            ShowLog("[SERVER] " + ip + " Connecting...");
-                                        SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
+                            // Client in Queuing
+                            if(QueuingClients.TryGetValue(ip, out var _queuingClients)){
+                                _queuingClients.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                if(bytes.Length == 1){
+                                    switch (bytes[0]){
+                                        case 1:
+                                            if(QueuingClients.TryRemove(ip, out _)){
+                                                if(DataClients.TryAdd(ip, _queuingClients)){
+                                                    ShowLog(ip + " Connected!");
+                                                    OnConnected?.Invoke(ip);
+                                                }
+                                            }
+                                        break;
                                     }
                                 }
-                                return;
-                            }
-                            // Check AES client, send AES server and connect client
-                            if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
-                                dataClient.PrivateKeyAES = data.Value.Item1;
-                                dataClient.MaxPPSTimer = 0;
-                                dataClient.LastTimer = Timer;
-                                if(QueuingClients.TryRemove(ip, out _)){
-                                    if(DataClients.TryAdd(ip, dataClient)){
-                                        if(DebugLog)
-                                            ShowLog("[SERVER] " + ip + " Connected!");
-                                        OnConnected?.Invoke(ip);
-                                        SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
-                                    }
+
+                                // item1 = bytes
+                                // item2 = groupID
+                                // item3 = typeEncrypt
+                                // item4 = typeShipping
+                                var data = BytesToReceive(Socket, bytes, _queuingClients, ip);      
+                                // Check AES client, send AES server and connect client
+                                if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
+                                    _queuingClients.PrivateKeyAES = data.Value.Item1;
+                                    _queuingClients.MaxPPSTimer = 0;
+                                    SendPacket(Socket, PrivateKeyAES, 1, _queuingClients, ip: ip, background: true);  // groupID: 1 = AES
+                                    return;
                                 }
-                                return;
+                            }else{
+                                dataClient = new DataClient(){LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond};
+                                // item1 = bytes
+                                // item2 = groupID
+                                // item3 = typeEncrypt
+                                // item4 = typeShipping
+                                var data = BytesToReceive(Socket, bytes, dataClient, ip);        
+                                // Check RSA client received and send RSA server
+                                if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){
+                                    string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
+                                    if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
+                                        dataClient.PublicKeyRSA = PublicKeyRSAClient;
+                                        if(QueuingClients.TryAdd(ip, dataClient)){
+                                            ShowLog(ip + " Connecting...");
+                                            SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
+                                        }
+                                    }
+                                    return;
+                                }
                             }
                         }
                     });
@@ -420,19 +428,17 @@ namespace Nethostfire {
 
             void Service(){
                 while(Socket != null){
-                    long Timer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
                     // Check timer connection dataClients.
-                    Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < Timer), item =>{
+                    Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), item =>{
                         if(DataClients.TryRemove(item.Key, out _))
-                            if(DebugLog)
-                                ShowLog("[SERVER] " + item.Key + " Disconnected!");
+                            ShowLog(item.Key + " Disconnected!");
                     });
 
                     // Check timer connection queuingClients.
-                    Parallel.ForEach(QueuingClients.Where(item => item.Value.LastTimer + ConnectedTimeout < Timer), item =>{
+                    Parallel.ForEach(QueuingClients.Where(item => item.Value.LastTimer + ConnectedTimeout < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), item =>{    // Problema no LastTimer
                         if(QueuingClients.TryRemove(item.Key, out _))
-                            if(DebugLog)
-                                ShowLog("[SERVER] " + item.Key + " Connection lost!");
+                            ShowLog(item.Key + " Connection lost!");
                     });
 
                     // Hold Connection
@@ -453,7 +459,6 @@ namespace Nethostfire {
             void ChangeStatus(ServerStatus status){
                 if(status != CurrentServerStatus){
                     CurrentServerStatus = status;
-                    if(DebugLog)
                     switch(status){
                         case ServerStatus.Initializing:
                             ShowLog("Initializing...");
@@ -478,7 +483,10 @@ namespace Nethostfire {
             /// <summary>
             /// Create a server log, if SaveLog is enabled, the message will be saved in the logs.
             /// </summary>
-            public void ShowLog(string message) => Log("[SERVER] " + message, SaveLog);
+            public void ShowLog(string message){
+                if(DebugLog)
+                    Log("[SERVER] " + message, SaveLog);
+            }
 
             /// <summary>
             /// Clear all events, data and free memory.

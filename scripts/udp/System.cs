@@ -250,19 +250,21 @@ namespace Nethostfire {
                 int _groupID = BitConverter.ToInt16(bytes.Skip(4).Take(bytes[2]).ToArray());
                 int _indexID = BitConverter.ToInt16(bytes.Skip(4 + bytes[2]).Take(bytes[3]).ToArray());
 
+
+
                 if(CheckDDOS(dataClient, _background))
                     return null;
 
                 // Check if the packet is background
                 if(_background){
                     // Decompress AES
+
                     if(_groupID == 0)
                         _bytes = Decompress(_bytes);
 
                     // Decompress RSA
                     if(_groupID == 1)
                         _bytes = DecryptRSA(_bytes, PrivateKeyRSA);
-
                 }else{
                     // Decrypt
                     switch(_typeEncrypt){
@@ -426,6 +428,7 @@ namespace Nethostfire {
             }
         }
 
+        static int instance = 0;
         public static string Log(string message, bool SaveLog){
             if(SaveLog){
                 if(!Directory.Exists("logs/"))
@@ -434,13 +437,21 @@ namespace Nethostfire {
                 // Message text to bytes
                 var text = DateTime.Now + " " + "[NETHOSTFIRE] " + message;
                 // Location logs
-                var filename = "logs/"+ DateTime.Now.ToString("yyyy-MM-dd") +".log";
+                var filename = DateTime.Now.ToString("yyyy-MM-dd") +".log";
 
-                if(fileLog == null)
-                    fileLog = new StreamWriter(filename, true, Encoding.UTF8);
+
+                // Generate new file if other program usage log file
+                if(fileLog == null){
+                    while(true)
+                    try{
+                        fileLog = new StreamWriter($"logs/{AppDomain.CurrentDomain.FriendlyName}-{instance}-{filename}", true, Encoding.UTF8){AutoFlush = true};
+                        break;
+                    }catch{
+                        instance++;
+                    }
+                }
 
                 fileLog.WriteLine(text);
-                fileLog.Flush();
             }
             
             if(RunningInUnity && !UnityBatchMode)
@@ -491,10 +502,10 @@ namespace Nethostfire {
         public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
             UnityBatchMode = UnityEngine.Application.isBatchMode;
 
-            if(!UnityEngine.GameObject.Find("Nethostfire")){
+            if(!UnityEngine.GameObject.Find("[Nethostfire]")){
                 if(UnityBatchMode)
                     Console.Clear();
-                new UnityEngine.GameObject("Nethostfire").AddComponent<NethostfireService>();
+                new UnityEngine.GameObject("[Nethostfire]").AddComponent<NethostfireService>().hideFlags = UnityEngine.HideFlags.HideInHierarchy;
             }
 
             if(client != null && !ListClient.Contains(client))
