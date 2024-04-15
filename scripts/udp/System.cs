@@ -289,9 +289,9 @@ namespace Nethostfire {
                 //bytes2[0] = code
                 //bytes2[1] = IndexID size
                 //bytes2[2] = indexID
-                if(_typeShipping > 1){
+                if(_typeShipping > 2){
                     byte[] _bytes2 = new byte[bytes[3] + 2];                                                // IndexID size + 2 slot
-                    _bytes2[0] = 1;                                                                         // Code
+                    _bytes2[0] = 1;                                          // Code
                     _bytes2[1] = bytes[3];                                                                  // The size of indexID
                     bytes.Skip(4 + bytes[2]).Take(bytes[3]).ToArray().CopyTo(_bytes2, 2);                   // IndexID
                     // Hold Connection respond

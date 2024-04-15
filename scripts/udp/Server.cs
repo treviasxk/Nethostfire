@@ -343,10 +343,13 @@ namespace Nethostfire {
 
                     if(bytes != null && ip != null)
                     Parallel.Invoke(()=>{
+                        (byte[], int, TypeEncrypt, int)? data;
+                        
                         // Connected
                         if(DataClients.TryGetValue(ip, out var dataClient)){
                             // Update time online
-                            DataClients[ip].LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                            dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
                             // Commands
                             if(bytes.Length == 1){
                                 switch(bytes[0]){
@@ -358,14 +361,16 @@ namespace Nethostfire {
                                     return;
                                 }
                             }
+
                             // item1 = bytes
                             // item2 = groupID
                             // item3 = typeEncrypt
                             // item4 = typeShipping
-                            var data = BytesToReceive(Socket, bytes, dataClient, ip);
-                            if(data.HasValue && data.Value.Item4 != 0)
+                            data = BytesToReceive(Socket, bytes, dataClient, ip);
+                            if(data.HasValue && data.Value.Item4 != 0){
                                 RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip));
-                            return;
+                                return;
+                            }
                         }else{
                             // clients max execedeed
                             if(MaxClients != 0 && Clients.Count >= MaxClients){
@@ -373,55 +378,53 @@ namespace Nethostfire {
                                 return;
                             }
 
-                            // Client in Queuing
-                            if(QueuingClients.TryGetValue(ip, out var _queuingClients)){
-                                _queuingClients.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                                if(bytes.Length == 1){
-                                    switch (bytes[0]){
-                                        case 1:
-                                            if(QueuingClients.TryRemove(ip, out _)){
-                                                if(DataClients.TryAdd(ip, _queuingClients)){
-                                                    ShowLog(ip + " Connected!");
-                                                    OnConnected?.Invoke(ip);
-                                                }
-                                            }
-                                        break;
-                                    }
-                                }
-
-                                // item1 = bytes
-                                // item2 = groupID
-                                // item3 = typeEncrypt
-                                // item4 = typeShipping
-                                var data = BytesToReceive(Socket, bytes, _queuingClients, ip);      
-                                // Check AES client, send AES server and connect client
-                                if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
-                                    _queuingClients.PrivateKeyAES = data.Value.Item1;
-                                    _queuingClients.MaxPPSTimer = 0;
-                                    SendPacket(Socket, PrivateKeyAES, 1, _queuingClients, ip: ip, background: true);  // groupID: 1 = AES
-                                    return;
-                                }
-                            }else{
+                            // Check if Client in Queuing
+                            if(QueuingClients.TryGetValue(ip, out var _queuingClients))
+                                dataClient = _queuingClients;
+                            else
                                 dataClient = new DataClient(){LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond};
-                                // item1 = bytes
-                                // item2 = groupID
-                                // item3 = typeEncrypt
-                                // item4 = typeShipping
-                                var data = BytesToReceive(Socket, bytes, dataClient, ip);        
-                                // Check RSA client received and send RSA server
-                                if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){
-                                    string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
-                                    if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
-                                        dataClient.PublicKeyRSA = PublicKeyRSAClient;
-                                        if(QueuingClients.TryAdd(ip, dataClient)){
-                                            ShowLog(ip + " Connecting...");
-                                            SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
-                                        }
-                                    }
-                                    return;
+
+                            // Update LastTimer
+                            dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
+                            // item1 = bytes
+                            // item2 = groupID
+                            // item3 = typeEncrypt
+                            // item4 = typeShipping
+                            data = BytesToReceive(Socket, bytes, dataClient, ip);
+                        }
+                        
+
+     
+                        // Check RSA client received and send RSA server
+                        if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){
+                            string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
+                            if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
+                                dataClient.PublicKeyRSA = PublicKeyRSAClient;
+                                if(QueuingClients.TryAdd(ip, dataClient)){
+                                    ShowLog(ip + " Connecting...");
+                                }
+                                // Send PublicKeyRSA
+                                SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
+                            }
+                            return;
+                        }
+
+                        // Check AES client, send AES server and connect client
+                        if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
+                            dataClient.PrivateKeyAES = data.Value.Item1;
+                            dataClient.MaxPPSTimer = 0;
+                            if(QueuingClients.TryRemove(ip, out _)){
+                                if(DataClients.TryAdd(ip, dataClient)){
+                                    ShowLog(ip + " Connected!");
+                                    OnConnected?.Invoke(ip);
                                 }
                             }
+                            // Send PrivateKeyAES
+                            SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
+                            return;
                         }
+                        
                     });
                 }
             }
