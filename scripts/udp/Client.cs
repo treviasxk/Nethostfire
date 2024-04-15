@@ -254,7 +254,7 @@ namespace Nethostfire {
                     connectingTimeoutTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     CurrentClientStatus = status;
                     
-                    if(status == ClientStatus.IpBlocked || status == ClientStatus.MaxClientExceeded){
+                    if(status == ClientStatus.IpBlocked || status == ClientStatus.MaxClientExceeded || status == ClientStatus.ConnectionFail){
                         bool showLog = DebugLog;
                         DebugLog = false;
                         Disconnect();
