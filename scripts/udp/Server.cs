@@ -137,13 +137,14 @@ namespace Nethostfire {
                         dataClient.LimitMaxPPSGroupID.AddOrUpdate(groupID, pps, (groupID, pps) => pps);
             }
 
-
             /// <summary>
-            /// To disconnect a client from server, it is necessary to inform the IP.
+            /// To kick a client connected from server, it is necessary to inform the IP.
             /// </summary>
-            public void Disconnect(IPEndPoint ip){
+            public void Kick(IPEndPoint ip){
+                // kick is Only for client connected.
                 if(DataClients.TryRemove(ip, out _)){
-                    ShowLog(ip + " Disconnected!");
+                    OnDisconnected?.Invoke(ip);
+                    ShowLog(ip + " Kicked!");
                     SendPing(Socket, [0], ip);
                 }
             }
@@ -354,7 +355,7 @@ namespace Nethostfire {
                             if(bytes.Length == 1){
                                 switch(bytes[0]){
                                     case 0: // Force disconnect
-                                        Disconnect(ip);
+                                        Kick(ip);
                                     return;
                                     case 1: // Update ping
                                         SendPing(Socket, [1], ip);
@@ -416,8 +417,8 @@ namespace Nethostfire {
                             dataClient.MaxPPSTimer = 0;
                             if(QueuingClients.TryRemove(ip, out _)){
                                 if(DataClients.TryAdd(ip, dataClient)){
-                                    ShowLog(ip + " Connected!");
                                     OnConnected?.Invoke(ip);
+                                    ShowLog(ip + " Connected!");
                                 }
                             }
                             // Send PrivateKeyAES
@@ -434,8 +435,10 @@ namespace Nethostfire {
 
                     // Check timer connection dataClients.
                     Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), item =>{
-                        if(DataClients.TryRemove(item.Key, out _))
+                        if(DataClients.TryRemove(item.Key, out _)){
+                            OnDisconnected?.Invoke(item.Key);
                             ShowLog(item.Key + " Disconnected!");
+                        }
                     });
 
                     // Check timer connection queuingClients.

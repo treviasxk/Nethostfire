@@ -74,7 +74,7 @@ namespace Nethostfire {
                             Priority = ThreadPriority.Highest
                         }.Start();
                     }catch{
-                        ChangeStatus(ClientStatus.ConnectionFail);
+                        ChangeStatus(ClientStatus.Disconnected);
                     }
                 }
             }
@@ -85,11 +85,13 @@ namespace Nethostfire {
             /// </summary>
             public void Disconnect(){
                 if(Socket != null){
-                    ChangeStatus(ClientStatus.Disconnecting);
+                    if(CurrentClientStatus == ClientStatus.Connected)
+                        ChangeStatus(ClientStatus.Disconnecting);
                     Socket.Close();
                     Socket = null;
                     dataServer = new();
-                    ChangeStatus(ClientStatus.Disconnected);
+                    if(CurrentClientStatus == ClientStatus.Disconnecting)
+                        ChangeStatus(ClientStatus.Disconnected);
                 }
             }
 
@@ -169,8 +171,8 @@ namespace Nethostfire {
                         // Update ping and timer connection
                         if(bytes.Length == 1){
                             switch(bytes[0]){
-                                case 0: // Disconnect from server
-                                    Disconnect();
+                                case 0: // Kicked from server
+                                    ChangeStatus(ClientStatus.Kicked);
                                 return;
                                 case 1: // Update ping
                                     dataServer.Ping = Convert.ToInt32(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - dataServer.LastTimer);
@@ -226,7 +228,7 @@ namespace Nethostfire {
                                 SendPacket(Socket, PrivateKeyAES, 1, dataServer, background: true); // groupID: 1 = AES
                         }else{
                             // Connection failed
-                            ChangeStatus(ClientStatus.ConnectionFail);
+                            ChangeStatus(ClientStatus.Disconnected);
                         }
 
                     // Check last timer connected and request ping value
@@ -254,7 +256,7 @@ namespace Nethostfire {
                     connectingTimeoutTmp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     CurrentClientStatus = status;
                     
-                    if(status == ClientStatus.IpBlocked || status == ClientStatus.MaxClientExceeded || status == ClientStatus.ConnectionFail){
+                    if(status == ClientStatus.IpBlocked || status == ClientStatus.MaxClientExceeded || status == ClientStatus.Kicked || status == ClientStatus.Disconnected){
                         bool showLog = DebugLog;
                         DebugLog = false;
                         Disconnect();
@@ -268,13 +270,13 @@ namespace Nethostfire {
                         case ClientStatus.Connected:
                             ShowLog("Connected!");
                         break;
-                        case ClientStatus.ConnectionFail:
+                        case ClientStatus.Disconnected:
                             ShowLog("Unable to connect to the server.");
                         break;
                         case ClientStatus.Disconnecting:
                             ShowLog("Disconnecting...");
                         break;
-                        case ClientStatus.Disconnected:
+                        case ClientStatus.Kicked:
                             ShowLog("Disconnected!");
                         break;
                         case ClientStatus.IpBlocked:

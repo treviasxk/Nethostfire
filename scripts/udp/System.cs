@@ -52,7 +52,7 @@ namespace Nethostfire {
         Disconnecting = 1,
         Connected = 2,
         Connecting = 3,
-        ConnectionFail = 4,
+        Kicked = 4,
         IpBlocked = 5,
         MaxClientExceeded = 6,
     }
