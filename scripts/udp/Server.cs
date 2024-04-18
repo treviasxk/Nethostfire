@@ -142,10 +142,12 @@ namespace Nethostfire {
             /// </summary>
             public void Kick(IPEndPoint ip){
                 // kick is Only for client connected.
-                if(DataClients.TryRemove(ip, out _)){
+                if(DataClients.ContainsKey(ip)){
                     OnDisconnected?.Invoke(ip);
-                    ShowLog(ip + " Kicked!");
-                    SendPing(Socket, [0], ip);
+                    if(DataClients.TryRemove(ip, out _)){
+                        ShowLog(ip + " Kicked!");
+                        SendPing(Socket, [0], ip);
+                    }
                 }
             }
 
@@ -271,17 +273,17 @@ namespace Nethostfire {
             // Send to one IP
             void SendPrepare(byte[] bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
                 if(Status == ServerStatus.Running && bytes != null)
-                    SendPacket(Socket, bytes, groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
+                    SendPacket(Socket, bytes, groupID, DataClients[ip] ?? null, typeEncrypt, typeShipping, ip);
             }
 
             void SendPrepare(string text, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
                 if(Status == ServerStatus.Running && text != null)
-                    SendPacket(Socket, Encoding.UTF8.GetBytes(text), groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
+                    SendPacket(Socket, Encoding.UTF8.GetBytes(text), groupID, DataClients[ip] ?? null, typeEncrypt, typeShipping, ip);
             }
 
             void SendPrepare(float value, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
                 if(Status == ServerStatus.Running)
-                    SendPacket(Socket, BitConverter.GetBytes(value), groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
+                    SendPacket(Socket, BitConverter.GetBytes(value), groupID, DataClients[ip] ?? null, typeEncrypt, typeShipping, ip);
             }
 
             // Send to group IPs
@@ -435,10 +437,9 @@ namespace Nethostfire {
 
                     // Check timer connection dataClients.
                     Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), item =>{
-                        if(DataClients.TryRemove(item.Key, out _)){
-                            OnDisconnected?.Invoke(item.Key);
+                        OnDisconnected?.Invoke(item.Key);
+                        if(DataClients.TryRemove(item.Key, out _))
                             ShowLog(item.Key + " Disconnected!");
-                        }
                     });
 
                     // Check timer connection queuingClients.

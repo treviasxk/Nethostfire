@@ -127,8 +127,8 @@ namespace Nethostfire {
         public static bool SaveLog = true;
 
         // Transform packets and send.
-        public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
-            if(socket != null){
+        public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient? dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
+            if(socket != null && dataClient != null){
                 bytes = BytesToSend(bytes, groupID, typeEncrypt, typeShipping, dataClient, background);
                 if(bytes.Length > 1)
                     try{socket?.Send(bytes, bytes.Length, ip);}catch{}
@@ -470,20 +470,28 @@ namespace Nethostfire {
         //================= Funções com dll da Unity =================
 
         public static void RunOnMainThread(Action _action){
-            if(RunningInUnity)
-                ListRunOnMainThread.Enqueue(_action);
-            else
-                _action?.Invoke();
+            try{
+                if(RunningInUnity)
+                    ListRunOnMainThread.Enqueue(_action);
+                else
+                    _action?.Invoke();
+            }catch(Exception ex){
+                throw new Nethostfire(ex.ToString());
+            }
         }
 
         public static void ThisMainThread() {
-            while(ListRunOnMainThread.TryDequeue(out var _action))
-                if(UnityBatchMode){
-                    Parallel.Invoke(() =>{
+            try{
+                while(ListRunOnMainThread.TryDequeue(out var _action))
+                    if(UnityBatchMode){
+                        Parallel.Invoke(() =>{
+                            _action?.Invoke();
+                        });
+                    }else
                         _action?.Invoke();
-                    });
-                }else
-                    _action?.Invoke();
+            }catch(Exception ex){
+                throw new Nethostfire(ex.ToString());
+            }
         }
 
         static void ShowUnityLog(string Message) => UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
@@ -517,6 +525,8 @@ namespace Nethostfire {
     }
 
     class Nethostfire : Exception{
-        public Nethostfire (string message) : base(message){}
+        public Nethostfire (string message) : base(message){
+            System.Log(message, true);
+        }
     }
 }
