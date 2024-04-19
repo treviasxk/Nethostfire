@@ -272,18 +272,18 @@ namespace Nethostfire {
 
             // Send to one IP
             void SendPrepare(byte[] bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
-                if(Status == ServerStatus.Running && bytes != null)
-                    SendPacket(Socket, bytes, groupID, DataClients[ip] ?? null, typeEncrypt, typeShipping, ip);
+                if(Status == ServerStatus.Running && bytes != null && DataClients.ContainsKey(ip))
+                    SendPacket(Socket, bytes, groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
             }
 
             void SendPrepare(string text, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
-                if(Status == ServerStatus.Running && text != null)
-                    SendPacket(Socket, Encoding.UTF8.GetBytes(text), groupID, DataClients[ip] ?? null, typeEncrypt, typeShipping, ip);
+                if(Status == ServerStatus.Running && text != null && DataClients.ContainsKey(ip))
+                    SendPacket(Socket, Encoding.UTF8.GetBytes(text), groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
             }
 
             void SendPrepare(float value, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
-                if(Status == ServerStatus.Running)
-                    SendPacket(Socket, BitConverter.GetBytes(value), groupID, DataClients[ip] ?? null, typeEncrypt, typeShipping, ip);
+                if(Status == ServerStatus.Running && DataClients.ContainsKey(ip))
+                    SendPacket(Socket, BitConverter.GetBytes(value), groupID, DataClients[ip], typeEncrypt, typeShipping, ip);
             }
 
             // Send to group IPs

@@ -429,8 +429,8 @@ namespace Nethostfire {
         }
 
         static int instance = 0;
-        public static string Log(string message, bool SaveLog){
-            if(SaveLog){
+        public static string Log(string message, bool saveLog, bool showLog = true){
+            if(saveLog){
                 if(!Directory.Exists("logs/"))
                     Directory.CreateDirectory("logs/");
                 
@@ -454,6 +454,7 @@ namespace Nethostfire {
                 fileLog.WriteLine(text);
             }
             
+            if(showLog)
             if(RunningInUnity && !UnityBatchMode)
                 ShowUnityLog(message);
             else{
@@ -476,7 +477,8 @@ namespace Nethostfire {
                 else
                     _action?.Invoke();
             }catch(Exception ex){
-                throw new Nethostfire(ex.ToString());
+                Log(ex.ToString(), true, false);
+                return;
             }
         }
 
@@ -490,7 +492,8 @@ namespace Nethostfire {
                     }else
                         _action?.Invoke();
             }catch(Exception ex){
-                throw new Nethostfire(ex.ToString());
+                Log(ex.ToString(), true, false);
+                return;
             }
         }
 
@@ -526,7 +529,7 @@ namespace Nethostfire {
 
     class Nethostfire : Exception{
         public Nethostfire (string message) : base(message){
-            System.Log(message, true);
+            System.Log(message, true, false);
         }
     }
 }
