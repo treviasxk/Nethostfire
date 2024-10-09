@@ -8,8 +8,6 @@ Nethostfire is a library (netstandard2.1) to create UDP server and client in C#,
 
 ![Preview](/Images/preview2.gif)
 ## Donate
- - Brazil
- PIX: trevias@live.com
  - International
  Paypal: trevias@live.com
 
