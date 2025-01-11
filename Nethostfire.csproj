@@ -21,9 +21,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Unity -->
     <Reference Include="plugins/UnityEngine.dll">
       <Private>false</Private>
     </Reference>
+    <!-- MySQL -->
+    <EmbeddedResource Include="plugins/MySqlConnector.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
   <Target Name="PostBuild" BeforeTargets="PostBuildEvent">

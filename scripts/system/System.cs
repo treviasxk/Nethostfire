@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -59,7 +60,8 @@ namespace Nethostfire {
 
     public enum MySQLStatus {
         Connected,
-        Disconnected
+        Connecting,
+        Disconnected,
     }
 
 
@@ -122,7 +124,7 @@ namespace Nethostfire {
         public static Process Process = Process.GetCurrentProcess();
         public static HashSet<UDP.Client> ListClient = new();
         public static HashSet<UDP.Server> ListServer = new();
-        static Aes AES = Aes.Create();
+
         static StreamWriter? fileLog;
         public static bool SaveLog = true;
 
@@ -150,27 +152,27 @@ namespace Nethostfire {
 
                     // Encrypt AES with AES
                     if(groupID == 1)
-                        bytes = EncryptRSA(bytes, dataClient.PublicKeyRSA);
+                        bytes = Security.EncryptRSA(bytes, dataClient.PublicKeyRSA);
                 }else{
                     // Encrypt
                     switch(typeEncrypt){
                         case TypeEncrypt.RSA:
-                            bytes = EncryptRSA(bytes, dataClient.PublicKeyRSA);
+                            bytes = Security.EncryptRSA(bytes, dataClient.PublicKeyRSA);
                         break;
                         case TypeEncrypt.AES:
-                            bytes = EncryptAES(bytes, dataClient.PrivateKeyAES);
+                            bytes = Security.EncryptAES(bytes, dataClient.PrivateKeyAES);
                         break;
                         case TypeEncrypt.Base64:
-                            bytes = EncryptBase64(bytes);
+                            bytes = Security.EncryptBase64(bytes);
                         break;
                         case TypeEncrypt.OnlyBase64:
-                            bytes = EncryptBase64(bytes);
+                            bytes = Security.EncryptBase64(bytes);
                         break;
                         case TypeEncrypt.Compress:
                             bytes = Compress(bytes);
                         break;
                         case TypeEncrypt.OnlyCompress:
-                            bytes = EncryptBase64(bytes);
+                            bytes = Security.EncryptBase64(bytes);
                         break;
                     }
                 }
@@ -213,15 +215,7 @@ namespace Nethostfire {
             return [];
         }
 
-        static bool CheckDDOS(DataClient dataClient, bool background){
-            long TimerNow = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-            // background is allow only 1000ms for packets, to presev performance and atack DDOS
-            if(dataClient.LimitMaxPPS == 0 && !background || TimerNow > dataClient.MaxPPSTimer + (background ? 1000 : (1000 / dataClient.LimitMaxPPS))){
-                dataClient.MaxPPSTimer = TimerNow;
-                return false;
-            }
-            return true;
-        }
+
 
         public static (byte[], int, TypeEncrypt, int)? BytesToReceive(UdpClient socket, byte[] bytes, DataClient dataClient, IPEndPoint? ip = null){
             try{
@@ -250,9 +244,7 @@ namespace Nethostfire {
                 int _groupID = BitConverter.ToInt16(bytes.Skip(4).Take(bytes[2]).ToArray());
                 int _indexID = BitConverter.ToInt16(bytes.Skip(4 + bytes[2]).Take(bytes[3]).ToArray());
 
-
-
-                if(CheckDDOS(dataClient, _background))
+                if(Security.CheckDDOS(dataClient, _background))
                     return null;
 
                 // Check if the packet is background
@@ -264,18 +256,18 @@ namespace Nethostfire {
 
                     // Decompress RSA
                     if(_groupID == 1)
-                        _bytes = DecryptRSA(_bytes, PrivateKeyRSA);
+                        _bytes = Security.DecryptRSA(_bytes, PrivateKeyRSA);
                 }else{
                     // Decrypt
                     switch(_typeEncrypt){
                         case TypeEncrypt.RSA:
-                            _bytes = DecryptRSA(_bytes, PrivateKeyRSA);
+                            _bytes = Security.DecryptRSA(_bytes, PrivateKeyRSA);
                         break;
                         case TypeEncrypt.AES:
-                            _bytes = DecryptAES(_bytes, PrivateKeyAES);
+                            _bytes = Security.DecryptAES(_bytes, PrivateKeyAES);
                         break;
                         case TypeEncrypt.Base64:
-                            _bytes = DecryptBase64(_bytes);
+                            _bytes = Security.DecryptBase64(_bytes);
                         break;
                         case TypeEncrypt.Compress:
                             _bytes = Decompress(_bytes);
@@ -324,77 +316,6 @@ namespace Nethostfire {
             }
         }
 
-        private static byte[] EncryptRSA(byte[] bytes, string? publicKeyRSA){
-            using(var RSA = new RSACryptoServiceProvider())
-                try{
-                    if(publicKeyRSA != null){
-                        RSA.FromXmlString(publicKeyRSA);
-                        return RSA.Encrypt(bytes, true);
-                    }else
-                        return [];
-                }catch{
-                    var b = ((RSA.KeySize - 384) / 8) + 6;
-                    if(b < bytes.Length)
-                        throw new Nethostfire("The key size defined in KeySizeBytesRSA, can only encrypt at most " + b + " bytes.");
-                    return [];
-                }
-        }
-        private static byte[] DecryptRSA(byte[] bytes, string? privateKeyRSA){
-            using(var RSA = new RSACryptoServiceProvider())
-            try{
-                if(privateKeyRSA != null){
-                    RSA.FromXmlString(privateKeyRSA);
-                    return RSA.Decrypt(bytes, true);
-                }else
-                    return [];
-            }catch{
-                var b = ((RSA.KeySize - 384) / 8) + 6;
-                if(b < bytes.Length)
-                    throw new Nethostfire("The key size defined in KeySizeBytesRSA, can only decrypt at most " + b + " bytes.");
-                return [];
-            }
-        }
-
-        private static byte[] EncryptAES(byte[] bytes, byte[]? privateKeyAES){
-            try{
-                if(privateKeyAES != null){
-                    using var encryptor = AES.CreateEncryptor(privateKeyAES, privateKeyAES);
-                    return encryptor.TransformFinalBlock(bytes, 0, bytes.Length);
-                }else
-                    return [];
-            }
-            catch{
-                return [];
-            }
-        }
-        private static byte[] DecryptAES(byte[] bytes, byte[]? privateKeyAES){
-            try{
-                if(privateKeyAES != null){
-                    using var encryptor = AES.CreateDecryptor(privateKeyAES, privateKeyAES);
-                    return encryptor.TransformFinalBlock(bytes, 0, bytes.Length);
-                }else
-                    return [];
-            }
-            catch{
-                return [];
-            }
-        }
-
-        private static byte[] EncryptBase64(byte[] bytes){
-            try{
-                return Encoding.ASCII.GetBytes(Convert.ToBase64String(bytes));
-            }catch{
-                return [];
-            }
-        }
-
-        private static byte[] DecryptBase64(byte[] bytes){
-            try{
-                return Convert.FromBase64String(Encoding.ASCII.GetString(bytes));
-            }catch{
-                return [];
-            }
-        }
 
         private static byte[] Compress(byte[] bytes){
             try{
@@ -509,6 +430,19 @@ namespace Nethostfire {
             }catch{}
         }
 
+        public static dynamic? GetDynamicAssembly(string libName, string typeName){
+            var assembly = Assembly.GetExecutingAssembly();
+            dynamic? Dynamic = null;
+            foreach(var resourceNames in assembly.GetManifestResourceNames().Where(item => item.Contains(libName + ".dll"))){
+                var stream = assembly.GetManifestResourceStream(resourceNames);
+                if(stream != null){
+                    byte[] data = new byte[stream.Length];
+                    stream?.Read(data, 0, data.Length);
+                    Dynamic = Assembly.Load(data).CreateInstance(typeName);
+                }
+            }
+            return Dynamic;
+        }
         
         public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
             UnityBatchMode = UnityEngine.Application.isBatchMode;

@@ -13,6 +13,7 @@ Nethostfire is a library (netstandard2.1) to create UDP server and client in C#,
  Paypal: trevias@live.com
 
 ## Main features
+ - MySQL Client embedded.
  - Connected client detection system.
  - Manage all connected clients with server features.
  - Various types of shipping (single, group, all).

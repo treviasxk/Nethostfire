@@ -9,7 +9,7 @@ using static Nethostfire.System;
 
 public partial class NethostfireService : MonoBehaviour{
 
-    [RuntimeInitializeOnLoadMethod]
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Init() => Dispose();
 
     // Resolve hight usage cpu
