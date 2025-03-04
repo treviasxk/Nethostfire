@@ -15,11 +15,11 @@ using System.Security.Cryptography;
 using System.Text;
 
 namespace Nethostfire {
-    class DataClient{
+    struct DataClient{
         // Public key RSA to encrypt bytes
-        public string? PublicKeyRSA;
+        public string PublicKeyRSA;
         // Private key AES to encrypt bytes
-        public byte[]? PrivateKeyAES;
+        public byte[] PrivateKeyAES;
         // Timer to check if client is connected
         public long LastTimer;
         // Timer to check packets interval
@@ -28,18 +28,22 @@ namespace Nethostfire {
         public int Ping;
         // IndexID to send bytes
         public int IndexID;
-        // List to check packets duplications
-        public HashSet<int> ListIndex = new();
-        // List shippiments without packet loss
-        public readonly ConcurrentDictionary<int, byte[]> ListHoldConnection = new();
-        // List shippiments without packet loss queued
-        public readonly ConcurrentDictionary<int, byte[]> QueuingHoldConnection = new();
         // Limit max receive pps
         public int LimitMaxPPS;
+        // List to check packets duplications
+        public HashSet<int> ListIndex;
+        // List shippiments without packet loss
+        public ConcurrentDictionary<int, byte[]> ListHoldConnection;
+        // List shippiments without packet loss queued
+        public ConcurrentDictionary<int, byte[]> QueuingHoldConnection;
         // Limit max receive pps for GroupID
-        public readonly ConcurrentDictionary<int, int> LimitMaxPPSGroupID = new();
+        public ConcurrentDictionary<int, int> LimitMaxPPSGroupID;
     }
-
+    struct MethodData {
+        public string MethodName;
+        public object[] Params;
+        public Type Type;
+    }
     public enum ServerStatus{
         Stopped = 0,
         Stopping = 1,
@@ -124,13 +128,13 @@ namespace Nethostfire {
         public static Process Process = Process.GetCurrentProcess();
         public static HashSet<UDP.Client> ListClient = new();
         public static HashSet<UDP.Server> ListServer = new();
-
+        static ConcurrentDictionary<string, Assembly> assemblys = new();
         static StreamWriter? fileLog;
         public static bool SaveLog = true;
 
         // Transform packets and send.
-        public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient? dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
-            if(socket != null && dataClient != null){
+        public static void SendPacket(UdpClient? socket, byte[] bytes, int groupID, DataClient dataClient, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None, IPEndPoint? ip = null, bool background = false){
+            if(socket != null){
                 bytes = BytesToSend(bytes, groupID, typeEncrypt, typeShipping, dataClient, background);
                 if(bytes.Length > 1)
                     try{socket?.Send(bytes, bytes.Length, ip);}catch{}
@@ -197,11 +201,11 @@ namespace Nethostfire {
                 // Hold Connection
                 if(typeShipping == TypeShipping.WithoutPacketLoss)
                     dataClient.ListHoldConnection.TryAdd(dataClient.IndexID, _bytes);
-                
 
                 // Queuing Hold Connection
                 if(typeShipping == TypeShipping.WithoutPacketLossEnqueue){
                     dataClient.QueuingHoldConnection.TryAdd(dataClient.IndexID, _bytes);
+
                     if(dataClient.QueuingHoldConnection.Count != 1){
                         dataClient.IndexID++;
                         return [];
@@ -250,7 +254,6 @@ namespace Nethostfire {
                 // Check if the packet is background
                 if(_background){
                     // Decompress AES
-
                     if(_groupID == 0)
                         _bytes = Decompress(_bytes);
 
@@ -289,13 +292,13 @@ namespace Nethostfire {
                     // Hold Connection respond
                     SendPing(socket, _bytes2, ip);
                 }
-                
-                // Check packets duplication
-                if(!dataClient.ListIndex.Contains(_indexID))
-                    dataClient.ListIndex.Add(_indexID);
-                else
-                    return null;
-                
+
+                // // Check packets duplication
+                // if(!dataClient.ListIndex.Contains(_indexID))
+                //     dataClient.ListIndex.Add(_indexID);
+                // else
+                //     return null;
+
                 return (_bytes, _groupID, _typeEncrypt, _typeShipping);
             }catch{}
             return null;
@@ -430,17 +433,37 @@ namespace Nethostfire {
             }catch{}
         }
 
-        public static dynamic? GetDynamicAssembly(string libName, string typeName){
-            var assembly = Assembly.GetExecutingAssembly();
+
+        public static dynamic? GetDynamicAssembly(string libName, string typeName, MethodData? methodData = null){
             dynamic? Dynamic = null;
-            foreach(var resourceNames in assembly.GetManifestResourceNames().Where(item => item.Contains(libName + ".dll"))){
-                var stream = assembly.GetManifestResourceStream(resourceNames);
-                if(stream != null){
-                    byte[] data = new byte[stream.Length];
-                    stream?.Read(data, 0, data.Length);
-                    Dynamic = Assembly.Load(data).CreateInstance(typeName);
+
+            if(!assemblys.TryGetValue(libName, out Assembly assembly)){
+                assembly = Assembly.GetExecutingAssembly();
+                foreach(var resourceNames in assembly.GetManifestResourceNames().Where(item => item.Contains(libName + ".dll"))){
+                    if(assembly.GetManifestResourceStream(resourceNames) is Stream stream && stream != null){
+                        byte[] data = new byte[stream.Length];
+                        stream?.Read(data, 0, data.Length);
+                        assembly = Assembly.Load(data);
+                        assemblys.TryAdd(libName, assembly);
+                    }
                 }
             }
+
+            if(methodData.HasValue && assembly.GetType(typeName) is Type typeStatic && typeStatic != null && typeStatic.IsAbstract && typeStatic.IsSealed){
+                MethodInfo? metodoGenerico = typeStatic.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == methodData.Value.MethodName 
+                    && !m.IsGenericMethod // Exclui a versão genérica
+                    && m.GetParameters().Length == 1)
+                .FirstOrDefault();
+
+                if(metodoGenerico!.IsGenericMethod){
+                    Dynamic = metodoGenerico.MakeGenericMethod(methodData.Value.Type).Invoke(null, methodData.Value.Params);
+                }else{
+                    Dynamic = metodoGenerico.Invoke(null, methodData.Value.Params);
+                }
+            }else
+                Dynamic = assembly.CreateInstance(typeName);
+
             return Dynamic;
         }
         

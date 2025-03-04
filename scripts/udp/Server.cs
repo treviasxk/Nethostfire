@@ -122,7 +122,7 @@ namespace Nethostfire {
             /// All received PPS in a IP will be limited.
             /// </summary>
             public void ChangeLimitMaxPPS(int pps, IPEndPoint ip){
-                if(DataClients.TryGetValue(ip, out DataClient? dataClient))
+                if(DataClients.TryGetValue(ip, out DataClient dataClient))
                     dataClient.LimitMaxPPS = pps;
             }
 
@@ -130,7 +130,7 @@ namespace Nethostfire {
             /// All received PPS of groupID in a IP will be limited.
             /// </summary>
             public void ChangeLimitMaxPPS(int pps, int groupID, IPEndPoint ip){
-                if(DataClients.TryGetValue(ip, out DataClient? dataClient))
+                if(DataClients.TryGetValue(ip, out DataClient dataClient))
                     if(pps == 0)
                         dataClient.LimitMaxPPSGroupID.TryRemove(groupID, out _);
                     else
@@ -323,7 +323,6 @@ namespace Nethostfire {
                 while(Socket != null){
                     byte[] bytes;
                     IPEndPoint ip;
-
                     // Connection alway fail when ip not found, use 'try' is necessary.
                     try{
                         // Receive bytes and ip
@@ -352,7 +351,7 @@ namespace Nethostfire {
                         if(DataClients.TryGetValue(ip, out var dataClient)){
                             // Update time online
                             dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-
+                            DataClients[ip] = dataClient;
                             // Commands
                             if(bytes.Length == 1){
                                 switch(bytes[0]){
@@ -381,48 +380,49 @@ namespace Nethostfire {
                                 return;
                             }
 
-                            // Check if Client in Queuing
-                            if(QueuingClients.TryGetValue(ip, out var _queuingClients))
-                                dataClient = _queuingClients;
-                            else
-                                dataClient = new DataClient(){LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond};
-
                             // Update LastTimer
                             dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
+                            // Check if Client in Queuing
+                            if(!QueuingClients.TryGetValue(ip, out dataClient))
+                                dataClient = new(){LastTimer = dataClient.LastTimer, ListIndex = new(), ListHoldConnection = new(), QueuingHoldConnection = new(), LimitMaxPPSGroupID = new()};
+                            else{
+                                dataClient.LastTimer = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                                QueuingClients[ip] = dataClient;
+                            }
+ 
                             // item1 = bytes
                             // item2 = groupID
                             // item3 = typeEncrypt
                             // item4 = typeShipping
                             data = BytesToReceive(Socket, bytes, dataClient, ip);
                         }
-                        
 
-     
+                        
                         // Check RSA client received and send RSA server
-                        if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){
+                        if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 0 && PublicKeyRSA != null){                         
                             string PublicKeyRSAClient = Encoding.ASCII.GetString(data.Value.Item1);
                             if(PublicKeyRSAClient.StartsWith("<RSAKeyValue>") && PublicKeyRSAClient.EndsWith("</RSAKeyValue>")){
                                 dataClient.PublicKeyRSA = PublicKeyRSAClient;
-                                if(QueuingClients.TryAdd(ip, dataClient)){
-                                    ShowLog(ip + " Connecting...");
-                                }
+                                if(QueuingClients.TryAdd(ip, dataClient))
+                                    ShowLog(ip + " Incoming...");
+
                                 // Send PublicKeyRSA
                                 SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA), 0, dataClient, ip: ip, background: true);  // groupID: 0 = RSA
                             }
                             return;
                         }
 
+
                         // Check AES client, send AES server and connect client
                         if(data.HasValue && data.Value.Item4 == 0 && data.Value.Item2 == 1 && PrivateKeyAES != null){
                             dataClient.PrivateKeyAES = data.Value.Item1;
                             dataClient.MaxPPSTimer = 0;
-                            if(QueuingClients.TryRemove(ip, out _)){
-                                if(DataClients.TryAdd(ip, dataClient)){
-                                    OnConnected?.Invoke(ip);
-                                    ShowLog(ip + " Connected!");
-                                }
+                            if(QueuingClients.TryRemove(ip, out _) && DataClients.TryAdd(ip, dataClient)){
+                                OnConnected?.Invoke(ip);
+                                ShowLog(ip + " Connected!");
                             }
+
                             // Send PrivateKeyAES
                             SendPacket(Socket, PrivateKeyAES, 1, dataClient, ip: ip, background: true);  // groupID: 1 = AES
                             return;
@@ -434,7 +434,6 @@ namespace Nethostfire {
 
             void Service(){
                 while(Socket != null){
-
                     // Check timer connection dataClients.
                     Parallel.ForEach(DataClients.Where(item => item.Value.LastTimer + ConnectedTimeout < DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond), item =>{
                         OnDisconnected?.Invoke(item.Key);

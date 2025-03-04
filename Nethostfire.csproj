@@ -27,6 +27,7 @@
     </Reference>
     <!-- MySQL -->
     <EmbeddedResource Include="plugins/MySqlConnector.dll" />
+    <EmbeddedResource Include="plugins/Newtonsoft.Json.dll" />
   </ItemGroup>
 
   <ItemGroup>

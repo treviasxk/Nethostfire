@@ -14,7 +14,7 @@ namespace Nethostfire {
         public class Client : IDisposable{
             public UdpClient? Socket;
             IPEndPoint? IPEndPoint;
-            DataClient dataServer = new();
+            DataClient dataServer = new(){ListIndex = new(), ListHoldConnection = new(), QueuingHoldConnection = new(), LimitMaxPPSGroupID = new()};
             ClientStatus CurrentClientStatus = ClientStatus.Disconnected;
             long connectingTimeoutTmp;
 
@@ -89,7 +89,7 @@ namespace Nethostfire {
                         ChangeStatus(ClientStatus.Disconnecting);
                     Socket.Close();
                     Socket = null;
-                    dataServer = new();
+                    dataServer = new(){ListIndex = new(), ListHoldConnection = new(), QueuingHoldConnection = new(), LimitMaxPPSGroupID = new()};
                     if(CurrentClientStatus == ClientStatus.Disconnecting)
                         ChangeStatus(ClientStatus.Disconnected);
                 }
