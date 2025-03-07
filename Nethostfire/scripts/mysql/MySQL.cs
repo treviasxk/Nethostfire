@@ -1,3 +1,8 @@
+// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
+// Github:              https://github.com/treviasxk
+// Paypal:              trevias@live.com
+
 using System.Data;
 using System.Net;
 using static Nethostfire.System;
@@ -9,24 +14,23 @@ namespace Nethostfire{
         public Action<MySQLStatus>? OnStatus;
 
         /// <summary>
-        /// The DebugLog when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
+        /// The EnableLogs when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
         /// </summary>
-        public bool DebugLog {get; set;} = true;
-
+        public bool EnableLogs {get; set;} = true;
 
         public async void Connect(IPAddress server, int port, string username, string password, string database){
             try{
                 CurrentMySQLStatus = MySQLStatus.Connecting;
                 OnStatus?.Invoke(CurrentMySQLStatus);
-                ShowLog("Connecting in " + server + ":" + port);
-                mySqlConnection = System.GetDynamicAssembly("MySqlConnector", "MySqlConnector.MySqlConnection");
+                WriteLog("Connecting in " + server + ":" + port, this, EnableLogs);
+                mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlConnection");
                 //mySqlConnection = new MySqlConnector.MySqlClient.MySqlConnection();
                 mySqlConnection!.ConnectionString = "server="+server+";port="+ port +";database="+database+";user="+username+";password="+password+";";
                 await mySqlConnection.OpenAsync();
                 CurrentMySQLStatus = MySQLStatus.Connected;
                 OnStatus?.Invoke(CurrentMySQLStatus);
             }catch(Exception ex){
-                ShowLog(ex.Message);
+                WriteLog(ex.Message, this, EnableLogs);
             }
         }
 
@@ -40,7 +44,7 @@ namespace Nethostfire{
 
         //Execute query
         public bool ExecuteQuery(string sql, object[] parameters){
-            dynamic command = System.GetDynamicAssembly("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
+            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
             for(int i = 0; i < parameters.Length; i++)
                 command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
             if(command.ExecuteNonQuery() > 0)
@@ -51,7 +55,7 @@ namespace Nethostfire{
 
         //Check query exist
         public bool Query(string sql, object[] parameters){
-            dynamic command = System.GetDynamicAssembly("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
+            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
             for(int i = 0; i < parameters.Length; i++)
                 command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
             var reader = command.ExecuteReader();
@@ -63,7 +67,7 @@ namespace Nethostfire{
 
         //Result select
         public bool Query(string sql, object[] parameters, out DataRow[] dataRows){
-            dynamic command = System.GetDynamicAssembly("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
+            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
             for(int i = 0; i < parameters.Length; i++)
                 command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
             var reader = command.ExecuteReader();
@@ -78,15 +82,6 @@ namespace Nethostfire{
                 return false;
 
             return true;
-        }
-
-
-        /// <summary>
-        /// Create a server log, if SaveLog is enabled, the message will be saved in the logs.
-        /// </summary>
-        public void ShowLog(string message){
-            if(DebugLog)
-                Log("[MYSQL] " + message, SaveLog);
         }
     }
 }

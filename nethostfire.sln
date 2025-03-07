@@ -1,25 +1,28 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.5.002.0
+VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nethostfire", "Nethostfire.csproj", "{F90C1507-ECAF-49D4-B6CF-DF74995032EF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethostfire", "Nethostfire\Nethostfire.csproj", "{F1DF1932-F94C-46DA-834B-5ADEBBD81E9A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethostfire.Tests", "Nethostfire.Tests\Nethostfire.Tests.csproj", "{B7CA0666-68B6-4D6E-894E-6D029E6869A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F90C1507-ECAF-49D4-B6CF-DF74995032EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F90C1507-ECAF-49D4-B6CF-DF74995032EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F90C1507-ECAF-49D4-B6CF-DF74995032EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F90C1507-ECAF-49D4-B6CF-DF74995032EF}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {12DF77C3-9851-4958-A81C-F05E8C826BBD}
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1DF1932-F94C-46DA-834B-5ADEBBD81E9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1DF1932-F94C-46DA-834B-5ADEBBD81E9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1DF1932-F94C-46DA-834B-5ADEBBD81E9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1DF1932-F94C-46DA-834B-5ADEBBD81E9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

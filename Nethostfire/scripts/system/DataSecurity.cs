@@ -1,18 +1,55 @@
+// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
+// Github:              https://github.com/treviasxk
+// Paypal:              trevias@live.com
+
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Nethostfire{
-    class Security {
+    public class DataSecurity {
         static Aes AES = Aes.Create();
-
-        public static bool CheckDDOS(DataClient dataClient, bool background){
-            long TimerNow = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-            // background is allow only 1000ms for packets, to presev performance and atack DDOS
-            if(dataClient.LimitMaxPPS == 0 && !background || TimerNow > dataClient.MaxPPSTimer + (background ? 1000 : (1000 / dataClient.LimitMaxPPS))){
-                dataClient.MaxPPSTimer = TimerNow;
-                return false;
+        public static string? PublicKeyRSA, PrivateKeyRSA;
+        public static byte[]? PrivateKeyAES;
+        
+        internal static void GenerateKey(int SymmetricSize){
+            if(PrivateKeyAES == null){
+                using(var RSA = new RSACryptoServiceProvider()){
+                    int value = (SymmetricSize - 6) * 8 + 384;
+                    if(value >= 464 && value <= 4096){
+                        PrivateKeyRSA ??= RSA.ToXmlString(true);
+                        PublicKeyRSA ??= RSA.ToXmlString(false);
+                        PrivateKeyAES ??= GetHashMD5(Encoding.ASCII.GetBytes(PrivateKeyRSA));
+                    }else
+                        throw new Nethostfire("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6));
+                }
             }
-            return true;
+        }
+
+
+        public static byte[] Compress(byte[] bytes){
+            try{
+                MemoryStream output = new();
+                using(DeflateStream dstream = new(output, CompressionMode.Compress)){
+                    dstream.Write(bytes, 0, bytes.Length);
+                }
+                return output.ToArray();
+            }catch{
+                return [];
+            }
+        }
+
+        public static byte[] Decompress(byte[] data){
+            try{
+                MemoryStream input = new(data);
+                MemoryStream output = new();
+                using(DeflateStream dstream = new(input, CompressionMode.Decompress))
+                    dstream.CopyTo(output);
+                return output.ToArray();
+            }catch{
+                return [];
+            }
         }
 
         public static byte[] EncryptRSA(byte[] bytes, string? publicKeyRSA){
@@ -30,6 +67,16 @@ namespace Nethostfire{
                     return [];
                 }
         }
+
+        public static byte[] GetHashMD5(byte[] bytes){
+            try{
+                MD5 md5 = MD5.Create();
+                return md5.ComputeHash(bytes);
+            }catch{
+                return [];
+            }
+        }
+
         public static byte[] DecryptRSA(byte[] bytes, string? privateKeyRSA){
             using(var RSA = new RSACryptoServiceProvider())
             try{

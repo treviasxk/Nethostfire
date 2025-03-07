@@ -3,6 +3,9 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>Nethostfire</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <Version>2.4.0.0</Version>
     <AssemblyVersion>2.4.0.0</AssemblyVersion>
@@ -12,12 +15,9 @@
     <Product>Nethostfire</Product>
     <Description>Nethostfire is a library (netstandard2.1) to create UDP server and client in C#, with encryption support, Unity 3D integration and several other advanced features to facilitate communication between client and server.</Description>
     <Copyright>Trevias Xk © 2024</Copyright>
-    <RootNamespace>Nethostfire</RootNamespace>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <InvariantGlobalization>false</InvariantGlobalization>
     <DebugSymbols>false</DebugSymbols>
-    <DebugType>None</DebugType>
+    <!-- <DebugType>None</DebugType> -->
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,8 +34,8 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
-  <Target Name="PostBuild" BeforeTargets="PostBuildEvent">
+  <!-- <Target Name="PostBuild" BeforeTargets="PostBuildEvent">
     <Exec Command="del $(TargetDir)$(TargetName).deps.json" />
-  </Target>
+  </Target> -->
 
 </Project>

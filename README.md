@@ -1,10 +1,10 @@
 # Nethostfire
 
-![Preview](/imgs/banner.png)
+![Preview](/screenshots/banner.png)
 
 Nethostfire is a library (netstandard2.1) to create UDP server and client in C#, with encryption support, Unity 3D integration and several other advanced features to facilitate communication between client and server.
 
-![Preview](/imgs/preview.gif)
+![Preview](/screenshots/preview.gif)
 
 ## Donate
  - Brazil
@@ -20,16 +20,11 @@ Nethostfire is a library (netstandard2.1) to create UDP server and client in C#,
  - RSA, AES and Base64 encryption both on the server and on the client.
  - Automatic decryption.
  - Suport JSON convert/deconvert.
- - Feature to send UDP bytes without losses.
- - Feature to send UDP bytes in enqueued.
- - Adapted to manipulate objects in Unity 3D.
  - Adapted for Cross-Server creation.
  - Adapted for high performance.
- - Adapted for Enter Play Mode on Unity.
- - Adapted for dedicated Unity build server.
 
 ## Requisites
- - Unity 2021.2 or above
+ - Unity 2021.2 or above (if use)
  - .Net Netstandard 2.1 or above
 
 ## Unity installation
@@ -49,9 +44,7 @@ Nethostfire is a library (netstandard2.1) to create UDP server and client in C#,
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <Reference Include="Nethostfire.dll">
-      <SpecificVersion>False</SpecificVersion> 
-    </Reference>
+    <Reference Include="Nethostfire.dll"></Reference>
   </ItemGroup>
  ...
 </Project>
