@@ -16,11 +16,11 @@ namespace Nethostfire {
                 socket?.Send(bytes, bytes.Length, ip);
         }
 
-        static void SendPacket(UdpClient? socket, byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session clientSession, IPEndPoint? ip = null){
-            if(socket != null && bytes != null){
-                bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref clientSession);
+        static void SendPacket(UdpClient? socket, byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, IPEndPoint? ip = null){
+            if(socket != null && bytes != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
+                bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
                 if(bytes != null && bytes.Length > 1)
-                    try{socket?.Send(bytes, bytes.Length, ip); clientSession.Index++;}catch{}
+                    try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
             }
         }
 

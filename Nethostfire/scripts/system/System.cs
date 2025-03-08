@@ -22,7 +22,7 @@ namespace Nethostfire {
         Restarting = 4,
     }
 
-    public enum ClientStatus{
+    public enum SessionStatus{
         Disconnected = 0,
         Disconnecting = 1,
         Connected = 2,

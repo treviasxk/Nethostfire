@@ -13,15 +13,14 @@ using static Nethostfire.DataSecurity;
 namespace Nethostfire {
     public partial class UDP{
         public class Client : IDisposable{
-            ClientStatus clientStatus = ClientStatus.Disconnected;
-            Session session = new(){retransmissionBuffer = new()};
+            Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             public UdpClient? Socket;
-            public ClientStatus Status {get{return clientStatus;}}
+            public SessionStatus Status {get{return session.Status;}}
             
             /// <summary>
             /// OnStatus is an event that returns ClientStatus whenever the status changes, with which you can use it to know the current status of the client.
             /// </summary>
-            public Action<ClientStatus>? OnStatus;
+            public Action<SessionStatus>? OnStatus;
 
             /// <summary>
             /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000).
@@ -32,14 +31,20 @@ namespace Nethostfire {
             /// The EnableLogs when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
             /// </summary>
             public bool EnableLogs {get; set;} = true;
+
+            /// <summary>
+            /// OnReceivedBytes an event that returns bytes received, GroupID and IP whenever the received bytes by clients, with it you can manipulate the bytes received.
+            /// </summary>
+            public Action<byte[], int>? OnReceivedBytes;
+
             public void Connect(IPAddress Host, int Port, int symmetricSizeRSA = 86){
                 try{
                     if(Socket == null){
                         Socket = new UdpClient();
                         GenerateKey(symmetricSizeRSA);
                         WriteLog($"Connecting on {Host}:{Port}", this, EnableLogs);
-                        ChangeStatus(ClientStatus.Connecting, false);
-                        clientStatus = ClientStatus.Connecting;
+                        ChangeStatus(SessionStatus.Connecting, false);
+                        session.Status = SessionStatus.Connecting;
                         Socket.Connect(new IPEndPoint(Host, Port));
                         new Thread(ReceivePacket){
                             IsBackground = true,
@@ -55,22 +60,19 @@ namespace Nethostfire {
                 }
             }
 
-
-            public void ChangeStatus(ClientStatus status, bool log = true){
-                clientStatus = status;
+            public void Send(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, bytes, groupID, typeEncrypt, ref session);
+            
+            public void ChangeStatus(SessionStatus status, bool log = true){
+                session.Status = status;
                 if(log)
                     WriteLog(status, this, EnableLogs);
                 OnStatus?.Invoke(status);
             }
 
-            public void Send(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None){
-                SendPacket(Socket, bytes, groupID, typeEncrypt, ref session);
-            }
-
             public void Disconnect(){
-                ChangeStatus(ClientStatus.Disconnecting);
+                ChangeStatus(SessionStatus.Disconnecting);
                 Dispose();
-                ChangeStatus(ClientStatus.Disconnected);
+                ChangeStatus(SessionStatus.Disconnected);
             }
 
             async void ReceivePacket(){
@@ -113,11 +115,10 @@ namespace Nethostfire {
                         // item4 = typeShipping
                         var data = DeconvertPacket(bytes, ref session);
                         if(data.HasValue)
-                        if(Status == ClientStatus.Connected){
-                            
-                            //RunOnMainThread(() => OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2));
+                        if(Status == SessionStatus.Connected){
+                            OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
                         }else
-                        if(Status == ClientStatus.Connecting){
+                        if(Status == SessionStatus.Connecting){
                             // Check RSA server and send AES client
                             if(data.Value.Item2 == 0){
                                 string value = Encoding.ASCII.GetString(data.Value.Item1);
@@ -130,7 +131,7 @@ namespace Nethostfire {
                                 if(data.Value.Item1.Length == 16){
                                     session.Credentials.PrivateKeyAES = data.Value.Item1;
                                     session.Timer = DateTime.Now.Ticks;
-                                    ChangeStatus(ClientStatus.Connected);
+                                    ChangeStatus(SessionStatus.Connected);
                                 }
                                 return;
                             }
@@ -142,9 +143,9 @@ namespace Nethostfire {
 
 
             void Service(){
-                while(Status != ClientStatus.Disconnected){
+                while(Status != SessionStatus.Disconnected){
                     // Authenting
-                    if(Status == ClientStatus.Connecting){
+                    if(Status == SessionStatus.Connecting){
                         if(session.Credentials.PublicKeyRSA == null){
                             SendPacket(Socket!, Encoding.ASCII.GetBytes(PublicKeyRSA!), 0, TypeEncrypt.Compress, ref session);
                         }else
@@ -152,12 +153,12 @@ namespace Nethostfire {
                             SendPacket(Socket!, PrivateKeyAES!, 1, TypeEncrypt.RSA, ref session);
                     }
 
-                    if(Status == ClientStatus.Connected){
+                    if(Status == SessionStatus.Connected){
                         SendPing(Socket, [1]);  // Send Online Status
                         if(session.Timer + ConnectTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks){
-                            clientStatus = ClientStatus.Connecting;
+                            session.Status = SessionStatus.Connecting;
                             session.Credentials = new();
-                            ChangeStatus(ClientStatus.Connecting);
+                            ChangeStatus(SessionStatus.Connecting);
                         }
                     }
                         
@@ -173,12 +174,12 @@ namespace Nethostfire {
             /// </summary>
             public void Dispose(){
                 // Is need clear events first to can clean ListRunMainThread in NethostfireService
-                clientStatus = ClientStatus.Disconnecting;
+                session.Status = SessionStatus.Disconnecting;
                 Socket?.Close();
                 Socket = null;
-                session = new(){retransmissionBuffer = new()};
+                session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
                 GC.SuppressFinalize(this);
-                clientStatus = ClientStatus.Disconnected;
+                session.Status = SessionStatus.Disconnected;
             }
         }
     }

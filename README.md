@@ -14,7 +14,7 @@ Nethostfire is a library (netstandard2.1) to create UDP server and client in C#,
  - MySQL Client embedded.
  - Connected client detection system.
  - Manage all connected clients with server features.
- - Various types of shipping (single, group, all).
+ - Various types of send (UNICAST, MULTICAST, BROADCAST).
  - RSA, AES and Base64 encryption both on the server and on the client.
  - Automatic decryption.
  - Suport JSON convert/deconvert.

@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using static Nethostfire.System;
 using static Nethostfire.DataSecurity;
+using System.Collections.Concurrent;
 
 namespace Nethostfire {
     public partial class UDP{
@@ -29,7 +30,7 @@ namespace Nethostfire {
             /// <summary>
             /// The ClientsCount is all IPs of clients connected to the server.
             /// </summary>
-            public ICollection<IPEndPoint> Clients {get{return Sessions.data.Keys;}}
+            public ICollection<IPEndPoint> Clients {get{return Sessions.Clients.Keys;}}
 
             /// <summary>
             /// OnStatus is an event that returns ServerStatus whenever the status changes, with which you can use it to know the current status of the server.
@@ -40,10 +41,19 @@ namespace Nethostfire {
             /// OnReceivedBytes an event that returns bytes received, GroupID and IP whenever the received bytes by clients, with it you can manipulate the bytes received.
             /// </summary>
             public Action<byte[], int, IPEndPoint>? OnReceivedBytes;
+            /// <summary>
+            /// OnConnected is an event that you can use to receive the IP whenever a client connected.
+            /// </summary>
+            public Action<IPEndPoint>? OnConnected;
+
+            /// <summary>
+            /// OnDisconnected is an event that you can use to receive the IP whenever a client disconnected.
+            /// </summary>
+            public Action<IPEndPoint>? OnDisconnected;
 
             public ServerStatus Status {get {return serverStatus;}}
 
-            Sessions Sessions = new();
+            public Sessions Sessions = new();
 
             public void Start(IPAddress Host, Int16 Port, int symmetricSizeRSA = 86){
                 try{
@@ -68,11 +78,21 @@ namespace Nethostfire {
                 }
             }
 
+            public void Send(byte[] bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None){
+                if(Sessions.TryGetValue(ip, out var session))
+                    SendPacket(Socket, bytes, groupID, typeEncrypt, ref session, ip);
+            }
+
+            public void SendGroup(byte[] bytes, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(ips, (ip) => Send(bytes, groupID, ip, typeEncrypt));
+            
+            public void SendAll(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(Sessions.Clients.Keys, (ip) => Send(bytes, groupID, ip, typeEncrypt));
+
+
             async void ReceivePacket(){
                 while(Socket != null){
                     byte[]? bytes;
                     IPEndPoint? ip;
-                    Session session = new();
+                    Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
 
                     // Connection alway fail when ip not found, use 'try' is necessary.
                     try{
@@ -87,9 +107,10 @@ namespace Nethostfire {
 
                     if(bytes != null && ip != null)
                     Parallel.Invoke(()=>{
-                        var Authenticated = Sessions.TryGetOrUpdateValue(ip, ref session);
+                        var Authenticated = Sessions.TryGetValue(ip, out session);
                         var data = DeconvertPacket(bytes, ref session);
 
+                        if(data.HasValue)
                         if(Authenticated){
                             // Commands
                             if(bytes.Length == 1){
@@ -98,14 +119,20 @@ namespace Nethostfire {
                                         //Kick(ip);
                                     return;
                                     case 1: // Update ping
+                                        if(session.Credentials.PublicKeyRSA != null && session.Credentials.PrivateKeyAES != null && session.Status == SessionStatus.Connecting){
+                                            WriteLog($"{ip} Connected!", this, EnableLogs);
+                                            session.Status = SessionStatus.Connected;
+                                            Sessions.TryUpdate(ip, in session);
+                                            OnConnected?.Invoke(ip);
+                                        }
+
                                         session.Ping = GetPing(session.Timer);
                                         session.Timer = DateTime.Now.Ticks;
                                         Sessions.TryUpdate(ip, in session);
                                         SendPing(Socket, [1], ip);
                                     return;
                                 }
-                            }else
-                            if(data.HasValue){                  
+                            }else{                  
                                 if(session.Credentials.PublicKeyRSA == null || session.Credentials.PrivateKeyAES == null){
                                     switch(data.Value.Item2){
                                         case 0:
@@ -115,7 +142,6 @@ namespace Nethostfire {
                                         case 1:
                                             // AES
                                             session.Credentials.PrivateKeyAES = data.Value.Item1;
-                                            WriteLog($"{ip} Connected!", this, EnableLogs);
                                             SendPacket(Socket, PrivateKeyAES!, 1, TypeEncrypt.RSA, ref session, ip);
                                             Sessions.TryUpdate(ip, in session);
                                         return;
@@ -131,6 +157,7 @@ namespace Nethostfire {
                                 if(value.StartsWith("<RSAKeyValue>") && value.EndsWith("</RSAKeyValue>")){
                                     session.Credentials.PublicKeyRSA = value;
                                     session.Timer = DateTime.Now.Ticks;
+                                    session.Status = SessionStatus.Connecting;
                                     if(Sessions.TryAdd(ip, session)){
                                         WriteLog($"{ip} Incomming...", this, EnableLogs);
                                         SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA!), 0, TypeEncrypt.Compress, ref session, ip);
@@ -151,7 +178,7 @@ namespace Nethostfire {
             void Service(){
                 while(Status == ServerStatus.Running){
                     // Check timer connection dataClients.
-                    Parallel.ForEach(Sessions.data.Where(item => item.Value.Timer + ConnectedTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks), item =>{
+                    Parallel.ForEach(Sessions.Clients.Where(item => item.Value.Timer + ConnectedTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks), item =>{
                         //OnDisconnected?.Invoke(item.Key);
                         if(Sessions.TryRemove(item.Key))
                             WriteLog($"{item.Key} Disconnected!", this, EnableLogs);
