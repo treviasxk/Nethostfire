@@ -7,14 +7,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <Version>2.4.0.0</Version>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
-    <FileVersion>2.4.0.0</FileVersion>
+    <Version>0.9.1.0</Version>
+    <AssemblyVersion>0.9.1.0</AssemblyVersion>
+    <FileVersion>0.9.1.0</FileVersion>
     <Company>treviasxk</Company>
     <Authors>Trevias Xk</Authors>
     <Product>Nethostfire</Product>
-    <Description>Nethostfire is a library (netstandard2.1) to create UDP server and client in C#, with encryption support, Unity 3D integration and several other advanced features to facilitate communication between client and server.</Description>
-    <Copyright>Trevias Xk © 2024</Copyright>
+    <Description>Nethostfire is a library (netstandard2.1) to create server and client in C#, with encryption support and several other advanced features to facilitate communication between client and server.</Description>
+    <Copyright>Trevias Xk © 2025</Copyright>
     <InvariantGlobalization>false</InvariantGlobalization>
     <DebugSymbols>false</DebugSymbols>
     <!-- <DebugType>None</DebugType> -->
