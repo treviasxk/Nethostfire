@@ -1,0 +1,132 @@
+name: Nethostfire
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test Nethostfire.Tests --configuration Release --no-build --verbosity normal
+
+  release:
+    runs-on: ubuntu-latest
+    needs: test
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # Compila o projeto no modo Debug para gerar o arquivo especificado
+      - name: Build Nethostfire
+        run: dotnet build Nethostfire/Nethostfire.csproj --configuration Debug
+        # Ajuste o caminho "Nethostfire/Nethostfire.csproj" conforme a estrutura do seu repositório
+
+      # Extrai a versão do Nethostfire.csproj
+      - name: Get Project Version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '<Version>\K[^<]+' Nethostfire/Nethostfire.csproj)
+          if [ -z "$VERSION" ]; then
+            echo "Erro: Versão não encontrada no Nethostfire.csproj" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      # Gera o changelog, contribuidores e full changelog
+      - name: Generate Changelog and Contributors
+        id: changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Pega a última tag ou usa vazio se não houver
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          # Gera o changelog
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            COMMITS=$(git log $LAST_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Gera a lista de emails dos contribuidores únicos
+          if [ -z "$LAST_TAG" ]; then
+            EMAILS=$(git log --pretty=format:"%ae" | sort -u)
+          else
+            EMAILS=$(git log $LAST_TAG..HEAD --pretty=format:"%ae" | sort -u)
+          fi
+          
+          # Converte emails em usernames do GitHub usando a API via gh CLI
+          CONTRIBUTOR_LIST=""
+          for EMAIL in $EMAILS; do
+            USERNAME=$(gh api -H "Accept: application/vnd.github+json" \
+              "search/users?q=$EMAIL%20in:email" --jq '.items[0].login' 2>/dev/null || echo "unknown")
+            if [ "$USERNAME" != "unknown" ]; then
+              CONTRIBUTOR_LIST="$CONTRIBUTOR_LIST- @$USERNAME\n"
+            fi
+          done
+          
+          # Gera o link para o Full Changelog
+          REPO_URL="https://github.com/${{ github.repository }}"
+          if [ -z "$LAST_TAG" ]; then
+            FULL_CHANGELOG="**Full Changelog**: ${REPO_URL}/commits/v${{ steps.get_version.outputs.VERSION }}"
+          else
+            FULL_CHANGELOG="**Full Changelog**: ${REPO_URL}/compare/${LAST_TAG}...v${{ steps.get_version.outputs.VERSION }}"
+          fi
+          
+          # Combina tudo em uma string com quebras de linha reais
+          BODY="## Changelog\n$COMMITS\n\n## Contribuidores\n$CONTRIBUTOR_LIST\n\n$FULL_CHANGELOG"
+          
+          # Escreve o BODY em um arquivo temporário
+          echo -e "$BODY" > release_body.md
+          echo "BODY_PATH=$(pwd)/release_body.md" >> $GITHUB_OUTPUT
+
+      # Cria a release com changelog e contribuidores no body
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: Version ${{ steps.get_version.outputs.VERSION }}
+          body_path: ${{ steps.changelog.outputs.BODY_PATH }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Faz upload do arquivo Nethostfire.dll como asset
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL gerada no passo anterior
+          asset_path: Nethostfire/bin/Debug/netstandard2.1/Nethostfire.dll  # Caminho do arquivo
+          asset_name: Nethostfire.dll  # Nome do arquivo no download
+          asset_content_type: application/octet-stream  # Tipo MIME genérico para DLL
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
