@@ -17,7 +17,7 @@ namespace Nethostfire {
         }
 
         static void SendPacket(UdpClient? socket, byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, IPEndPoint? ip = null){
-            if(socket != null && bytes != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
+            if(socket != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
                 bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
                 if(bytes != null && bytes.Length > 1)
                     try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
@@ -60,7 +60,8 @@ namespace Nethostfire {
             return null;
         }
 
-        static byte[] ConvertPacket(byte[] bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session){
+        static byte[] ConvertPacket(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session){
+            bytes ??= [];
             // Cryptograph
             switch(typeEncrypt){
                 case TypeEncrypt.Compress:

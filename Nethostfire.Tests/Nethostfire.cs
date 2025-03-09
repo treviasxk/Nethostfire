@@ -24,6 +24,13 @@ public class Nethostfire{
 
     [Fact(DisplayName = "Test Send Client Packet Only Base64")]
     public void TestSendClientPacketOnlyBase64() => Assert.True(SendClientPacket(TypeEncrypt.OnlyBase64));
+
+    [Fact(DisplayName = "Test Send Client Packet Null")]
+    public void TestSendClientPacketNull() => Assert.True(SendClientPacket());
+    
+    [Fact(DisplayName = "Test Send Client Packet Object")]
+    public void TestSendClientPacketObject() => Assert.True(SendClientPacket(false));
+
    
     [Fact(DisplayName = "Test Send Server Packet")]
     public void TestSendServerPacket() => Assert.True(SendServerPacket(TypeEncrypt.None));
@@ -45,6 +52,18 @@ public class Nethostfire{
 
     [Fact(DisplayName = "Test Send Server Packet OnlyBase64")]
     public void TestSendServerPacketOnlyBase64() => Assert.True(SendServerPacket(TypeEncrypt.OnlyBase64));
+
+    [Fact(DisplayName = "Test Send Server Packet Null")]
+    public void TestSendServerPacketNull() => Assert.True(SendServerPacket());
+    
+    [Fact(DisplayName = "Test Send Server Packet Object")]
+    public void TestSendServerPacketObject() => Assert.True(SendServerPacket(false));
+
+    [Fact(DisplayName = "Test Send Server Packet Group")]
+    public void TestSendServerPacketGroup() => Assert.True(SendServerPacketGroup());
+
+    [Fact(DisplayName = "Test Send Server Packet Group Null")]
+    public void TestSendServerPacketGroupNull() => Assert.True(SendServerPacketGroup(false));
 
     [Fact(DisplayName = "Test Shutdown Server")]
     public void TestShutdownServer(){

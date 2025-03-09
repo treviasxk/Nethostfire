@@ -60,8 +60,12 @@ namespace Nethostfire {
                 }
             }
 
-            public void Send(byte[] bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, bytes, groupID, typeEncrypt, ref session);
-            
+            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, bytes, groupID, typeEncrypt, ref session);
+            public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt);
+            public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt);
+            public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, typeEncrypt);
+
+
             public void ChangeStatus(SessionStatus status, bool log = true){
                 session.Status = status;
                 if(log)
