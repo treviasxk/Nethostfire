@@ -31,7 +31,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     needs: test
-    if: success()
+    if: github.event_name == 'push' && success()
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,22 +75,15 @@ jobs:
             COMMITS=$(git log $LAST_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
           fi
           
-          # Gera a lista de emails dos contribuidores únicos
+          # Gera a lista de nomes dos contribuidores únicos
           if [ -z "$LAST_TAG" ]; then
-            EMAILS=$(git log --pretty=format:"%ae" | sort -u)
+            CONTRIBUTORS=$(git log --pretty=format:"%an" | sort -u)
           else
-            EMAILS=$(git log $LAST_TAG..HEAD --pretty=format:"%ae" | sort -u)
+            CONTRIBUTORS=$(git log $LAST_TAG..HEAD --pretty=format:"%an" | sort -u)
           fi
-          
-          # Converte emails em usernames do GitHub usando a API via gh CLI
-          CONTRIBUTOR_LIST=""
-          for EMAIL in $EMAILS; do
-            USERNAME=$(gh api -H "Accept: application/vnd.github+json" \
-              "search/users?q=$EMAIL%20in:email" --jq '.items[0].login' 2>/dev/null || echo "unknown")
-            if [ "$USERNAME" != "unknown" ]; then
-              CONTRIBUTOR_LIST="$CONTRIBUTOR_LIST- @$USERNAME\n"
-            fi
-          done
+
+          # Combina os commits e os contribuidores diretamente
+          BODY="$COMMITS\n\n$CONTRIBUTORS"
           
           # Gera o link para o Full Changelog
           REPO_URL="https://github.com/${{ github.repository }}"
@@ -101,7 +94,7 @@ jobs:
           fi
           
           # Combina tudo em uma string com quebras de linha reais
-          BODY="## Changelog\n$COMMITS\n\n## Contribuidores\n$CONTRIBUTOR_LIST\n\n$FULL_CHANGELOG"
+          BODY="## Changelog\n$COMMITS\n\n## CONTRIBUTORS\n$CONTRIBUTORS\n\n$FULL_CHANGELOG"
           
           # Escreve o BODY em um arquivo temporário
           echo -e "$BODY" > release_body.md
