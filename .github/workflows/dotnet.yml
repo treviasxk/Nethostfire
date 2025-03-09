@@ -43,11 +43,6 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      # Compila o projeto no modo Debug para gerar o arquivo especificado
-      - name: Build Nethostfire
-        run: dotnet build Nethostfire/Nethostfire.csproj --configuration Debug
-        # Ajuste o caminho "Nethostfire/Nethostfire.csproj" conforme a estrutura do seu repositório
-
       # Extrai a versão do Nethostfire.csproj
       - name: Get Project Version
         id: get_version
@@ -59,8 +54,29 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      # Checa se existe tag de release
+      - name: Check if Release Exists
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.get_version.outputs.VERSION }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping..."
+            echo "SKIP_RELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "Release $TAG does not exist, proceeding..."
+            echo "SKIP_RELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Compila o projeto no modo Debug para gerar o arquivo especificado
+      - name: Build Nethostfire
+        if: steps.check_release.outputs.SKIP_RELEASE == 'false'
+        run: dotnet build Nethostfire/Nethostfire.csproj --configuration Debug
+
       # Gera o changelog, contribuidores e full changelog
       - name: Generate Changelog and Contributors
+        if: steps.check_release.outputs.SKIP_RELEASE == 'false'
         id: changelog
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -102,6 +118,7 @@ jobs:
 
       # Cria a release com changelog e contribuidores no body
       - name: Create GitHub Release
+        if: steps.check_release.outputs.SKIP_RELEASE == 'false'
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
@@ -115,6 +132,7 @@ jobs:
 
       # Faz upload do arquivo Nethostfire.dll como asset
       - name: Upload Release Asset
+        if: steps.check_release.outputs.SKIP_RELEASE == 'false'
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL gerada no passo anterior
