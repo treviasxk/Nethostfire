@@ -93,13 +93,10 @@ jobs:
           
           # Gera a lista de nomes dos contribuidores únicos
           if [ -z "$LAST_TAG" ]; then
-            CONTRIBUTORS=$(git log --pretty=format:"%an" | sort -u)
+            CONTRIBUTORS=$(git log --pretty=format:"%an" | sort -u | sed 's/^/- /')
           else
-            CONTRIBUTORS=$(git log $LAST_TAG..HEAD --pretty=format:"%an" | sort -u)
+            CONTRIBUTORS=$(git log $LAST_TAG..HEAD --pretty=format:"%an" | sort -u | sed 's/^/- /')
           fi
-
-          # Combina os commits e os contribuidores diretamente
-          BODY="$COMMITS\n\n$CONTRIBUTORS"
           
           # Gera o link para o Full Changelog
           REPO_URL="https://github.com/${{ github.repository }}"

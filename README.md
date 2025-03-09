@@ -6,20 +6,21 @@ Nethostfire is a library (netstandard2.1) to create UDP server and client in C#,
 
 ![Preview](/screenshots/preview.gif)
 
-## Donate
+## Contribute
+You can contribute to the project, either by fork it with a Pull request, or by sponsor the project, this will keep me focused on the project.
  - Paypal: trevias@live.com
  - Github: [Sponsor](https://github.com/sponsors/treviasxk)
 
 ## Main features
- - MySQL Client embedded.
  - Connected client detection system.
  - Manage all connected clients with server features.
  - Various types of send (UNICAST, MULTICAST, BROADCAST).
  - RSA, AES and Base64 encryption both on the server and on the client.
  - Automatic decryption.
- - Suport JSON convert/deconvert.
  - Adapted for Cross-Server creation.
  - Adapted for high performance.
+ - MySQL Client embedded.
+ - Json embedded.
 
 ## .NET | VB.Net Project Installation
 1 - Download the library **Nethostfire.dll** in [Releases](https://github.com/treviasxk/Nethostfire/releases)
