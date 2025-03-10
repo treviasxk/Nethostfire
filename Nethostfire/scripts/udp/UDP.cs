@@ -11,6 +11,19 @@ using static Nethostfire.DataSecurity;
 namespace Nethostfire {
     public partial class UDP{
 
+        public static bool CheckBandwidthAndPPS(int groupID, ref Session session){
+            // Check limit PPS
+            if(DateTime.Now.Ticks > session.TimerPPS + (session.LimitPPS > 0 ? (1000 / session.LimitPPS * TimeSpan.TicksPerMillisecond) : 0)){
+                // Check limit group PPS
+                session.LimitGroudIdPPS.TryGetValue(groupID, out var limit);
+                if(DateTime.Now.Ticks > session.TimerPPS + (limit > 0 ? (1000 / limit * TimeSpan.TicksPerMillisecond) : 0)){
+                    session.TimerPPS = DateTime.Now.Ticks;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static void SendPing(UdpClient? socket, byte[] bytes, IPEndPoint? ip = null){
             if(socket != null && bytes.Length != 0)
                 socket?.Send(bytes, bytes.Length, ip);

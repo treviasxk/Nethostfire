@@ -165,4 +165,56 @@ public class Utils{
         client2.Dispose();
         return result && result2;
     }
+
+    public static bool TestLimitPPSClient(bool group = false){
+        var result = false;
+        int x = 0;
+        var client = new UDP.Client();
+        var server = new UDP.Server();
+        Session session = new();
+        
+        client.OnStatus = (status) =>{
+            if(status == SessionStatus.Connected && group){
+                if(session.LimitGroudIdPPS != null && session.LimitGroudIdPPS.TryGetValue(10, out var value))
+                for(int i = 0; i < value * 2; i++){
+                    client.Send("Hello", 10);
+                    Thread.Sleep(1000 / (session!.LimitGroudIdPPS[10] * 2));
+                }
+            }
+        };
+
+        if(!group)
+        client.OnReceivedBytes = (bytes, groupID) =>{
+            x++;
+        };
+        else
+        server.OnReceivedBytes = (bytes, groupID, ip) =>{
+            x++;
+        };
+
+        server.OnConnected = (ip) =>{
+            server.Sessions.TryGetValue(ip, out session);
+            if(group)
+                server.SetLimitGroupPPS(10, 5, ref ip);
+            else{
+                client.session.LimitPPS = 5;
+                for(int i = 0; i < client.session.LimitPPS * 2; i++){
+                    server.Send("Hello", 10, ref ip);
+                    Thread.Sleep(1000 / (client.session.LimitPPS * 2));
+                }
+            }
+        };
+
+        server.Start(IPAddress.Any, 25000);
+        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        Thread.Sleep(4000);
+        if(group && session.LimitGroudIdPPS != null)
+            result = x == session.LimitGroudIdPPS[10];
+        else
+            result = x == client.session.LimitPPS;
+
+        server.Dispose();
+        client.Dispose();
+        return result;
+    }
 }

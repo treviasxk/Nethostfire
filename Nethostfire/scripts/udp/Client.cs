@@ -13,7 +13,7 @@ using static Nethostfire.DataSecurity;
 namespace Nethostfire {
     public partial class UDP{
         public class Client : IDisposable{
-            Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+            public Session session = new(){retransmissionBuffer = new(), LimitGroudIdPPS = new(), Status = SessionStatus.Disconnected};
             public UdpClient? Socket;
             public SessionStatus Status {get{return session.Status;}}
             
@@ -120,9 +120,17 @@ namespace Nethostfire {
                         var data = DeconvertPacket(bytes, ref session);
                         if(data.HasValue)
                         if(Status == SessionStatus.Connected){
-                            OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                            if(session.LimitPPS == 0 && session.LimitGroudIdPPS.Count == 0){
+                                OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                            }else{
+                                if(CheckBandwidthAndPPS(data.Value.Item2, ref session))
+                                    OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                            }
+                            return;
                         }else
                         if(Status == SessionStatus.Connecting){
+                            // Update timer
+                            session.Timer = DateTime.Now.Ticks;
                             // Check RSA server and send AES client
                             if(data.Value.Item2 == 0){
                                 string value = Encoding.ASCII.GetString(data.Value.Item1);
@@ -134,13 +142,11 @@ namespace Nethostfire {
                             if(data.Value.Item2 == 1){
                                 if(data.Value.Item1.Length == 16){
                                     session.Credentials.PrivateKeyAES = data.Value.Item1;
-                                    session.Timer = DateTime.Now.Ticks;
                                     ChangeStatus(SessionStatus.Connected);
                                 }
                                 return;
                             }
                         }    
-
                     });
                 }
             }
@@ -181,7 +187,7 @@ namespace Nethostfire {
                 session.Status = SessionStatus.Disconnecting;
                 Socket?.Close();
                 Socket = null;
-                session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+                session = new(){retransmissionBuffer = new(), LimitGroudIdPPS = new(), Status = SessionStatus.Disconnected};
                 GC.SuppressFinalize(this);
                 session.Status = SessionStatus.Disconnected;
             }

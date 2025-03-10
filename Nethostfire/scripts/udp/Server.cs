@@ -78,6 +78,22 @@ namespace Nethostfire {
                 }
             }
 
+            public void SetLimitPPS(ushort pps, ref IPEndPoint ip){
+                if(Sessions.TryGetValue(ip, out var session)){
+                    session.LimitPPS = pps;
+                    Sessions.TryUpdate(ip, in session);
+                }
+            }
+
+            public void SetLimitGroupPPS(ushort groupID, ushort pps, ref IPEndPoint ip){
+                if(Sessions.TryGetValue(ip, out var session)){
+                    if(pps > 0)
+                        session.LimitGroudIdPPS.TryAdd(groupID, pps);
+                    else
+                        session.LimitGroudIdPPS.TryRemove(groupID, out _);
+                }
+            }
+
             public void Send(byte[]? bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None){
                 if(Sessions.TryGetValue(ip, out var session))
                     SendPacket(Socket, bytes, groupID, typeEncrypt, ref session, ip);
@@ -100,7 +116,7 @@ namespace Nethostfire {
                 while(Socket != null){
                     byte[]? bytes;
                     IPEndPoint? ip;
-                    Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+                    Session session;
 
                     // Connection alway fail when ip not found, use 'try' is necessary.
                     try{
@@ -127,20 +143,16 @@ namespace Nethostfire {
                                         //Kick(ip);
                                     return;
                                     case 1: // Update ping
-                                        if(session.Credentials.PublicKeyRSA != null && session.Credentials.PrivateKeyAES != null && session.Status == SessionStatus.Connecting){
-                                            WriteLog($"{ip} Connected!", this, EnableLogs);
-                                            session.Status = SessionStatus.Connected;
-                                            Sessions.TryUpdate(ip, in session);
-                                            OnConnected?.Invoke(ip);
-                                        }
-
                                         session.Ping = GetPing(session.Timer);
                                         session.Timer = DateTime.Now.Ticks;
                                         Sessions.TryUpdate(ip, in session);
                                         SendPing(Socket, [1], ip);
                                     return;
+                                    case 2:
+                                        SendPing(Socket, [1], ip);
+                                    return;
                                 }
-                            }else{                  
+                            }else{
                                 if(session.Credentials.PublicKeyRSA == null || session.Credentials.PrivateKeyAES == null){
                                     switch(data.Value.Item2){
                                         case 0:
@@ -151,11 +163,24 @@ namespace Nethostfire {
                                             // AES
                                             session.Credentials.PrivateKeyAES = data.Value.Item1;
                                             SendPacket(Socket, PrivateKeyAES!, 1, TypeEncrypt.RSA, ref session, ip);
+                                            if(session.Status == SessionStatus.Connecting){
+                                                WriteLog($"{ip} Connected!", this, EnableLogs);
+                                                session.Status = SessionStatus.Connected;
+                                                OnConnected?.Invoke(ip);
+                                            }
                                             Sessions.TryUpdate(ip, in session);
                                         return;
                                     }
                                 }else{
-                                    OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
+                                    if(session.LimitPPS == 0 && session.LimitGroudIdPPS.Count == 0){
+                                        OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
+                                    }else{
+                                        if(CheckBandwidthAndPPS(data.Value.Item2, ref session)){
+                                            Sessions.TryUpdate(ip, session);
+                                            OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
+                                        }
+                                    }
+                                    return;
                                 }
                             }
                         }else{
