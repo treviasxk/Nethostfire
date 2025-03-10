@@ -16,7 +16,7 @@ namespace Nethostfire {
         public class Server : IDisposable{
             public UdpClient? Socket;
             ServerStatus serverStatus = ServerStatus.Stopped;
-
+            ConcurrentDictionary<int, int> LimitGroudIdPPS = new();
             /// <summary>
             /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000)
             /// </summary>
@@ -88,9 +88,9 @@ namespace Nethostfire {
             public void SetLimitGroupPPS(ushort groupID, ushort pps, ref IPEndPoint ip){
                 if(Sessions.TryGetValue(ip, out var session)){
                     if(pps > 0)
-                        session.LimitGroudIdPPS.TryAdd(groupID, pps);
+                        LimitGroudIdPPS.TryAdd(groupID, pps);
                     else
-                        session.LimitGroudIdPPS.TryRemove(groupID, out _);
+                        LimitGroudIdPPS.TryRemove(groupID, out _);
                 }
             }
 
@@ -173,13 +173,9 @@ namespace Nethostfire {
                                         return;
                                     }
                                 }else{
-                                    if(session.LimitPPS == 0 && session.LimitGroudIdPPS.Count == 0){
+                                    if(CheckBandwidthAndPPS(data.Value.Item2, ref session, LimitGroudIdPPS)){
+                                        Sessions.TryUpdate(ip, session);
                                         OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
-                                    }else{
-                                        if(CheckBandwidthAndPPS(data.Value.Item2, ref session)){
-                                            Sessions.TryUpdate(ip, session);
-                                            OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
-                                        }
                                     }
                                     return;
                                 }
@@ -235,6 +231,7 @@ namespace Nethostfire {
                 serverStatus = ServerStatus.Stopping;
                 Socket?.Close();
                 Socket = null;
+                LimitGroudIdPPS = new();
                 Sessions.Clear();
                 GC.SuppressFinalize(this);
                 serverStatus = ServerStatus.Stopped;

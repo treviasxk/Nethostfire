@@ -23,7 +23,7 @@ namespace Nethostfire {
                 value = foundValue; // Usa o valor encontrado
                 return true;
             }else
-                value = new(){retransmissionBuffer = new(), LimitGroudIdPPS = new(), Status = SessionStatus.Disconnected};
+                value = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             return false;
         }
 
@@ -52,12 +52,11 @@ namespace Nethostfire {
         public SessionStatus Status;
         public Credentials Credentials;
 
-
         internal int Index;
         // Timer to check if client is connected
         internal long Timer;
-        internal long TimerPPS;
-        public ConcurrentDictionary<int, int> LimitGroudIdPPS;
+        internal long TimerReceivedPPS;
+        internal long TimerSendPPS;
         internal ConcurrentDictionary<int, byte[]> retransmissionBuffer;
     }
 }

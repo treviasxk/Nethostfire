@@ -207,14 +207,14 @@ public class Utils{
         int x = 0;
         var client = new UDP.Client();
         var server = new UDP.Server();
+        ushort pps = 5;
         Session session = new();
         
         client.OnStatus = (status) =>{
             if(status == SessionStatus.Connected && group){
-                if(session.LimitGroudIdPPS != null && session.LimitGroudIdPPS.TryGetValue(10, out var value))
-                for(int i = 0; i < value * 2; i++){
+                for(int i = 0; i < pps * 2; i++){
                     client.Send("Hello", 10);
-                    Thread.Sleep(1000 / (session!.LimitGroudIdPPS[10] * 2));
+                    Thread.Sleep(1000 / (pps * 2));
                 }
             }
         };
@@ -231,12 +231,12 @@ public class Utils{
         server.OnConnected = (ip) =>{
             server.Sessions.TryGetValue(ip, out session);
             if(group)
-                server.SetLimitGroupPPS(10, 5, ref ip);
+                server.SetLimitGroupPPS(10, pps, ref ip);
             else{
-                client.session.LimitPPS = 5;
-                for(int i = 0; i < client.session.LimitPPS * 2; i++){
+                client.session.LimitPPS = pps;
+                for(int i = 0; i < client.session.LimitPPS * 3; i++){
                     server.Send("Hello", 10, ref ip);
-                    Thread.Sleep(1000 / (client.session.LimitPPS * 2));
+                    Thread.Sleep(1000 / (client.session.LimitPPS * 3));
                 }
             }
         };
@@ -244,10 +244,41 @@ public class Utils{
         server.Start(IPAddress.Any, 25000);
         client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
         Thread.Sleep(4000);
-        if(group && session.LimitGroudIdPPS != null)
-            result = x == session.LimitGroudIdPPS[10];
-        else
-            result = x == client.session.LimitPPS;
+
+        result = x == pps;
+
+        server.Dispose();
+        client.Dispose();
+        return result;
+    }
+
+    public static bool TestLimitSendPPSClient(){
+        var result = false;
+        int x = 0;
+        var client = new UDP.Client();
+        var server = new UDP.Server();
+        ushort pps = 5;
+
+        client.SetLimitGroupPPS(10, pps);
+
+        client.OnStatus = (status) =>{
+            if(status == SessionStatus.Connected){
+                for(int i = 0; i < pps * 2; i++){
+                    client.Send("Hello", 10);
+                    Thread.Sleep(1000 / (pps * 2));
+                }
+            }
+        };
+
+        server.OnReceivedBytes = (bytes, groupID, ip) =>{
+            x++;
+        };
+
+        server.Start(IPAddress.Any, 25000);
+        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        Thread.Sleep(4000);
+
+        result = x == pps;
 
         server.Dispose();
         client.Dispose();

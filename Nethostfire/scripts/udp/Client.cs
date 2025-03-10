@@ -9,11 +9,13 @@ using System.Net.Sockets;
 using System.Text;
 using static Nethostfire.System;
 using static Nethostfire.DataSecurity;
+using System.Collections.Concurrent;
 
 namespace Nethostfire {
     public partial class UDP{
         public class Client : IDisposable{
-            public Session session = new(){retransmissionBuffer = new(), LimitGroudIdPPS = new(), Status = SessionStatus.Disconnected};
+            ConcurrentDictionary<int, int> LimitGroudIdPPS = new();
+            public Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             public UdpClient? Socket;
             public SessionStatus Status {get{return session.Status;}}
             
@@ -60,11 +62,18 @@ namespace Nethostfire {
                 }
             }
 
-            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, bytes, groupID, typeEncrypt, ref session);
+            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, bytes, groupID, typeEncrypt, ref session, LimitGroudIdPPS: LimitGroudIdPPS);
             public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt);
             public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt);
             public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, typeEncrypt);
 
+
+            public void SetLimitGroupPPS(int groupID, ushort pps){
+                if(pps > 0)
+                    LimitGroudIdPPS.TryAdd(groupID, pps);
+                else
+                    LimitGroudIdPPS.TryRemove(groupID, out _);
+            }
 
             public void ChangeStatus(SessionStatus status, bool log = true){
                 session.Status = status;
@@ -120,12 +129,8 @@ namespace Nethostfire {
                         var data = DeconvertPacket(bytes, ref session);
                         if(data.HasValue)
                         if(Status == SessionStatus.Connected){
-                            if(session.LimitPPS == 0 && session.LimitGroudIdPPS.Count == 0){
+                            if(CheckBandwidthAndPPS(data.Value.Item2, ref session))
                                 OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
-                            }else{
-                                if(CheckBandwidthAndPPS(data.Value.Item2, ref session))
-                                    OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
-                            }
                             return;
                         }else
                         if(Status == SessionStatus.Connecting){
@@ -187,7 +192,8 @@ namespace Nethostfire {
                 session.Status = SessionStatus.Disconnecting;
                 Socket?.Close();
                 Socket = null;
-                session = new(){retransmissionBuffer = new(), LimitGroudIdPPS = new(), Status = SessionStatus.Disconnected};
+                LimitGroudIdPPS = new();
+                session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
                 GC.SuppressFinalize(this);
                 session.Status = SessionStatus.Disconnected;
             }

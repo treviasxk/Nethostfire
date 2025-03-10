@@ -4,6 +4,7 @@
 // Paypal:              trevias@live.com
 // Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using static Nethostfire.DataSecurity;
@@ -11,13 +12,16 @@ using static Nethostfire.DataSecurity;
 namespace Nethostfire {
     public partial class UDP{
 
-        public static bool CheckBandwidthAndPPS(int groupID, ref Session session){
+        public static bool CheckBandwidthAndPPS(int groupID, ref Session session, ConcurrentDictionary<int, int>? LimitGroudIdPPS = null){
+            if(session.LimitPPS == 0 && LimitGroudIdPPS?.Count == 0)
+                return true;
             // Check limit PPS
-            if(DateTime.Now.Ticks > session.TimerPPS + (session.LimitPPS > 0 ? (1000 / session.LimitPPS * TimeSpan.TicksPerMillisecond) : 0)){
+            if(DateTime.Now.Ticks > session.TimerReceivedPPS + (session.LimitPPS > 0 ? (1000 / session.LimitPPS * TimeSpan.TicksPerMillisecond) : 0)){
                 // Check limit group PPS
-                session.LimitGroudIdPPS.TryGetValue(groupID, out var limit);
-                if(DateTime.Now.Ticks > session.TimerPPS + (limit > 0 ? (1000 / limit * TimeSpan.TicksPerMillisecond) : 0)){
-                    session.TimerPPS = DateTime.Now.Ticks;
+                var limit = 0;
+                LimitGroudIdPPS?.TryGetValue(groupID, out limit);
+                if(DateTime.Now.Ticks > session.TimerReceivedPPS + (limit > 0 ? (1000 / limit * TimeSpan.TicksPerMillisecond) : 0)){
+                    session.TimerReceivedPPS = DateTime.Now.Ticks;
                     return true;
                 }
             }
@@ -29,11 +33,17 @@ namespace Nethostfire {
                 socket?.Send(bytes, bytes.Length, ip);
         }
 
-        static void SendPacket(UdpClient? socket, byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, IPEndPoint? ip = null){
+        static void SendPacket(UdpClient? socket, byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, IPEndPoint? ip = null, ConcurrentDictionary<int, int>? LimitGroudIdPPS = null){
             if(socket != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
-                bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
-                if(bytes != null && bytes.Length > 1)
-                    try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
+                var limit = 0;
+                LimitGroudIdPPS?.TryGetValue(groupID, out limit);
+                if(DateTime.Now.Ticks > session.TimerSendPPS + (limit > 0 ? (1000 / limit * TimeSpan.TicksPerMillisecond) : 0)){
+                    if(limit > 0)
+                        session.TimerSendPPS = DateTime.Now.Ticks;
+                    bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
+                    if(bytes != null && bytes.Length > 1)
+                        try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
+                }
             }
         }
 

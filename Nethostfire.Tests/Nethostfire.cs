@@ -1,5 +1,4 @@
-﻿using System.Net;
-using static Nethostfire.Tests.Utils;
+﻿using static Nethostfire.Tests.Utils;
 
 namespace Nethostfire.Tests;
 
@@ -30,6 +29,14 @@ public class Nethostfire{
     
     [Fact(DisplayName = "Test Client Send Packet Object")]
     public void TestSendClientPacketObject() => Assert.True(SendClientPacket(false));
+    [Fact(DisplayName = "Test Client Disconnect")]
+    public void TestDisconnectClient() => Assert.True(TestOffline(true));
+
+    [Fact(DisplayName = "Test Client Limit PPS")]
+    public void TestLimitPPSClientx() => Assert.True(TestLimitPPSClient());
+
+    [Fact(DisplayName = "Test Client Send Limit Group PPS")]
+    public void TestLimiSendtGroupPPSClient() => Assert.True(TestLimitSendPPSClient());
 
    
     [Fact(DisplayName = "Test Server Send Packet")]
@@ -67,13 +74,7 @@ public class Nethostfire{
 
     [Fact(DisplayName = "Test Server Shutdown")]
     public void TestShutdownServer() => Assert.True(TestOffline());
-
-    [Fact(DisplayName = "Test Client Disconnect")]
-    public void TestDisconnectClient() => Assert.True(TestOffline(true));
-
-    [Fact(DisplayName = "Test Client Limit PPS")]
-    public void TestLimitPPSClientx() => Assert.True(TestLimitPPSClient());
-    
-    [Fact(DisplayName = "Test Client Limit Group PPS")]
+    [Fact(DisplayName = "Test Server Received Limit Group PPS")]
     public void TestLimitGroupPPSClientx() => Assert.True(TestLimitPPSClient(true));
 }
+
