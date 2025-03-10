@@ -66,50 +66,10 @@ public class Nethostfire{
     public void TestSendServerPacketGroupNull() => Assert.True(SendServerPacketGroup(false));
 
     [Fact(DisplayName = "Test Server Shutdown")]
-    public void TestShutdownServer(){
-        var result = false;
-        var client = new UDP.Client();
-        var server = new UDP.Server();
-
-        server.Start(IPAddress.Any, 25000);
-        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
-        Thread.Sleep(3000);
-        server.Stop();
-        Thread.Sleep(client.ConnectTimeout + 1100);
-        server.Start(IPAddress.Any, 25000);
-
-        server.OnConnected = (ip) =>{
-            result = client.Status == SessionStatus.Connected && server.Sessions.GetStatus(ip) == SessionStatus.Connected;
-        };
-
-        Thread.Sleep(5000);
-        server.Stop();
-        client.Disconnect();
-        Assert.True(result);
-    }
+    public void TestShutdownServer() => Assert.True(TestOffline());
 
     [Fact(DisplayName = "Test Client Disconnect")]
-    public void TestDisconnectClient(){
-        var result = false;
-        var client = new UDP.Client();
-        var server = new UDP.Server();
-
-        server.Start(IPAddress.Any, 25000);
-        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
-        Thread.Sleep(3000);
-        client.Disconnect();
-        Thread.Sleep(server.ConnectedTimeout + 1100);
-        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
-
-        server.OnConnected = (ip) =>{
-            result = client.Status == SessionStatus.Connected && server.Sessions.GetStatus(ip) == SessionStatus.Connected;
-        };
-
-        Thread.Sleep(5000);
-        server.Dispose();
-        client.Dispose();
-        Assert.True(result);
-    }
+    public void TestDisconnectClient() => Assert.True(TestOffline(true));
 
     [Fact(DisplayName = "Test Client Limit PPS")]
     public void TestLimitPPSClientx() => Assert.True(TestLimitPPSClient());

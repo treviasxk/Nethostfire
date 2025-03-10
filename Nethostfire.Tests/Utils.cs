@@ -4,6 +4,42 @@ using System.Text;
 
 namespace Nethostfire.Tests;
 public class Utils{
+    public static bool TestOffline(bool clientoff = false){
+        var result = false;
+        var client = new UDP.Client();
+        var server = new UDP.Server();
+
+        server.Start(IPAddress.Any, 25000);
+        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        Thread.Sleep(3000);
+
+        if(clientoff)
+            client.Disconnect();
+        else
+            server.Stop();
+            
+        Thread.Sleep(client.ConnectTimeout + 1100);
+
+        if(clientoff)
+            client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        else
+            server.Start(IPAddress.Any, 25000);
+
+        client.OnStatus = (status) =>{
+            if(status == SessionStatus.Connected)
+                result = true;
+        };
+
+        server.OnConnected = (ip) =>{
+            result = result && server.Sessions.GetStatus(ip) == SessionStatus.Connected;
+        };
+
+        Thread.Sleep(5000);
+        server.Stop();
+        client.Disconnect();
+        return result;
+    }
+
     public static bool SendServerPacket(TypeEncrypt typeEncrypt){
         bool result = false;
         var message = "Hello World!";

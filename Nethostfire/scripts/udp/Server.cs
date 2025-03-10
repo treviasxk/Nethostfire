@@ -166,6 +166,7 @@ namespace Nethostfire {
                                             if(session.Status == SessionStatus.Connecting){
                                                 WriteLog($"{ip} Connected!", this, EnableLogs);
                                                 session.Status = SessionStatus.Connected;
+                                                Sessions.TryUpdate(ip, in session); // <--- don't remove
                                                 OnConnected?.Invoke(ip);
                                             }
                                             Sessions.TryUpdate(ip, in session);
