@@ -48,10 +48,9 @@ namespace Nethostfire {
 
     public struct Session{
         public ushort Ping;
-        public ushort LimitPPS;
         public SessionStatus Status;
         public Credentials Credentials;
-
+        
         internal int Index;
         // Timer to check if client is connected
         internal long Timer;

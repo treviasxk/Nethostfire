@@ -32,8 +32,8 @@ public class Nethostfire{
     [Fact(DisplayName = "Test Client Disconnect")]
     public void TestDisconnectClient() => Assert.True(TestOffline(true));
 
-    [Fact(DisplayName = "Test Client Limit PPS")]
-    public void TestLimitPPSClientx() => Assert.True(TestLimitPPSClient());
+    [Fact(DisplayName = "Test Client Limit GroupId PPS")]
+    public void TestLimitPPSClientx() => Assert.True(TestLimitGroupIdPPSClient());
 
     [Fact(DisplayName = "Test Client Send Limit Group PPS")]
     public void TestLimiSendtGroupPPSClient() => Assert.True(TestLimitSendPPSClient());
@@ -67,14 +67,14 @@ public class Nethostfire{
     public void TestSendServerPacketObject() => Assert.True(SendServerPacket(false));
 
     [Fact(DisplayName = "Test Server Send Packet Group")]
-    public void TestSendServerPacketGroup() => Assert.True(SendServerPacketGroup());
+    public void TestSendServerPacketGroup() => Assert.True(SendServerPacketGroup(false));
 
     [Fact(DisplayName = "Test Server Send Packet Group Null")]
-    public void TestSendServerPacketGroupNull() => Assert.True(SendServerPacketGroup(false));
+    public void TestSendServerPacketGroupNull() => Assert.True(SendServerPacketGroup(true));
 
     [Fact(DisplayName = "Test Server Shutdown")]
     public void TestShutdownServer() => Assert.True(TestOffline());
     [Fact(DisplayName = "Test Server Received Limit Group PPS")]
-    public void TestLimitGroupPPSClientx() => Assert.True(TestLimitPPSClient(true));
+    public void TestLimitGroupPPSClientx() => Assert.True(TestLimitGroupIdPPSClient(true));
 }
 
