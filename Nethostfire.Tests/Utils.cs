@@ -212,9 +212,9 @@ public class Utils{
         
         client.OnStatus = (status) =>{
             if(status == SessionStatus.Connected && group){
-                for(int i = 0; i < pps * 2; i++){
+                for(int i = 0; i < pps * 3; i++){
                     client.Send("Hello", 10);
-                    Thread.Sleep(1000 / (pps * 2));
+                    Thread.Sleep(1000 / (pps * 3));
                 }
             }
         };
@@ -246,7 +246,7 @@ public class Utils{
 
         server.Start(IPAddress.Any, 25000);
         client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
-        Thread.Sleep(4000);
+        Thread.Sleep(5000);
 
         result = x == pps;
 

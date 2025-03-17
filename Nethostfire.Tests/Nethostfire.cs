@@ -32,7 +32,7 @@ public class Nethostfire{
     [Fact(DisplayName = "Test Client Disconnect")]
     public void TestDisconnectClient() => Assert.True(TestOffline(true));
 
-    [Fact(DisplayName = "Test Client Limit GroupId PPS")]
+    [Fact(DisplayName = "Test Client Limit Group PPS")]
     public void TestLimitPPSClientx() => Assert.True(TestLimitGroupIdPPSClient());
 
     [Fact(DisplayName = "Test Client Send Limit Group PPS")]
