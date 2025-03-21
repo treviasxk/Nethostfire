@@ -80,14 +80,14 @@ namespace Nethostfire {
                 }
             }
 
-            public void SetReceiveLimitGroupPPS(ushort groupID, ushort pps){
+            public void SetReceiveLimitGroupPPS(ushort groupID, int pps){
                 if(pps > 0)
                     ListReceiveGroudIdPPS.TryAdd(groupID, pps);
                 else
                     ListReceiveGroudIdPPS.TryRemove(groupID, out _);
             }
 
-            public void SetSendLimitGroupPPS(ushort groupID, ushort pps){
+            public void SetSendLimitGroupPPS(ushort groupID, int pps){
                 if(pps > 0)
                     ListSendGroudIdPPS.TryAdd(groupID, pps);
                 else

@@ -69,14 +69,14 @@ namespace Nethostfire {
             public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt);
             public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, typeEncrypt);
 
-            public void SetSendLimitGroupPPS(int groupID, ushort pps){
+            public void SetSendLimitGroupPPS(int groupID, int pps){
                 if(pps > 0)
                     ListSendGroudIdPPS.TryAdd(groupID, pps);
                 else
                     ListSendGroudIdPPS.TryRemove(groupID, out _);
             }
 
-            public void SetReceiveLimitGroupPPS(int groupID, ushort pps){
+            public void SetReceiveLimitGroupPPS(int groupID, int pps){
                 if(pps > 0)
                     ListReceiveGroudIdPPS.TryAdd(groupID, pps);
                 else

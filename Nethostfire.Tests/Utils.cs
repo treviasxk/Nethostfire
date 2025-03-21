@@ -202,16 +202,16 @@ public class Utils{
         return result && result2;
     }
 
-    public static bool TestLimitGroupIdPPSClient(bool group = false){
+    public static bool TestLimitGroupIdPPSClient(bool isClient = false){
         var result = false;
         int x = 0;
         var client = new UDP.Client();
         var server = new UDP.Server();
-        ushort pps = 5;
+        int pps = 5;
         Session session = new();
         
         client.OnStatus = (status) =>{
-            if(status == SessionStatus.Connected && group){
+            if(status == SessionStatus.Connected && isClient){
                 for(int i = 0; i < pps * 3; i++){
                     client.Send("Hello", 10);
                     Thread.Sleep(1000 / (pps * 3));
@@ -219,7 +219,7 @@ public class Utils{
             }
         };
 
-        if(!group){
+        if(!isClient){
             client.SetReceiveLimitGroupPPS(10, pps);
             client.OnReceivedBytes = (bytes, groupID) =>{
                 x++;
@@ -234,7 +234,7 @@ public class Utils{
 
         server.OnConnected = (ip) =>{
             server.Sessions.TryGetValue(ip, out session);
-            if(group)
+            if(isClient)
                 server.SetReceiveLimitGroupPPS(10, pps);
             else{
                 for(int i = 0; i < pps * 3; i++){
@@ -249,6 +249,7 @@ public class Utils{
         Thread.Sleep(5000);
 
         result = x == pps;
+        Console.WriteLine($"Packets: {x}");
 
         server.Dispose();
         client.Dispose();
