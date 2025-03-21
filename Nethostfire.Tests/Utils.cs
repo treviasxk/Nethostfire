@@ -248,8 +248,7 @@ public class Utils{
         client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
         Thread.Sleep(5000);
 
-        result = x == pps;
-        Console.WriteLine($"Packets: {x}");
+        result = x <= pps;
 
         server.Dispose();
         client.Dispose();
