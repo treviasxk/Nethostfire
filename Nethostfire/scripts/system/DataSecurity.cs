@@ -18,9 +18,9 @@ namespace Nethostfire{
                 using(var RSA = new RSACryptoServiceProvider()){
                     int value = (SymmetricSize - 6) * 8 + 384;
                     if(value >= 464 && value <= 4096){
-                        PrivateKeyRSA ??= RSA.ToXmlString(true);
-                        PublicKeyRSA ??= RSA.ToXmlString(false);
-                        PrivateKeyAES ??= GetHashMD5(Encoding.ASCII.GetBytes(PrivateKeyRSA));
+                        PrivateKeyRSA = RSA.ToXmlString(true);
+                        PublicKeyRSA = RSA.ToXmlString(false);
+                        PrivateKeyAES = GetHashMD5(Encoding.ASCII.GetBytes(PrivateKeyRSA));
                     }else
                         throw new Nethostfire("RSA SymmetricSize cannot be less than " + ((464 - 384) / 8 + 6) + " or greater than " + ((4096 - 384) / 8 + 6));
                 }

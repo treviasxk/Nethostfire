@@ -15,8 +15,10 @@ namespace Nethostfire {
     public partial class UDP{
         public class Server : IDisposable{
             public UdpClient? Socket;
+            public int LimitPPS {get;set;} = 0;
             ServerStatus serverStatus = ServerStatus.Stopped;
-
+            ConcurrentDictionary<int, int> ListReceiveGroudIdPPS = new();
+            ConcurrentDictionary<int, int> ListSendGroudIdPPS = new();
             /// <summary>
             /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000)
             /// </summary>
@@ -78,10 +80,25 @@ namespace Nethostfire {
                 }
             }
 
+            public void SetReceiveLimitGroupPPS(ushort groupID, int pps){
+                if(pps > 0)
+                    ListReceiveGroudIdPPS.TryAdd(groupID, pps);
+                else
+                    ListReceiveGroudIdPPS.TryRemove(groupID, out _);
+            }
+
+            public void SetSendLimitGroupPPS(ushort groupID, int pps){
+                if(pps > 0)
+                    ListSendGroudIdPPS.TryAdd(groupID, pps);
+                else
+                    ListSendGroudIdPPS.TryRemove(groupID, out _);
+            }
+
             public void Send(byte[]? bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None){
                 if(Sessions.TryGetValue(ip, out var session))
-                    SendPacket(Socket, bytes, groupID, typeEncrypt, ref session, ip);
+                    SendPacket(Socket, ref bytes, groupID, typeEncrypt, ref session, ip, in ListSendGroudIdPPS);
             }
+            
             public void Send(string text, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, ip, typeEncrypt);
             public void Send(int value, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, ip, typeEncrypt);
             public void Send(object data, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, ip, typeEncrypt);
@@ -100,7 +117,7 @@ namespace Nethostfire {
                 while(Socket != null){
                     byte[]? bytes;
                     IPEndPoint? ip;
-                    Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+                    Session session;
 
                     // Connection alway fail when ip not found, use 'try' is necessary.
                     try{
@@ -127,35 +144,43 @@ namespace Nethostfire {
                                         //Kick(ip);
                                     return;
                                     case 1: // Update ping
-                                        if(session.Credentials.PublicKeyRSA != null && session.Credentials.PrivateKeyAES != null && session.Status == SessionStatus.Connecting){
-                                            WriteLog($"{ip} Connected!", this, EnableLogs);
-                                            session.Status = SessionStatus.Connected;
-                                            Sessions.TryUpdate(ip, in session);
-                                            OnConnected?.Invoke(ip);
-                                        }
-
                                         session.Ping = GetPing(session.Timer);
                                         session.Timer = DateTime.Now.Ticks;
                                         Sessions.TryUpdate(ip, in session);
                                         SendPing(Socket, [1], ip);
                                     return;
+                                    case 2:
+                                        SendPing(Socket, [1], ip);
+                                    return;
                                 }
-                            }else{                  
+                            }else{
                                 if(session.Credentials.PublicKeyRSA == null || session.Credentials.PrivateKeyAES == null){
                                     switch(data.Value.Item2){
                                         case 0:
                                             // Resend RSA
-                                            SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA!), 0, TypeEncrypt.None, ref session, ip);
+                                            var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
+                                            SendPacket(Socket, ref bytes, 0, TypeEncrypt.None, ref session, ip);
                                         return;
                                         case 1:
                                             // AES
                                             session.Credentials.PrivateKeyAES = data.Value.Item1;
-                                            SendPacket(Socket, PrivateKeyAES!, 1, TypeEncrypt.RSA, ref session, ip);
+                                            var key = PrivateKeyAES;
+                                            SendPacket(Socket, ref key, 1, TypeEncrypt.RSA, ref session, ip);
+                                            if(session.Status == SessionStatus.Connecting){
+                                                WriteLog($"{ip} Connected!", this, EnableLogs);
+                                                session.Status = SessionStatus.Connected;
+                                                Sessions.TryUpdate(ip, in session); // <--- don't remove
+                                                OnConnected?.Invoke(ip);
+                                            }
                                             Sessions.TryUpdate(ip, in session);
                                         return;
                                     }
                                 }else{
-                                    OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
+                                    if(CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS)){
+                                        Sessions.TryUpdate(ip, session);
+                                        OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2, ip);
+                                    }
+                                    return;
                                 }
                             }
                         }else{
@@ -168,7 +193,8 @@ namespace Nethostfire {
                                     session.Status = SessionStatus.Connecting;
                                     if(Sessions.TryAdd(ip, session)){
                                         WriteLog($"{ip} Incomming...", this, EnableLogs);
-                                        SendPacket(Socket, Encoding.ASCII.GetBytes(PublicKeyRSA!), 0, TypeEncrypt.Compress, ref session, ip);
+                                        var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
+                                        SendPacket(Socket, ref bytes, 0, TypeEncrypt.Compress, ref session, ip);
                                     }
                                 }
                             }
@@ -209,6 +235,7 @@ namespace Nethostfire {
                 serverStatus = ServerStatus.Stopping;
                 Socket?.Close();
                 Socket = null;
+                ListReceiveGroudIdPPS = new();
                 Sessions.Clear();
                 GC.SuppressFinalize(this);
                 serverStatus = ServerStatus.Stopped;

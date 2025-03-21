@@ -12,6 +12,7 @@ namespace Nethostfire {
         public ConcurrentDictionary<IPEndPoint, Session> Clients = new();
         public bool TryAdd(IPEndPoint key, Session value) => Clients.TryAdd(key, value);
 
+
         public SessionStatus GetStatus(IPEndPoint ip){
             Clients.TryGetValue(ip, out Session session);
             return session.Status;
@@ -22,7 +23,7 @@ namespace Nethostfire {
                 value = foundValue; // Usa o valor encontrado
                 return true;
             }else
-                value = new();
+                value = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             return false;
         }
 
@@ -46,12 +47,15 @@ namespace Nethostfire {
     }
 
     public struct Session{
-        public int Index;
         public ushort Ping;
-        // Timer to check if client is connected
-        public long Timer;
         public SessionStatus Status;
         public Credentials Credentials;
-        public ConcurrentDictionary<int, byte[]> retransmissionBuffer;
+        
+        internal int Index;
+        // Timer to check if client is connected
+        internal long Timer;
+        internal long TimerReceivedPPS;
+        internal long TimerSendPPS;
+        internal ConcurrentDictionary<int, byte[]> retransmissionBuffer;
     }
 }

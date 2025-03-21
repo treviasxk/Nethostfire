@@ -97,6 +97,8 @@ namespace Nethostfire {
             return Convert.ToUInt16(ping >= ushort.MinValue && ping <= ushort.MaxValue ? ping : 0);
         }
 
+        public static void RunOnMainThread(Action action) => ListRunOnMainThread.Enqueue(action);
+
         public static void WriteLog(object? message, object? instance = null, bool showLog = true) => WriteLog(message?.ToString() ?? "", instance, showLog);
         public static void WriteLog(string message, object? instance = null, bool showLog = true){
             string InstanceName = instance == null ? "" : $"[{instance.GetType().Name.ToUpper()}] "; 

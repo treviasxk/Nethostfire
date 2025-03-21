@@ -4,6 +4,42 @@ using System.Text;
 
 namespace Nethostfire.Tests;
 public class Utils{
+    public static bool TestOffline(bool clientoff = false){
+        var result = false;
+        var client = new UDP.Client();
+        var server = new UDP.Server();
+
+        server.Start(IPAddress.Any, 25000);
+        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        Thread.Sleep(3000);
+
+        if(clientoff)
+            client.Disconnect();
+        else
+            server.Stop();
+            
+        Thread.Sleep(client.ConnectTimeout + 1100);
+
+        if(clientoff)
+            client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        else
+            server.Start(IPAddress.Any, 25000);
+
+        client.OnStatus = (status) =>{
+            if(status == SessionStatus.Connected)
+                result = true;
+        };
+
+        server.OnConnected = (ip) =>{
+            result = result && server.Sessions.GetStatus(ip) == SessionStatus.Connected;
+        };
+
+        Thread.Sleep(5000);
+        server.Stop();
+        client.Disconnect();
+        return result;
+    }
+
     public static bool SendServerPacket(TypeEncrypt typeEncrypt){
         bool result = false;
         var message = "Hello World!";
@@ -164,5 +200,91 @@ public class Utils{
         client.Dispose();
         client2.Dispose();
         return result && result2;
+    }
+
+    public static bool TestLimitGroupIdPPSClient(bool isClient = false){
+        var result = false;
+        int x = 0;
+        var client = new UDP.Client();
+        var server = new UDP.Server();
+        int pps = 5;
+        Session session = new();
+        
+        client.OnStatus = (status) =>{
+            if(status == SessionStatus.Connected && isClient){
+                for(int i = 0; i < pps * 3; i++){
+                    client.Send("Hello", 10);
+                    Thread.Sleep(1000 / (pps * 3));
+                }
+            }
+        };
+
+        if(!isClient){
+            client.SetReceiveLimitGroupPPS(10, pps);
+            client.OnReceivedBytes = (bytes, groupID) =>{
+                x++;
+            };
+        }
+        else{
+            server.SetReceiveLimitGroupPPS(10, pps);
+            server.OnReceivedBytes = (bytes, groupID, ip) =>{
+                x++;
+            };
+        }
+
+        server.OnConnected = (ip) =>{
+            server.Sessions.TryGetValue(ip, out session);
+            if(isClient)
+                server.SetReceiveLimitGroupPPS(10, pps);
+            else{
+                for(int i = 0; i < pps * 3; i++){
+                    server.Send("Hello", 10, ref ip);
+                    Thread.Sleep(1000 / (pps * 3));
+                }
+            }
+        };
+
+        server.Start(IPAddress.Any, 25000);
+        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        Thread.Sleep(5000);
+
+        result = x <= pps;
+
+        server.Dispose();
+        client.Dispose();
+        return result;
+    }
+
+    public static bool TestLimitSendPPSClient(){
+        var result = false;
+        int x = 0;
+        var client = new UDP.Client();
+        var server = new UDP.Server();
+        ushort pps = 5;
+
+        client.SetSendLimitGroupPPS(10, pps);
+
+        client.OnStatus = (status) =>{
+            if(status == SessionStatus.Connected){
+                for(int i = 0; i < pps * 2; i++){
+                    client.Send("Hello", 10);
+                    Thread.Sleep(1000 / (pps * 2));
+                }
+            }
+        };
+
+        server.OnReceivedBytes = (bytes, groupID, ip) =>{
+            x++;
+        };
+
+        server.Start(IPAddress.Any, 25000);
+        client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
+        Thread.Sleep(4000);
+
+        result = x == pps;
+
+        server.Dispose();
+        client.Dispose();
+        return result;
     }
 }

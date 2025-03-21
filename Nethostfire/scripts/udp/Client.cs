@@ -9,11 +9,15 @@ using System.Net.Sockets;
 using System.Text;
 using static Nethostfire.System;
 using static Nethostfire.DataSecurity;
+using System.Collections.Concurrent;
 
 namespace Nethostfire {
     public partial class UDP{
         public class Client : IDisposable{
-            Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+            public int LimitPPS {get;set;} = 0;
+            ConcurrentDictionary<int, int> ListSendGroudIdPPS = new();
+            ConcurrentDictionary<int, int> ListReceiveGroudIdPPS = new();
+            public Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             public UdpClient? Socket;
             public SessionStatus Status {get{return session.Status;}}
             
@@ -60,11 +64,24 @@ namespace Nethostfire {
                 }
             }
 
-            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, bytes, groupID, typeEncrypt, ref session);
+            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, ref bytes, groupID, typeEncrypt, ref session, ListSendGroupIdPPS: in ListSendGroudIdPPS);
             public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt);
             public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt);
             public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, typeEncrypt);
 
+            public void SetSendLimitGroupPPS(int groupID, int pps){
+                if(pps > 0)
+                    ListSendGroudIdPPS.TryAdd(groupID, pps);
+                else
+                    ListSendGroudIdPPS.TryRemove(groupID, out _);
+            }
+
+            public void SetReceiveLimitGroupPPS(int groupID, int pps){
+                if(pps > 0)
+                    ListReceiveGroudIdPPS.TryAdd(groupID, pps);
+                else
+                    ListReceiveGroudIdPPS.TryRemove(groupID, out _);
+            }
 
             public void ChangeStatus(SessionStatus status, bool log = true){
                 session.Status = status;
@@ -120,9 +137,13 @@ namespace Nethostfire {
                         var data = DeconvertPacket(bytes, ref session);
                         if(data.HasValue)
                         if(Status == SessionStatus.Connected){
-                            OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                            if(CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
+                                OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                            return;
                         }else
                         if(Status == SessionStatus.Connecting){
+                            // Update timer
+                            session.Timer = DateTime.Now.Ticks;
                             // Check RSA server and send AES client
                             if(data.Value.Item2 == 0){
                                 string value = Encoding.ASCII.GetString(data.Value.Item1);
@@ -134,13 +155,11 @@ namespace Nethostfire {
                             if(data.Value.Item2 == 1){
                                 if(data.Value.Item1.Length == 16){
                                     session.Credentials.PrivateKeyAES = data.Value.Item1;
-                                    session.Timer = DateTime.Now.Ticks;
                                     ChangeStatus(SessionStatus.Connected);
                                 }
                                 return;
                             }
                         }    
-
                     });
                 }
             }
@@ -151,10 +170,13 @@ namespace Nethostfire {
                     // Authenting
                     if(Status == SessionStatus.Connecting){
                         if(session.Credentials.PublicKeyRSA == null){
-                            SendPacket(Socket!, Encoding.ASCII.GetBytes(PublicKeyRSA!), 0, TypeEncrypt.Compress, ref session);
+                            var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
+                            SendPacket(Socket!, ref bytes, 0, TypeEncrypt.Compress, ref session);
                         }else
-                        if(session.Credentials.PrivateKeyAES == null)
-                            SendPacket(Socket!, PrivateKeyAES!, 1, TypeEncrypt.RSA, ref session);
+                        if(session.Credentials.PrivateKeyAES == null){
+                            var key = PrivateKeyAES;
+                            SendPacket(Socket!, ref key, 1, TypeEncrypt.RSA, ref session);
+                        }
                     }
 
                     if(Status == SessionStatus.Connected){
@@ -165,7 +187,6 @@ namespace Nethostfire {
                             ChangeStatus(SessionStatus.Connecting);
                         }
                     }
-                        
                     
                     // Packets retranmission
                     Parallel.ForEach(session.retransmissionBuffer.Values, bytes => SendPing(Socket, bytes));
@@ -181,6 +202,7 @@ namespace Nethostfire {
                 session.Status = SessionStatus.Disconnecting;
                 Socket?.Close();
                 Socket = null;
+                ListSendGroudIdPPS = new();
                 session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
                 GC.SuppressFinalize(this);
                 session.Status = SessionStatus.Disconnected;

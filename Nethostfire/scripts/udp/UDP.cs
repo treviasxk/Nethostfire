@@ -4,6 +4,7 @@
 // Paypal:              trevias@live.com
 // Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using static Nethostfire.DataSecurity;
@@ -11,16 +12,47 @@ using static Nethostfire.DataSecurity;
 namespace Nethostfire {
     public partial class UDP{
 
+        static bool CheckReceiveLimitPPS(in byte[] bytes, in int groupID, ref Session session, int LimitPPS, in ConcurrentDictionary<int, int>? LimitGroudIdPPS = null){
+            if(LimitPPS == 0 && LimitGroudIdPPS?.Count == 0)
+                return true;
+
+            // Check limit PPS and Bandwidth
+            if(DateTime.Now.Ticks > session.TimerReceivedPPS + (LimitPPS > 0 ? (1000 / LimitPPS * TimeSpan.TicksPerMillisecond) : 0)){
+                var limit = 0;
+                LimitGroudIdPPS?.TryGetValue(groupID, out limit);
+                // Check limit Group PPS
+                if(DateTime.Now.Ticks > session.TimerReceivedPPS + (limit > 0 ? (1000 / limit * TimeSpan.TicksPerMillisecond) : 0)){
+                    session.TimerReceivedPPS = DateTime.Now.Ticks;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static bool CheckSendLimitPPS(int groupID, ref Session session, in ConcurrentDictionary<int, int>? ListReceiveGroupIdPPS = null){
+            var limit = 0;
+            ListReceiveGroupIdPPS?.TryGetValue(groupID, out limit);
+            if(DateTime.Now.Ticks > session.TimerSendPPS + (limit > 0 ? (1000 / limit * TimeSpan.TicksPerMillisecond) : 0)){
+                if(limit > 0)
+                    session.TimerSendPPS = DateTime.Now.Ticks;
+
+                return true;
+            }
+            return false;
+        }
+
         public static void SendPing(UdpClient? socket, byte[] bytes, IPEndPoint? ip = null){
             if(socket != null && bytes.Length != 0)
                 socket?.Send(bytes, bytes.Length, ip);
         }
 
-        static void SendPacket(UdpClient? socket, byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, IPEndPoint? ip = null){
+        static void SendPacket(UdpClient? socket, ref byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, in IPEndPoint? ip = null, in ConcurrentDictionary<int, int>? ListSendGroupIdPPS = null){
             if(socket != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
-                bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
-                if(bytes != null && bytes.Length > 1)
-                    try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
+                if(CheckSendLimitPPS(groupID, ref session, ListSendGroupIdPPS)){
+                    bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
+                    if(bytes != null && bytes.Length > 1)
+                        try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
+                }
             }
         }
 
