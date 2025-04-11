@@ -217,6 +217,9 @@ namespace Nethostfire.UDP {
                     }
                 });
 
+                // Packets retranmission
+                Parallel.ForEach(Sessions.Values.Where(item => item.retransmissionBuffer.Count > 0), session
+                    => Parallel.ForEach(session.retransmissionBuffer.Values, (bytes) => SendPing(Socket, bytes)));
                 Thread.Sleep(1000);
             }
         }

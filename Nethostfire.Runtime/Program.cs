@@ -23,8 +23,7 @@ internal class Program{
                 Thread.Sleep(100);
             }
             }).Start();
-
+            //Client.Disconnect();
         }
-         //Client.Disconnect();
     }
 }

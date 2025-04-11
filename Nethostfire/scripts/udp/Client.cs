@@ -144,18 +144,18 @@ namespace Nethostfire.UDP {
                     }else
                     if(StatusChanged == SessionStatus.Connecting){
                         // Update timer
-                        this.session.Timer = DateTime.Now.Ticks;
+                        session.Timer = DateTime.Now.Ticks;
                         // Check RSA server and send AES client
                         if(data.Value.Item2 == 0){
                             string value = Encoding.ASCII.GetString(data.Value.Item1);
                             if(value.StartsWith("<RSAKeyValue>") && value.EndsWith("</RSAKeyValue>") && PrivateKeyAES != null)
-                                this.session.PublicKeyRSA = value;
+                                session.PublicKeyRSA = value;
                             return;
                         }else
                         // Check AES server and connect
                         if(data.Value.Item2 == 1){
                             if(data.Value.Item1.Length == 16){
-                                this.session.PrivateKeyAES = data.Value.Item1;
+                                session.PrivateKeyAES = data.Value.Item1;
                                     ChangeStatus(SessionStatus.Connected);
                             }
                             return;
