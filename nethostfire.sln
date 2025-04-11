@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethostfire", "Nethostfire\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethostfire.Tests", "Nethostfire.Tests\Nethostfire.Tests.csproj", "{B7CA0666-68B6-4D6E-894E-6D029E6869A0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nethostfire.Runtime", "Nethostfire.Runtime\Nethostfire.Runtime.csproj", "{25A90ED8-9726-46E4-8B81-18FBDD0F7FDB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7CA0666-68B6-4D6E-894E-6D029E6869A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25A90ED8-9726-46E4-8B81-18FBDD0F7FDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25A90ED8-9726-46E4-8B81-18FBDD0F7FDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25A90ED8-9726-46E4-8B81-18FBDD0F7FDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25A90ED8-9726-46E4-8B81-18FBDD0F7FDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
