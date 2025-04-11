@@ -14,6 +14,7 @@ namespace Nethostfire {
         // Private key AES to encrypt bytes
         public byte[]? PrivateKeyAES = null;
         internal int Index;
+        internal int IndexShipping;
         // Timer to check if client is connected
         internal long Timer;
         internal long TimerReceivedPPS;

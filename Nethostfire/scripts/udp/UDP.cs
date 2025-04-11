@@ -46,28 +46,40 @@ namespace Nethostfire {
                 socket?.Send(bytes, bytes.Length, ip);
         }
 
-        static void SendPacket(UdpClient? socket, ref byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session, in IPEndPoint? ip = null, in ConcurrentDictionary<int, int>? ListSendGroupIdPPS = null){
+        static void SendPacket(UdpClient? socket, ref byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, TypeShipping typeShipping, ref Session session, in IPEndPoint? ip = null, in ConcurrentDictionary<int, int>? ListSendGroupIdPPS = null){
             if(socket != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
                 if(CheckSendLimitPPS(groupID, ref session, ListSendGroupIdPPS)){
-                    bytes = ConvertPacket(bytes, groupID, typeEncrypt, ref session);
+                    bytes = ConvertPacket(bytes, groupID, typeEncrypt, typeShipping, ref session);
+                    if(typeShipping == TypeShipping.WithoutPacketLoss)
+                        session.retransmissionBuffer.TryAdd(session.Index, bytes);
                     if(bytes != null && bytes.Length > 1)
-                        try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
+                        try{socket?.Send(bytes, bytes.Length, ip);}catch{}
                 }
             }
         }
 
-        static (byte[], int)? DeconvertPacket(byte[] bytes, ref Session session){
+        static (byte[], int)? DeconvertPacket(UdpClient socket, byte[] bytes, ref Session session, IPEndPoint? ip){
             if(bytes.Length == 1)
                 return (bytes, 0);
 
             // bytes[0] = (byte)typeEncrypt;
-            // bytes[1] = (byte)index.Length;
-            // bytes[2] = (byte)group.Length;
+            // bytes[1] = (byte)typeShipping;
+            // bytes[2] = (byte)index.Length;
+            // bytes[3] = (byte)group.Length;
             try{
+                if(bytes[0] == 0 && bytes.Length == 5){
+                    var id = BitConverter.ToInt32(bytes, 1);
+                    session.retransmissionBuffer.TryRemove(id, out _);
+                    return null;
+                }
+
+
                 TypeEncrypt typeEncrypt = (TypeEncrypt)bytes[0];
-                int index = BitConverter.ToInt16(bytes.Skip(3).Take(bytes[1]).ToArray());
-                int group = BitConverter.ToInt16(bytes.Skip(3 + bytes[1]).Take(bytes[2]).ToArray());
-                bytes = bytes.Skip(3 + bytes[1] + bytes[2]).ToArray();
+                TypeShipping typeShipping = (TypeShipping)bytes[1];
+
+                int index = BitConverter.ToInt16(bytes.Skip(4).Take(bytes[2]).ToArray());
+                int group = BitConverter.ToInt16(bytes.Skip(4 + bytes[2]).Take(bytes[3]).ToArray());
+                bytes = bytes.Skip(4 + bytes[2] + bytes[3]).ToArray();
 
                 // decryptograph
                 switch(typeEncrypt){
@@ -85,14 +97,29 @@ namespace Nethostfire {
                     break;
                 }
 
-                return (bytes, group);
-            }catch{
 
-            }
+                if(typeShipping == TypeShipping.WithoutPacketLoss || typeShipping == TypeShipping.WithoutPacketLossEnqueue){
+                    // Check if the packet is in the retransmission buffer
+                    var id = BitConverter.GetBytes(index);
+                    var reply = new byte[id.Length + 1];
+                    id.CopyTo(reply, 1);
+                    SendPing(socket, reply, ip);
+
+                    if(typeShipping == TypeShipping.WithoutPacketLossEnqueue){
+                        if(session.IndexShipping == index){
+                            session.IndexShipping++;
+                            return (bytes, group);
+                        }else
+                            return null;
+                    }
+                }
+
+                return (bytes, group);
+            }catch{}
             return null;
         }
 
-        static byte[] ConvertPacket(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, ref Session session){
+        static byte[] ConvertPacket(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, TypeShipping typeShipping, ref Session session){
             bytes ??= [];
             // Cryptograph
             switch(typeEncrypt){
@@ -116,17 +143,24 @@ namespace Nethostfire {
                 break;
             }
 
-            var index = BitConverter.GetBytes(session.Index);
+            // bytes[0] = (byte)typeEncrypt;
+            // bytes[1] = (byte)typeShipping;
+            // bytes[2] = (byte)index.Length;
+            // bytes[3] = (byte)group.Length;
+
+            var index = BitConverter.GetBytes(typeShipping == TypeShipping.WithoutPacketLossEnqueue ? session.IndexShipping++ : session.Index++);
             var group = BitConverter.GetBytes(groupID);
-            var data = new byte[index.Length + group.Length + bytes.Length + 3];
+            var data = new byte[index.Length + group.Length + bytes.Length + 4];
 
             data[0] = (byte)typeEncrypt;
-            data[1] = (byte)index.Length;
-            data[2] = (byte)group.Length;
+            data[1] = (byte)typeShipping; // typeShipping
+            data[2] = (byte)index.Length;
+            data[3] = (byte)group.Length;
 
-            index.CopyTo(data, 3);
-            group.CopyTo(data, 3 + index.Length);
-            bytes.CopyTo(data, 3 + index.Length + group.Length);
+
+            index.CopyTo(data, 4);
+            group.CopyTo(data, 4 + index.Length);
+            bytes.CopyTo(data, 4 + index.Length + group.Length);
 
             return data;
         }

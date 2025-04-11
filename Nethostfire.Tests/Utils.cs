@@ -61,7 +61,7 @@ public class Utils{
 
         var server = new UDP.Server();
         server.OnConnected = (ip) =>{
-            server.Send(Encoding.UTF8.GetBytes(message), 100, ip, typeEncrypt);
+            server.Send(Encoding.UTF8.GetBytes(message), 100, ref ip, typeEncrypt);
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -144,7 +144,7 @@ public class Utils{
         var server = new UDP.Server();
 
         server.OnConnected = (ip) =>{
-            server.Send(nulle ? null : Json.GetBytes(teste), 100, ip);
+            server.Send(nulle ? null : Json.GetBytes(teste), 100, ref ip);
         };
 
         client.OnReceivedBytes = (bytes, groupID) =>{
