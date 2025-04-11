@@ -37,17 +37,16 @@ namespace Nethostfire {
     /// The TypeHoldConnection is a feature to guarantee the sending of udp packets even with packet losses.
     /// </summary>
     public enum TypeShipping {
-        // 0 = background
-        // 1 = Respond
-        None = 2,
+        // 0 = Resply
+        None = 1,
         /// <summary>
         /// With WithoutPacketLoss, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance.
         /// </summary>
-        WithoutPacketLoss = 3,
+        WithoutPacketLoss = 2,
         /// <summary>
         /// With WithoutPacketLossEnqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 0ms and 1000ms.
         /// </summary>
-        WithoutPacketLossEnqueue = 4,
+        WithoutPacketLossEnqueue = 3,
     }
 
     /// <summary>

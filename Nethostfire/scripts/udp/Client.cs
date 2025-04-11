@@ -65,10 +65,10 @@ namespace Nethostfire {
                 }
             }
 
-            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendPacket(Socket, ref bytes, groupID, typeEncrypt, ref session, ListSendGroupIdPPS: in ListSendGroudIdPPS);
-            public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt);
-            public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt);
-            public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, typeEncrypt);
+            public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPacket(Socket, ref bytes, groupID, typeEncrypt, typeShipping, ref session, ListSendGroupIdPPS: in ListSendGroudIdPPS);
+            public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt, typeShipping);
+            public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt, typeShipping);
+            public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Json.GetBytes(data), groupID, typeEncrypt, typeShipping);
 
             public void SetSendLimitGroupPPS(int groupID, int pps){
                 if(pps > 0)
@@ -135,7 +135,7 @@ namespace Nethostfire {
                         // item2 = groupID
                         // item3 = typeEncrypt
                         // item4 = typeShipping
-                        var data = DeconvertPacket(bytes, ref session);
+                        var data = DeconvertPacket(Socket, bytes, ref session, null);
                         if(data.HasValue)
                         if(Status == SessionStatus.Connected){
                             if(CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
@@ -172,11 +172,11 @@ namespace Nethostfire {
                     if(Status == SessionStatus.Connecting){
                         if(session.PublicKeyRSA == ""){
                             var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
-                            SendPacket(Socket!, ref bytes, 0, TypeEncrypt.Compress, ref session);
+                            SendPacket(Socket!, ref bytes, 0, TypeEncrypt.Compress, TypeShipping.None, ref session);
                         }else
                         if(session.PrivateKeyAES == null){
                             var key = PrivateKeyAES;
-                            SendPacket(Socket!, ref key, 1, TypeEncrypt.RSA, ref session);
+                            SendPacket(Socket!, ref key, 1, TypeEncrypt.RSA, TypeShipping.None, ref session);
                         }
                     }
 

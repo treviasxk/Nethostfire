@@ -96,21 +96,21 @@ namespace Nethostfire {
                     ListSendGroudIdPPS.TryRemove(groupID, out _);
             }
 
-            public void Send(byte[]? bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None){
+            public void Send(byte[]? bytes, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
                 if(Sessions.TryGetValue(ip, out var session))
-                    SendPacket(Socket, ref bytes, groupID, typeEncrypt, ref session, ip, in ListSendGroudIdPPS);
+                    SendPacket(Socket, ref bytes, groupID, typeEncrypt, typeShipping, ref session, ip, in ListSendGroudIdPPS);
             }
             
-            public void Send(string text, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, ip, typeEncrypt);
-            public void Send(int value, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, ip, typeEncrypt);
-            public void Send(object data, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, ip, typeEncrypt);
+            public void Send(string text, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, ref ip, typeEncrypt);
+            public void Send(int value, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, ref ip, typeEncrypt);
+            public void Send(object data, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, ref ip, typeEncrypt);
 
-            public void SendGroup(byte[]? bytes, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(ips, (ip) => Send(bytes, groupID, ip, typeEncrypt));
+            public void SendGroup(byte[]? bytes, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(ips, (ip) => Send(bytes, groupID, ref ip, typeEncrypt));
             public void SendGroup(string text, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroup(Encoding.UTF8.GetBytes(text), groupID, ref ips, typeEncrypt);
             public void SendGroup(int value, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroup(BitConverter.GetBytes(value), groupID, ref ips, typeEncrypt);
             public void SendGroup(object data, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroup(Json.GetBytes(data), groupID, ref ips, typeEncrypt);
             
-            public void SendAll(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(Sessions.Keys, (ip) => Send(bytes, groupID, ip, typeEncrypt));
+            public void SendAll(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(Sessions.Keys, (ip) => Send(bytes, groupID, ref ip, typeEncrypt));
             public void SendAll(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAll(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt);
             public void SendAll(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAll(BitConverter.GetBytes(value), groupID, typeEncrypt);
             public void SendAll(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAll(Json.GetBytes(data), groupID, typeEncrypt);
@@ -134,7 +134,7 @@ namespace Nethostfire {
                     if(bytes != null && ip != null)
                     Parallel.Invoke(()=>{
                         var Authenticated = Sessions.TryGetValue(ip, out Session session);
-                        var data = DeconvertPacket(bytes, ref session);
+                        var data = DeconvertPacket(Socket, bytes, ref session, ip);
 
                         if(data.HasValue)
                         if(Authenticated){
@@ -159,13 +159,13 @@ namespace Nethostfire {
                                         case 0:
                                             // Resend RSA
                                             var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
-                                            SendPacket(Socket, ref bytes, 0, TypeEncrypt.None, ref session, ip);
+                                            SendPacket(Socket, ref bytes, 0, TypeEncrypt.None, TypeShipping.None, ref session, ip);
                                         return;
                                         case 1:
                                             // AES
                                             session.PrivateKeyAES = data.Value.Item1;
                                             var key = PrivateKeyAES;
-                                            SendPacket(Socket, ref key, 1, TypeEncrypt.RSA, ref session, ip);
+                                            SendPacket(Socket, ref key, 1, TypeEncrypt.RSA, TypeShipping.None, ref session, ip);
                                             if(session.Status == SessionStatus.Connecting){
                                                 WriteLog($"{ip} Connected!", this, EnableLogs);
                                                 session.Timer = DateTime.Now.Ticks;
@@ -193,7 +193,7 @@ namespace Nethostfire {
                                     if(Sessions.TryAdd(ip, session)){
                                         WriteLog($"{ip} Incomming...", this, EnableLogs);
                                         var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
-                                        SendPacket(Socket, ref bytes, 0, TypeEncrypt.Compress, ref session, ip);
+                                        SendPacket(Socket, ref bytes, 0, TypeEncrypt.Compress, TypeShipping.None, ref session, ip);
                                     }
                                 }
                             }
@@ -216,6 +216,7 @@ namespace Nethostfire {
                         if(Sessions.TryRemove(item.Key, out _))
                             WriteLog($"{item.Key} Disconnected!", this, EnableLogs);
                     });
+
                     Thread.Sleep(1000);
                 }
             }
