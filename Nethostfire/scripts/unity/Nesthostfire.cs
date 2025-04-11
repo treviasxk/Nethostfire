@@ -12,10 +12,10 @@ namespace Nethostfire{
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Init() => Dispose();
 
-        // Resolve hight usage cpu
+        // Resolve high usage cpu
         void Awake() => QualitySettings.vSyncCount = Application.isBatchMode ? 0 : QualitySettings.vSyncCount;
 
-        // Preseve object in unload scene
+        // Preserve object in unload scene
         void Start() => DontDestroyOnLoad(gameObject);
         
         // Run events in MainThread
