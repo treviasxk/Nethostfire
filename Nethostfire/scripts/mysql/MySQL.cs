@@ -1,7 +1,6 @@
 // Software Developed by Trevias Xk
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
-// Paypal:              trevias@live.com
 
 using System.Data;
 using System.Net;

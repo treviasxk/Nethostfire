@@ -1,7 +1,6 @@
 // Software Developed by Trevias Xk
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
-// Paypal:              trevias@live.com
 // Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using System.Collections.Concurrent;
@@ -9,10 +8,93 @@ using System.Net;
 using System.Net.Sockets;
 using static Nethostfire.DataSecurity;
 
-namespace Nethostfire {
-    public partial class UDP{
+namespace Nethostfire.UDP {
+    public enum SessionStatus{
+        Disconnected = 0,
+        Disconnecting = 1,
+        Connected = 2,
+        Connecting = 3,
+        Kicked = 4,
+        IpBlocked = 5,
+        MaxClientExceeded = 6,
+    }
 
-        static bool CheckReceiveLimitPPS(in byte[] bytes, in int groupID, ref Session session, int LimitPPS, in ConcurrentDictionary<int, int>? LimitGroudIdPPS = null){
+    public enum ServerState{
+        Stopped = 0,
+        Stopping = 1,
+        Running = 2,
+        Initializing = 3,
+        Restarting = 4,
+    }
+
+
+    /// <summary>
+    /// The TypeHoldConnection is a feature to guarantee the sending of udp packets even with packet losses.
+    /// </summary>
+    public enum TypeShipping {
+        // 0 = Resply
+        None = 1,
+        /// <summary>
+        /// With WithoutPacketLoss, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance.
+        /// </summary>
+        WithoutPacketLoss = 2,
+        /// <summary>
+        /// With WithoutPacketLossEnqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 0ms and 1000ms.
+        /// </summary>
+        WithoutPacketLossEnqueue = 3,
+    }
+
+    /// <summary>
+    /// The TypeShipping is used to define the type of encryption of the bytes when being sent.
+    /// </summary>
+    public enum TypeEncrypt {
+        /// <summary>
+        /// The bytes will not be modified when sent.
+        /// </summary>
+        None = 0,
+        /// <summary>
+        /// The bytes will be sent encrypted in AES and then automatically decrypted after reaching their destination.
+        /// </summary>
+        AES = 1,
+        /// <summary>
+        /// The bytes will be sent encrypted in RSA and then automatically decrypted after reaching their destination.
+        /// </summary>
+        RSA = 2,
+        /// <summary>
+        /// The bytes will be sent encrypted in Base64 and then automatically decrypted after reaching their destination.
+        /// </summary>
+        Base64 = 3,
+        /// <summary>
+        /// The bytes will be sent compress and then automatically decompress after reaching their destination.
+        /// </summary>
+        Compress = 4,
+        /// <summary>
+        /// The bytes will be sent encrypted in Base64 and if your destination is a client, they will be automatically decrypted when you reach your destination, but if the destination is a server the bytes will not be decrypted.
+        /// </summary>
+        OnlyBase64 = 5,
+        /// <summary>
+        /// The bytes will be sent compress and if your destination is a client, they will be automatically decompress when you reach your destination, but if the destination is a server the bytes will not be decompress.
+        /// </summary>
+        OnlyCompress = 6,
+    }
+    public class Session{
+        public ushort Ping;
+        public SessionStatus Status;
+        // Public key RSA to encrypt bytes
+        public string PublicKeyRSA = "";
+        // Private key AES to encrypt bytes
+        public byte[]? PrivateKeyAES = null;
+        internal int Index;
+        internal int IndexShipping;
+        // Timer to check if client is connected
+        internal long Timer;
+        internal long TimerReceivedPPS;
+        internal long TimerSendPPS;
+        internal ConcurrentDictionary<int, byte[]> retransmissionBuffer = new();
+    }
+
+    internal class UDP{
+        public static bool CheckReceiveLimitPPS(in byte[] bytes, in int groupID, ref Session session, int LimitPPS, in ConcurrentDictionary<int, int>? LimitGroudIdPPS = null){
             if(LimitPPS == 0 && LimitGroudIdPPS?.Count == 0)
                 return true;
 
@@ -46,7 +128,7 @@ namespace Nethostfire {
                 socket?.Send(bytes, bytes.Length, ip);
         }
 
-        static void SendPacket(UdpClient? socket, ref byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, TypeShipping typeShipping, ref Session session, in IPEndPoint? ip = null, in ConcurrentDictionary<int, int>? ListSendGroupIdPPS = null){
+        public static void SendPacket(UdpClient? socket, ref byte[]? bytes, int groupID, TypeEncrypt typeEncrypt, TypeShipping typeShipping, ref Session session, in IPEndPoint? ip = null, in ConcurrentDictionary<int, int>? ListSendGroupIdPPS = null){
             if(socket != null && (session.Status == SessionStatus.Connected || session.Status == SessionStatus.Connecting)){
                 if(CheckSendLimitPPS(groupID, ref session, ListSendGroupIdPPS)){
                     bytes = ConvertPacket(bytes, groupID, typeEncrypt, typeShipping, ref session);
@@ -58,7 +140,7 @@ namespace Nethostfire {
             }
         }
 
-        static (byte[], int)? DeconvertPacket(UdpClient socket, byte[] bytes, ref Session session, IPEndPoint? ip){
+        public static (byte[], int)? DeconvertPacket(UdpClient socket, byte[] bytes, ref Session session, IPEndPoint? ip){
             if(bytes.Length == 1)
                 return (bytes, 0);
 

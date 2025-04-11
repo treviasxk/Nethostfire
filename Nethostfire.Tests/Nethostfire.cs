@@ -1,4 +1,5 @@
-﻿using static Nethostfire.Tests.Utils;
+﻿using Nethostfire.UDP;
+using static Nethostfire.Tests.Utils;
 
 namespace Nethostfire.Tests;
 
