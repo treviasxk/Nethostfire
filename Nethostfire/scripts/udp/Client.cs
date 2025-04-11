@@ -45,6 +45,7 @@ namespace Nethostfire {
                 try{
                     if(Socket == null){
                         Socket = new UdpClient();
+                        StartUnity(client: this);
                         GenerateKey(symmetricSizeRSA);
                         WriteLog($"Connecting on {Host}:{Port}", this, EnableLogs);
                         ChangeStatus(SessionStatus.Connecting, false);
@@ -87,7 +88,7 @@ namespace Nethostfire {
                 session.Status = status;
                 if(log)
                     WriteLog(status, this, EnableLogs);
-                OnStatus?.Invoke(status);
+                RunOnMainThread(() => OnStatus?.Invoke(status));
             }
 
             public void Disconnect(){
@@ -138,7 +139,7 @@ namespace Nethostfire {
                         if(data.HasValue)
                         if(Status == SessionStatus.Connected){
                             if(CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
-                                OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2);
+                                RunOnMainThread(() =>OnReceivedBytes?.Invoke(data.Value.Item1, data.Value.Item2));
                             return;
                         }else
                         if(Status == SessionStatus.Connecting){
@@ -148,13 +149,13 @@ namespace Nethostfire {
                             if(data.Value.Item2 == 0){
                                 string value = Encoding.ASCII.GetString(data.Value.Item1);
                                 if(value.StartsWith("<RSAKeyValue>") && value.EndsWith("</RSAKeyValue>") && PrivateKeyAES != null)
-                                    session.Credentials.PublicKeyRSA = value;
+                                    session.PublicKeyRSA = value;
                                 return;
                             }else
                             // Check AES server and connect
                             if(data.Value.Item2 == 1){
                                 if(data.Value.Item1.Length == 16){
-                                    session.Credentials.PrivateKeyAES = data.Value.Item1;
+                                    session.PrivateKeyAES = data.Value.Item1;
                                     ChangeStatus(SessionStatus.Connected);
                                 }
                                 return;
@@ -169,11 +170,11 @@ namespace Nethostfire {
                 while(Status != SessionStatus.Disconnected){
                     // Authenting
                     if(Status == SessionStatus.Connecting){
-                        if(session.Credentials.PublicKeyRSA == null){
+                        if(session.PublicKeyRSA == ""){
                             var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
                             SendPacket(Socket!, ref bytes, 0, TypeEncrypt.Compress, ref session);
                         }else
-                        if(session.Credentials.PrivateKeyAES == null){
+                        if(session.PrivateKeyAES == null){
                             var key = PrivateKeyAES;
                             SendPacket(Socket!, ref key, 1, TypeEncrypt.RSA, ref session);
                         }
@@ -181,9 +182,11 @@ namespace Nethostfire {
 
                     if(Status == SessionStatus.Connected){
                         SendPing(Socket, [1]);  // Send Online Status
+                        // Set Connecting...
                         if(session.Timer + ConnectTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks){
                             session.Status = SessionStatus.Connecting;
-                            session.Credentials = new();
+                            session.PublicKeyRSA = "";
+                            session.PrivateKeyAES = null;
                             ChangeStatus(SessionStatus.Connecting);
                         }
                     }

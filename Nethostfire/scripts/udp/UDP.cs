@@ -100,7 +100,7 @@ namespace Nethostfire {
                     bytes = Compress(bytes);
                 break;
                 case TypeEncrypt.RSA:
-                    bytes = EncryptRSA(bytes, session.Credentials.PublicKeyRSA);
+                    bytes = EncryptRSA(bytes, session.PublicKeyRSA);
                 break;
                 case TypeEncrypt.Base64:
                     bytes = EncryptBase64(bytes);
