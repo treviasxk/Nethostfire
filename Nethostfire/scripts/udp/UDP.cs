@@ -53,7 +53,7 @@ namespace Nethostfire {
                     if(typeShipping == TypeShipping.WithoutPacketLoss)
                         session.retransmissionBuffer.TryAdd(session.Index, bytes);
                     if(bytes != null && bytes.Length > 1)
-                        try{socket?.Send(bytes, bytes.Length, ip); session.Index++;}catch{}
+                        try{socket?.Send(bytes, bytes.Length, ip);}catch{}
                 }
             }
         }
@@ -69,7 +69,6 @@ namespace Nethostfire {
             try{
                 if(bytes[0] == 0 && bytes.Length == 5){
                     var id = BitConverter.ToInt32(bytes, 1);
-                    Console.WriteLine($"Retransmission: {id}");
                     session.retransmissionBuffer.TryRemove(id, out _);
                     return null;
                 }
@@ -98,18 +97,22 @@ namespace Nethostfire {
                     break;
                 }
 
-                switch(typeShipping){
-                    case TypeShipping.WithoutPacketLoss:
-                        var id = BitConverter.GetBytes(session.Index);
-                        var reply = new byte[id.Length + 1];
-                        id.CopyTo(reply, 1);
-                        SendPing(socket, reply, ip);
-                    break;
-                    case TypeShipping.WithoutPacketLossEnqueue:
-                        
-                    break;
-                }
 
+                if(typeShipping == TypeShipping.WithoutPacketLoss || typeShipping == TypeShipping.WithoutPacketLossEnqueue){
+                    // Check if the packet is in the retransmission buffer
+                    var id = BitConverter.GetBytes(index);
+                    var reply = new byte[id.Length + 1];
+                    id.CopyTo(reply, 1);
+                    SendPing(socket, reply, ip);
+
+                    if(typeShipping == TypeShipping.WithoutPacketLossEnqueue){
+                        if(session.IndexShipping == index){
+                            session.IndexShipping++;
+                            return (bytes, group);
+                        }else
+                            return null;
+                    }
+                }
 
                 return (bytes, group);
             }catch{}
@@ -145,7 +148,7 @@ namespace Nethostfire {
             // bytes[2] = (byte)index.Length;
             // bytes[3] = (byte)group.Length;
 
-            var index = BitConverter.GetBytes(session.Index);
+            var index = BitConverter.GetBytes(typeShipping == TypeShipping.WithoutPacketLossEnqueue ? session.IndexShipping++ : session.Index++);
             var group = BitConverter.GetBytes(groupID);
             var data = new byte[index.Length + group.Length + bytes.Length + 4];
 

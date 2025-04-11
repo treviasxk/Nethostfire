@@ -101,19 +101,19 @@ namespace Nethostfire {
                     SendPacket(Socket, ref bytes, groupID, typeEncrypt, typeShipping, ref session, ip, in ListSendGroudIdPPS);
             }
             
-            public void Send(string text, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Encoding.UTF8.GetBytes(text), groupID, ref ip, typeEncrypt);
-            public void Send(int value, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(BitConverter.GetBytes(value), groupID, ref ip, typeEncrypt);
-            public void Send(object data, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Send(Json.GetBytes(data), groupID, ref ip, typeEncrypt);
+            public void Send(string text, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Encoding.UTF8.GetBytes(text), groupID, ref ip, typeEncrypt, typeShipping);
+            public void Send(int value, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(BitConverter.GetBytes(value), groupID, ref ip, typeEncrypt, typeShipping);
+            public void Send(object data, int groupID, ref IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Json.GetBytes(data), groupID, ref ip, typeEncrypt, typeShipping);
 
-            public void SendGroup(byte[]? bytes, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(ips, (ip) => Send(bytes, groupID, ref ip, typeEncrypt));
-            public void SendGroup(string text, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroup(Encoding.UTF8.GetBytes(text), groupID, ref ips, typeEncrypt);
-            public void SendGroup(int value, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroup(BitConverter.GetBytes(value), groupID, ref ips, typeEncrypt);
-            public void SendGroup(object data, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendGroup(Json.GetBytes(data), groupID, ref ips, typeEncrypt);
+            public void SendGroup(byte[]? bytes, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Parallel.ForEach(ips, (ip) => Send(bytes, groupID, ref ip, typeEncrypt, typeShipping));
+            public void SendGroup(string text, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroup(Encoding.UTF8.GetBytes(text), groupID, ref ips, typeEncrypt, typeShipping);
+            public void SendGroup(int value, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroup(BitConverter.GetBytes(value), groupID, ref ips, typeEncrypt, typeShipping);
+            public void SendGroup(object data, int groupID, ref ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroup(Json.GetBytes(data), groupID, ref ips, typeEncrypt, typeShipping);
             
-            public void SendAll(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => Parallel.ForEach(Sessions.Keys, (ip) => Send(bytes, groupID, ref ip, typeEncrypt));
-            public void SendAll(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAll(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt);
-            public void SendAll(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAll(BitConverter.GetBytes(value), groupID, typeEncrypt);
-            public void SendAll(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None) => SendAll(Json.GetBytes(data), groupID, typeEncrypt);
+            public void SendAll(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Parallel.ForEach(Sessions.Keys, (ip) => Send(bytes, groupID, ref ip, typeEncrypt, typeShipping));
+            public void SendAll(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAll(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt, typeShipping);
+            public void SendAll(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAll(BitConverter.GetBytes(value), groupID, typeEncrypt, typeShipping);
+            public void SendAll(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAll(Json.GetBytes(data), groupID, typeEncrypt, typeShipping);
 
             async void ReceivePacket(){
                 while(Socket != null){

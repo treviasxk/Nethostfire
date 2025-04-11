@@ -102,17 +102,15 @@ namespace Nethostfire {
             if(RunningInUnity)
                 ListRunOnMainThread.Enqueue(action);
             else
-                action?.Invoke();
+                Parallel.Invoke(() => action?.Invoke());
         }
 
         public static void ThisMainThread(){
-            while(ListRunOnMainThread.TryDequeue(out var _action))
+            while(ListRunOnMainThread.TryDequeue(out var action))
                 if(UnityBatchMode){
-                    Parallel.Invoke(() =>{
-                        _action?.Invoke();
-                    });
+                    Parallel.Invoke(() => action?.Invoke());
                 }else
-                    _action?.Invoke();
+                    action?.Invoke();
         }
 
         public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
@@ -121,7 +119,7 @@ namespace Nethostfire {
             if(!UnityEngine.GameObject.Find("[Nethostfire]")){
                 if(UnityBatchMode)
                     Console.Clear();
-                new UnityEngine.GameObject("[Nethostfire]").AddComponent<NethostfireService>().hideFlags = UnityEngine.HideFlags.HideInHierarchy;
+                new UnityEngine.GameObject("[Nethostfire]").AddComponent<Nesthostfire>().hideFlags = UnityEngine.HideFlags.HideInHierarchy;
             }
 
             if(client != null && !ListClient.Contains(client))
