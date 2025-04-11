@@ -21,14 +21,14 @@ namespace Nethostfire{
         public async void Connect(IPAddress server, int port, string username, string password, string database){
             try{
                 CurrentMySQLStatus = MySQLStatus.Connecting;
-                OnStatus?.Invoke(CurrentMySQLStatus);
+                RunOnMainThread(() => OnStatus?.Invoke(CurrentMySQLStatus));
                 WriteLog("Connecting in " + server + ":" + port, this, EnableLogs);
                 mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlConnection");
                 //mySqlConnection = new MySqlConnector.MySqlClient.MySqlConnection();
                 mySqlConnection!.ConnectionString = "server="+server+";port="+ port +";database="+database+";user="+username+";password="+password+";";
                 await mySqlConnection.OpenAsync();
                 CurrentMySQLStatus = MySQLStatus.Connected;
-                OnStatus?.Invoke(CurrentMySQLStatus);
+                RunOnMainThread(() => OnStatus?.Invoke(CurrentMySQLStatus));
             }catch(Exception ex){
                 WriteLog(ex.Message, this, EnableLogs);
             }
@@ -38,7 +38,7 @@ namespace Nethostfire{
             if(mySqlConnection != null){
                 mySqlConnection.Close();
                 CurrentMySQLStatus = MySQLStatus.Disconnected;
-                OnStatus?.Invoke(CurrentMySQLStatus);
+                RunOnMainThread(() => OnStatus?.Invoke(CurrentMySQLStatus));
             }
         }
 

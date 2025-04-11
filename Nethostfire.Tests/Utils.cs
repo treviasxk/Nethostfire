@@ -31,7 +31,7 @@ public class Utils{
         };
 
         server.OnConnected = (ip) =>{
-            result = result && server.Sessions.GetStatus(ip) == SessionStatus.Connected;
+            result = result && server.Sessions[ip].Status == SessionStatus.Connected;
         };
 
         Thread.Sleep(5000);
@@ -208,7 +208,7 @@ public class Utils{
         var client = new UDP.Client();
         var server = new UDP.Server();
         int pps = 5;
-        Session session = new();
+        Session? session = new();
         
         client.OnStatus = (status) =>{
             if(status == SessionStatus.Connected && isClient){
