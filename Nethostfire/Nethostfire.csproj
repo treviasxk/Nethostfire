@@ -25,9 +25,7 @@
     <Reference Include="plugins/UnityEngine.dll">
       <Private>false</Private>
     </Reference>
-    <Reference Include="plugins/Newtonsoft.Json.dll">
-      <Private>false</Private>
-    </Reference>
+
     <!-- MySQL -->
     <EmbeddedResource Include="plugins/MySqlConnector.dll" />
     <EmbeddedResource Include="plugins/Microsoft.Extensions.Logging.Abstractions.dll" />
