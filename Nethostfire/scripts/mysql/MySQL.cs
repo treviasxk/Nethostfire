@@ -21,7 +21,7 @@ namespace Nethostfire.MySQL{
         public async void Connect(IPAddress server, int port, string username, string password, string database){
             try{
                 ChangeState(MySQLState.Connecting, $"Connecting in {server}:{port}");
-                mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlConnection");
+                mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnection");
                 //mySqlConnection = new MySqlConnector.MySqlClient.MySqlConnection();
                 mySqlConnection!.ConnectionString = "server="+server+";port="+ port +";database="+database+";user="+username+";password="+password+";";
                 await mySqlConnection.OpenAsync();
@@ -52,7 +52,7 @@ namespace Nethostfire.MySQL{
 
         //Execute query
         public bool ExecuteQuery(string sql, object[] parameters){
-            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
+            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlCommand")(sql, mySqlConnection);
             for(int i = 0; i < parameters.Length; i++)
                 command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
             if(command.ExecuteNonQuery() > 0)
@@ -63,7 +63,7 @@ namespace Nethostfire.MySQL{
 
         //Check query exist
         public bool Query(string sql, object[] parameters){
-            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
+            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlCommand")(sql, mySqlConnection);
             for(int i = 0; i < parameters.Length; i++)
                 command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
             var reader = command.ExecuteReader();
@@ -75,7 +75,7 @@ namespace Nethostfire.MySQL{
 
         //Result select
         public bool Query(string sql, object[] parameters, out DataRow[] dataRows){
-            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlCommand")(sql, mySqlConnection);
+            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlCommand")(sql, mySqlConnection);
             for(int i = 0; i < parameters.Length; i++)
                 command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
             var reader = command.ExecuteReader();

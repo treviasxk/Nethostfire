@@ -21,7 +21,9 @@ internal class Program{
     }
 
     static void TestJson(){
-        Console.WriteLine(Json.ToJson(Server));
+        var json = Json.ToJson(Server);
+        Server? server = Json.FromJson<Server>(json);
+        Console.WriteLine(server == null);
     }
 
     static void TestMySQL(){

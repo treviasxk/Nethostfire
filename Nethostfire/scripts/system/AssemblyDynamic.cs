@@ -14,34 +14,35 @@ namespace Nethostfire{
     class AssemblyDynamic{
         static ConcurrentDictionary<string, dynamic> ListAssemblyDynamic = new();
         public static dynamic? Get(string libName, string typeName, MethodData? methodData = null){
-            if(ListAssemblyDynamic.TryGetValue(libName + typeName, out dynamic? Dynamic))
+            typeName = $"{libName}.{typeName}";
+            var AssemblyName = typeName + (methodData.HasValue ? $".{methodData.Value.MethodName}" : "");
+            if(ListAssemblyDynamic.TryGetValue(AssemblyName, out dynamic? Dynamic))
                 return Dynamic;
 
-        var executingAssembly = Assembly.GetExecutingAssembly();
+            var executingAssembly = Assembly.GetExecutingAssembly();
 
-        // AssemblyResolve
-        AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>{
-            var assemblyName = new AssemblyName(args.Name).Name;
-            var resourceName = executingAssembly.GetManifestResourceNames()
-                .FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll") || r.Contains(assemblyName));
+            // AssemblyResolve
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>{
+                var assemblyName = new AssemblyName(args.Name).Name;
+                var resourceName = executingAssembly.GetManifestResourceNames()
+                    .FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll") || r.Contains(assemblyName));
 
-            if (resourceName != null)
-            {
-                using var stream = executingAssembly.GetManifestResourceStream(resourceName);
-                if (stream != null)
+                if (resourceName != null)
                 {
-                    byte[] data = new byte[stream.Length];
-                    stream.Read(data, 0, data.Length);
-                    return Assembly.Load(data);
+                    using var stream = executingAssembly.GetManifestResourceStream(resourceName);
+                    if (stream != null)
+                    {
+                        byte[] data = new byte[stream.Length];
+                        stream.Read(data, 0, data.Length);
+                        return Assembly.Load(data);
+                    }
                 }
-            }
-            return null;
-        };
+                return null;
+            };
 
-        // Load main DLL
-        Assembly? assembly = null;
-        var dllResourceName = executingAssembly.GetManifestResourceNames()
-            .FirstOrDefault(r => r.EndsWith($"{libName}.dll"));
+            // Load main DLL
+            Assembly? assembly = null;
+            var dllResourceName = executingAssembly.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith($"{libName}.dll"));
 
             if(dllResourceName != null){
                 using var stream = executingAssembly.GetManifestResourceStream(dllResourceName);
@@ -82,7 +83,7 @@ namespace Nethostfire{
             }
 
             if(Dynamic != null)
-                ListAssemblyDynamic.TryAdd(libName + typeName, Dynamic);
+                ListAssemblyDynamic.TryAdd(AssemblyName, Dynamic);
 
             return Dynamic;
         }
