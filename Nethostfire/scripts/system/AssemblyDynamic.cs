@@ -14,37 +14,76 @@ namespace Nethostfire{
     class AssemblyDynamic{
         static ConcurrentDictionary<string, dynamic> ListAssemblyDynamic = new();
         public static dynamic? Get(string libName, string typeName, MethodData? methodData = null){
-            dynamic? Dynamic = null;
+            typeName = $"{libName}.{typeName}";
+            var AssemblyName = typeName + (methodData.HasValue ? $".{methodData.Value.MethodName}" : "");
+            if(ListAssemblyDynamic.TryGetValue(AssemblyName, out dynamic? Dynamic))
+                return Dynamic;
 
-            if(!ListAssemblyDynamic.TryGetValue(libName, out Dynamic)){
-                var assembly = Assembly.GetExecutingAssembly();
+            var executingAssembly = Assembly.GetExecutingAssembly();
 
-                // Lembre-se de checar se a assembly já foi carregado!!
-                foreach(var resourceNames in assembly.GetManifestResourceNames().Where(item => item.Contains(libName + ".dll"))){
-                    if(assembly.GetManifestResourceStream(resourceNames) is Stream stream && stream != null){
+            // AssemblyResolve
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>{
+                var assemblyName = new AssemblyName(args.Name).Name;
+                var resourceName = executingAssembly.GetManifestResourceNames()
+                    .FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll") || r.Contains(assemblyName));
+
+                if (resourceName != null)
+                {
+                    using var stream = executingAssembly.GetManifestResourceStream(resourceName);
+                    if (stream != null)
+                    {
                         byte[] data = new byte[stream.Length];
-                        stream?.Read(data, 0, data.Length);
-                        assembly = Assembly.Load(data);
+                        stream.Read(data, 0, data.Length);
+                        return Assembly.Load(data);
                     }
                 }
+                return null;
+            };
 
-                if(methodData.HasValue && assembly.GetType(typeName) is Type typeStatic && typeStatic != null && typeStatic.IsAbstract && typeStatic.IsSealed){
-                    MethodInfo? metodoGenerico = typeStatic.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                    .Where(m => m.Name == methodData.Value.MethodName 
-                        && !m.IsGenericMethod // Exclui a versão genérica
-                        && m.GetParameters().Length == 1)
-                    .FirstOrDefault();
+            // Load main DLL
+            Assembly? assembly = null;
+            var dllResourceName = executingAssembly.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith($"{libName}.dll"));
 
-                    if(metodoGenerico!.IsGenericMethod){
-                        Dynamic = metodoGenerico.MakeGenericMethod(typeof(object)).Invoke(null, methodData.Value.Params);
-                    }else{
-                        Dynamic = metodoGenerico.Invoke(null, methodData.Value.Params);
-                    }
-                }else
-                    Dynamic = assembly.CreateInstance(typeName);
-
-                ListAssemblyDynamic.TryAdd(libName+typeName, assembly);
+            if(dllResourceName != null){
+                using var stream = executingAssembly.GetManifestResourceStream(dllResourceName);
+                if(stream != null){
+                    byte[] data = new byte[stream.Length];
+                    stream.Read(data, 0, data.Length);
+                    assembly = Assembly.Load(data);
+                }
             }
+
+            if(assembly == null)
+                throw new Exception($"Could not load DLL {libName}");
+            
+            // Rest of the code (static methods or instantiation)
+            if(methodData.HasValue && assembly.GetType(typeName) is Type typeStatic && typeStatic != null && typeStatic.IsAbstract && typeStatic.IsSealed){
+                var metodoGenerico = typeStatic.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .FirstOrDefault(m => m.Name == methodData.Value.MethodName
+                        && !m.IsGenericMethod
+                        && m.GetParameters().Length == 1);
+
+                if(metodoGenerico != null){
+                    try{
+                        Dynamic = metodoGenerico.IsGenericMethod ? metodoGenerico.MakeGenericMethod(typeof(object)).Invoke(null, methodData.Value.Params) : metodoGenerico.Invoke(null, methodData.Value.Params);
+                    }catch(TargetInvocationException ex){
+                        throw new Exception($"Error invoking method {methodData.Value.MethodName}: {ex.InnerException?.Message}", ex.InnerException);
+                    }
+                }
+            }else{
+                var type = assembly.GetType(typeName);
+                if(type == null)
+                    throw new Exception($"Type {typeName} not found in DLL {libName}");
+
+                try{
+                    Dynamic = Activator.CreateInstance(type);
+                }catch (TargetInvocationException ex){
+                    throw new Exception($"Error instantiating {typeName}: {ex.InnerException?.Message}", ex.InnerException);
+                }
+            }
+
+            if(Dynamic != null)
+                ListAssemblyDynamic.TryAdd(AssemblyName, Dynamic);
 
             return Dynamic;
         }

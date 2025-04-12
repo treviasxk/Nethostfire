@@ -9,7 +9,7 @@ using System.Text;
 using Nethostfire.UDP;
 
 namespace Nethostfire {
-    public enum MySQLStatus {
+    public enum MySQLState {
         Connected,
         Connecting,
         Disconnected,

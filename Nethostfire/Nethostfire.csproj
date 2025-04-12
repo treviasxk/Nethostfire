@@ -25,8 +25,13 @@
     <Reference Include="plugins/UnityEngine.dll">
       <Private>false</Private>
     </Reference>
+
     <!-- MySQL -->
     <EmbeddedResource Include="plugins/MySqlConnector.dll" />
+    <EmbeddedResource Include="plugins/Microsoft.Extensions.Logging.Abstractions.dll" />
+    <EmbeddedResource Include="plugins/Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+
+    <!-- Newtonsoft.Json -->
     <EmbeddedResource Include="plugins/Newtonsoft.Json.dll" />
   </ItemGroup>
 
