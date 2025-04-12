@@ -1,5 +1,8 @@
+// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
+// Github:              https://github.com/treviasxk
+
 using System.Net;
-using Nethostfire;
 using Nethostfire.UDP;
 
 public class SessionStatusEventArgs : EventArgs{

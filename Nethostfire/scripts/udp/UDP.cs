@@ -1,7 +1,6 @@
 // Software Developed by Trevias Xk
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
-// Documentation:       https://github.com/treviasxk/Nethostfire/blob/master/UDP/README.md
 
 using System.Collections.Concurrent;
 using System.Net;

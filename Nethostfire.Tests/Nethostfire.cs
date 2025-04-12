@@ -1,4 +1,8 @@
-﻿using Nethostfire.UDP;
+﻿// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
+// Github:              https://github.com/treviasxk
+
+using Nethostfire.UDP;
 using static Nethostfire.Tests.Utils;
 
 namespace Nethostfire.Tests;
