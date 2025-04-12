@@ -1,12 +1,12 @@
 // Software Developed by Trevias Xk
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
-// Paypal:              trevias@live.com
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Nethostfire.UDP;
 
 namespace Nethostfire {
     public enum MySQLStatus {
@@ -15,79 +15,11 @@ namespace Nethostfire {
         Disconnected,
     }
 
-    public enum ServerStatus{
-        Stopped = 0,
-        Stopping = 1,
-        Running = 2,
-        Initializing = 3,
-        Restarting = 4,
-    }
-
-    public enum SessionStatus{
-        Disconnected = 0,
-        Disconnecting = 1,
-        Connected = 2,
-        Connecting = 3,
-        Kicked = 4,
-        IpBlocked = 5,
-        MaxClientExceeded = 6,
-    }
-
-    /// <summary>
-    /// The TypeHoldConnection is a feature to guarantee the sending of udp packets even with packet losses.
-    /// </summary>
-    public enum TypeShipping {
-        // 0 = Resply
-        None = 1,
-        /// <summary>
-        /// With WithoutPacketLoss, bytes are sent to their destination without packet loss, shipments will not be queued to improve performance.
-        /// </summary>
-        WithoutPacketLoss = 2,
-        /// <summary>
-        /// With WithoutPacketLossEnqueue, bytes are sent to their destination without packet loss, shipments will be sent in a queue, this feature is not recommended to be used for high demand for shipments, each package can vary between 0ms and 1000ms.
-        /// </summary>
-        WithoutPacketLossEnqueue = 3,
-    }
-
-    /// <summary>
-    /// The TypeShipping is used to define the type of encryption of the bytes when being sent.
-    /// </summary>
-    public enum TypeEncrypt {
-        /// <summary>
-        /// The bytes will not be modified when sent.
-        /// </summary>
-        None = 0,
-        /// <summary>
-        /// The bytes will be sent encrypted in AES and then automatically decrypted after reaching their destination.
-        /// </summary>
-        AES = 1,
-        /// <summary>
-        /// The bytes will be sent encrypted in RSA and then automatically decrypted after reaching their destination.
-        /// </summary>
-        RSA = 2,
-        /// <summary>
-        /// The bytes will be sent encrypted in Base64 and then automatically decrypted after reaching their destination.
-        /// </summary>
-        Base64 = 3,
-        /// <summary>
-        /// The bytes will be sent compress and then automatically decompress after reaching their destination.
-        /// </summary>
-        Compress = 4,
-        /// <summary>
-        /// The bytes will be sent encrypted in Base64 and if your destination is a client, they will be automatically decrypted when you reach your destination, but if the destination is a server the bytes will not be decrypted.
-        /// </summary>
-        OnlyBase64 = 5,
-        /// <summary>
-        /// The bytes will be sent compress and if your destination is a client, they will be automatically decompress when you reach your destination, but if the destination is a server the bytes will not be decompress.
-        /// </summary>
-        OnlyCompress = 6,
-    }
-
     class System{
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
         public static Process Process = Process.GetCurrentProcess();
-        public static HashSet<UDP.Client> ListClient = new();
-        public static HashSet<UDP.Server> ListServer = new();
+        public static HashSet<Client> ListClient = new();
+        public static HashSet<Server> ListServer = new();
         static StreamWriter? fileLog;
         static int currentInstance = 0;
         public static bool SaveLog = true;
@@ -113,7 +45,7 @@ namespace Nethostfire {
                     action?.Invoke();
         }
 
-        public static void LoadUnity(UDP.Client? client = null, UDP.Server? server = null){
+        public static void LoadUnity(Client? client = null, Server? server = null){
             UnityBatchMode = UnityEngine.Application.isBatchMode;
 
             if(!UnityEngine.GameObject.Find("[Nethostfire]")){
@@ -129,7 +61,7 @@ namespace Nethostfire {
                 ListServer.Add(server);
         }
 
-        public static void StartUnity(UDP.Client? client = null, UDP.Server? server = null){
+        public static void StartUnity(Client? client = null, Server? server = null){
             try{
                 LoadUnity(client, server);
                 RunningInUnity = true;

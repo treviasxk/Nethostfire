@@ -1,13 +1,18 @@
+// Software Developed by Trevias Xk
+// Social Networks:     treviasxk
+// Github:              https://github.com/treviasxk
+
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using Nethostfire.UDP;
 
 namespace Nethostfire.Tests;
 public class Utils{
     public static bool TestOffline(bool clientoff = false){
         var result = false;
-        var client = new UDP.Client();
-        var server = new UDP.Server();
+        var client = new Client();
+        var server = new Server();
 
         server.Start(IPAddress.Any, 25000);
         client.Connect(IPAddress.Parse("127.0.0.1"), 25000);
@@ -25,13 +30,13 @@ public class Utils{
         else
             server.Start(IPAddress.Any, 25000);
 
-        client.OnStatus = (status) =>{
-            if(status == SessionStatus.Connected)
+        client.Status += (ob, e) =>{
+            if(e.Status == SessionStatus.Connected)
                 result = true;
         };
 
-        server.OnConnected = (ip) =>{
-            result = result && server.Sessions[ip].Status == SessionStatus.Connected;
+        server.Connected += (ob, e) =>{
+            result = result && server.Sessions[e.IP].Status == SessionStatus.Connected;
         };
 
         Thread.Sleep(5000);
@@ -43,25 +48,25 @@ public class Utils{
     public static bool SendServerPacket(TypeEncrypt typeEncrypt){
         bool result = false;
         var message = "Hello World!";
-        var client = new UDP.Client();
-        client.OnReceivedBytes = (bytes, groupID) =>{
+        var client = new Client();
+        client.DataReceived += (ob, e) =>{
             if(typeEncrypt == TypeEncrypt.OnlyCompress || typeEncrypt == TypeEncrypt.OnlyBase64){
                 if(typeEncrypt == TypeEncrypt.OnlyCompress){
-                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(bytes));
+                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(e.Data));
                     result = text == message;
                 }
                 if(typeEncrypt == TypeEncrypt.OnlyBase64){
-                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(bytes));
+                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(e.Data));
                     result = text == message;
                 }
             }else{
-                result = Encoding.UTF8.GetString(bytes) == message && groupID == 100;
+                result = Encoding.UTF8.GetString(e.Data) == message && e.GroupID == 100;
             }
         };
 
-        var server = new UDP.Server();
-        server.OnConnected = (ip) =>{
-            server.Send(Encoding.UTF8.GetBytes(message), 100, ref ip, typeEncrypt);
+        var server = new Server();
+        server.Connected += (ob, e) =>{
+            server.Send(Encoding.UTF8.GetBytes(message), 100, e.IP, typeEncrypt);
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -76,25 +81,25 @@ public class Utils{
     public static bool SendClientPacket(TypeEncrypt typeEncrypt){
         bool result = false;
         var message = "Hello World!";
-        var client = new UDP.Client();
-        client.OnStatus = (status)=>{
-            if(status == SessionStatus.Connected)
+        var client = new Client();
+        client.Status += (ob, e)=>{
+            if(e.Status == SessionStatus.Connected)
                 client.Send(Encoding.UTF8.GetBytes(message), 100, typeEncrypt);
         };
 
-        var server = new UDP.Server();
-        server.OnReceivedBytes = (bytes, groupID, ip) =>{
+        var server = new Server();
+        server.DataReceived += (ob, e) =>{
             if(typeEncrypt == TypeEncrypt.OnlyCompress || typeEncrypt == TypeEncrypt.OnlyBase64){
                 if(typeEncrypt == TypeEncrypt.OnlyCompress){
-                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(bytes));
+                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(e.Data));
                     result = text == message;
                 }
                 if(typeEncrypt == TypeEncrypt.OnlyBase64){
-                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(bytes));
+                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(e.Data));
                     result = text == message;
                 }
             }else{
-                result = Encoding.UTF8.GetString(bytes) == message && groupID == 100;
+                result = Encoding.UTF8.GetString(e.Data) == message && e.GroupID == 100;
             }
         };
         
@@ -113,18 +118,18 @@ public class Utils{
     public static bool SendClientPacket(bool nulle = true){
         Teste teste = new(){msg = "Hello World!"};
         bool result = false;
-        var client = new UDP.Client();
-        client.OnStatus = (status)=>{
-            if(status == SessionStatus.Connected)
+        var client = new Client();
+        client.Status += (ob, e)=>{
+            if(e.Status == SessionStatus.Connected)
                 client.Send(nulle ? null : Json.GetBytes(teste), 100);
         };
 
-        var server = new UDP.Server();
-        server.OnReceivedBytes = (bytes, groupID, ip) =>{
+        var server = new Server();
+        server.DataReceived += (ob, e) =>{
             if(nulle)
-                result = bytes.Length == 0 && groupID == 100;
+                result = e.Data.Length == 0 && e.GroupID == 100;
             else
-                result = Json.FromJson<Teste>(bytes).Equals(teste) && groupID == 100;
+                result = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -140,18 +145,18 @@ public class Utils{
     public static bool SendServerPacket(bool nulle = true){
         Teste teste = new(){msg = "Hello World!"};
         bool result = false;
-        var client = new UDP.Client();
-        var server = new UDP.Server();
+        var client = new Client();
+        var server = new Server();
 
-        server.OnConnected = (ip) =>{
-            server.Send(nulle ? null : Json.GetBytes(teste), 100, ref ip);
+        server.Connected += (ob, e) =>{
+            server.Send(nulle ? null : Json.GetBytes(teste), 100, e.IP);
         };
 
-        client.OnReceivedBytes = (bytes, groupID) =>{
+        client.DataReceived += (ob, e) =>{
             if(nulle)
-                result = bytes.Length == 0 && groupID == 100;
+                result = e.Data.Length == 0 && e.GroupID == 100;
             else
-                result = Json.FromJson<Teste>(bytes).Equals(teste) && groupID == 100;
+                result = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -166,30 +171,29 @@ public class Utils{
    public static bool SendServerPacketGroup(bool nulle = true){
         Teste teste = new(){msg = "Hello World!"};
         bool result = false, result2 = false;
-        var client = new UDP.Client();
-        var client2 = new UDP.Client();
-        var server = new UDP.Server();
+        var client = new Client();
+        var client2 = new Client();
+        var server = new Server();
 
         ConcurrentQueue<IPEndPoint> ips = new();
 
-        server.OnConnected = (ip) =>{
-            ips.Enqueue(ip);
+        server.Connected += (ob, e) =>{
+            ips.Enqueue(e.IP);
             if(ips.Count == 2)
-                server.SendGroup(nulle ? null : Json.GetBytes(teste), 100, ref ips);
+                server.SendGroup(nulle ? null : Json.GetBytes(teste), 100, ips);
         };
 
-
-        client.OnReceivedBytes = (bytes, groupID) =>{
+        client.DataReceived += (ob, e) =>{
             if(nulle)
-                result = bytes.Length == 0 && groupID == 100;
+                result = e.Data.Length == 0 && e.GroupID == 100;
             else
-                result = Json.FromJson<Teste>(bytes).Equals(teste) && groupID == 100;
+                result = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
         };
-        client2.OnReceivedBytes = (bytes, groupID) =>{
+        client2.DataReceived += (ob, e) =>{
             if(nulle)
-                result2 = bytes.Length == 0 && groupID == 100;
+                result2 = e.Data.Length == 0 && e.GroupID == 100;
             else
-                result2 = Json.FromJson<Teste>(bytes).Equals(teste) && groupID == 100;
+                result2 = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -205,13 +209,13 @@ public class Utils{
     public static bool TestLimitGroupIdPPSClient(bool isClient = false){
         var result = false;
         int x = 0;
-        var client = new UDP.Client();
-        var server = new UDP.Server();
+        var client = new Client();
+        var server = new Server();
         int pps = 5;
         Session? session = new();
         
-        client.OnStatus = (status) =>{
-            if(status == SessionStatus.Connected && isClient){
+        client.Status += (ob, e) =>{
+            if(e.Status == SessionStatus.Connected && isClient){
                 for(int i = 0; i < pps * 3; i++){
                     client.Send("Hello", 10);
                     Thread.Sleep(1000 / (pps * 3));
@@ -221,24 +225,24 @@ public class Utils{
 
         if(!isClient){
             client.SetReceiveLimitGroupPPS(10, pps);
-            client.OnReceivedBytes = (bytes, groupID) =>{
+            client.DataReceived += (ob, e) =>{
                 x++;
             };
         }
         else{
             server.SetReceiveLimitGroupPPS(10, pps);
-            server.OnReceivedBytes = (bytes, groupID, ip) =>{
+            server.DataReceived += (ob, e) =>{
                 x++;
             };
         }
 
-        server.OnConnected = (ip) =>{
-            server.Sessions.TryGetValue(ip, out session);
+        server.Connected += (ob, e) =>{
+            server.Sessions.TryGetValue(e.IP, out session);
             if(isClient)
                 server.SetReceiveLimitGroupPPS(10, pps);
             else{
                 for(int i = 0; i < pps * 3; i++){
-                    server.Send("Hello", 10, ref ip);
+                    server.Send("Hello", 10, e.IP);
                     Thread.Sleep(1000 / (pps * 3));
                 }
             }
@@ -258,14 +262,14 @@ public class Utils{
     public static bool TestLimitSendPPSClient(){
         var result = false;
         int x = 0;
-        var client = new UDP.Client();
-        var server = new UDP.Server();
+        var client = new Client();
+        var server = new Server();
         ushort pps = 5;
 
         client.SetSendLimitGroupPPS(10, pps);
 
-        client.OnStatus = (status) =>{
-            if(status == SessionStatus.Connected){
+        client.Status += (ob, e) =>{
+            if(e.Status == SessionStatus.Connected){
                 for(int i = 0; i < pps * 2; i++){
                     client.Send("Hello", 10);
                     Thread.Sleep(1000 / (pps * 2));
@@ -273,7 +277,7 @@ public class Utils{
             }
         };
 
-        server.OnReceivedBytes = (bytes, groupID, ip) =>{
+        server.DataReceived += (ob, e) =>{
             x++;
         };
 
