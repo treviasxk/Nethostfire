@@ -5,12 +5,13 @@
 using System.Data;
 using System.Net;
 using static Nethostfire.System;
-namespace Nethostfire{
+namespace Nethostfire.MySQL{
     public class MySQL {
-        MySQLStatus CurrentMySQLStatus = MySQLStatus.Disconnected;
         dynamic? mySqlConnection;
-        public MySQLStatus Status {get {return CurrentMySQLStatus;}}
-        public Action<MySQLStatus>? OnStatus;
+        MySQLState state = MySQLState.Disconnected;
+        public MySQLState State {get {return state;}}
+
+        public event EventHandler<MySQLStateEventArgs>? StateChanged;
 
         /// <summary>
         /// The EnableLogs when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
@@ -19,25 +20,33 @@ namespace Nethostfire{
 
         public async void Connect(IPAddress server, int port, string username, string password, string database){
             try{
-                CurrentMySQLStatus = MySQLStatus.Connecting;
-                RunOnMainThread(() => OnStatus?.Invoke(CurrentMySQLStatus));
-                WriteLog("Connecting in " + server + ":" + port, this, EnableLogs);
+                ChangeState(MySQLState.Connecting, $"Connecting in {server}:{port}");
                 mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnector.MySqlConnection");
                 //mySqlConnection = new MySqlConnector.MySqlClient.MySqlConnection();
                 mySqlConnection!.ConnectionString = "server="+server+";port="+ port +";database="+database+";user="+username+";password="+password+";";
                 await mySqlConnection.OpenAsync();
-                CurrentMySQLStatus = MySQLStatus.Connected;
-                RunOnMainThread(() => OnStatus?.Invoke(CurrentMySQLStatus));
+                ChangeState(MySQLState.Connected);
             }catch(Exception ex){
                 WriteLog(ex.Message, this, EnableLogs);
             }
         }
 
+        void ChangeState(MySQLState mySQLState, string message = ""){
+            state = mySQLState;
+
+            if(message == ""){
+                WriteLog(mySQLState, this, EnableLogs);
+            }else{
+                WriteLog(message, this, EnableLogs);
+            }
+
+            RunOnMainThread(() => StateChanged?.Invoke(this, new MySQLStateEventArgs(mySQLState)));
+        }
+
         public void Close(){
             if(mySqlConnection != null){
                 mySqlConnection.Close();
-                CurrentMySQLStatus = MySQLStatus.Disconnected;
-                RunOnMainThread(() => OnStatus?.Invoke(CurrentMySQLStatus));
+                ChangeState(MySQLState.Disconnected);
             }
         }
 
