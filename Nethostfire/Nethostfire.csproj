@@ -4,18 +4,23 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.1</TargetFramework>
     <RootNamespace>Nethostfire</RootNamespace>
+    <PackageId>Nethostfire</PackageId>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <Version>0.9.4.0</Version>
-    <AssemblyVersion>0.9.4.0</AssemblyVersion>
-    <FileVersion>0.9.4.0</FileVersion>
+    <Version>0.9.5.0</Version>
+    <AssemblyVersion>0.9.5.0</AssemblyVersion>
+    <FileVersion>0.9.5.0</FileVersion>
     <Company>treviasxk</Company>
     <Authors>Trevias Xk</Authors>
     <Product>Nethostfire</Product>
+    <RepositoryUrl>https://github.com/treviasxk/Nethostfire</RepositoryUrl>
     <Description>Nethostfire is a library (netstandard2.1) to create server and client in C#, with encryption support and several other advanced features to facilitate communication between client and server.</Description>
     <Copyright>Trevias Xk © 2025</Copyright>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <DebugSymbols>false</DebugSymbols>
     <!-- <DebugType>None</DebugType> -->
   </PropertyGroup>
@@ -33,14 +38,10 @@
 
     <!-- Newtonsoft.Json -->
     <EmbeddedResource Include="plugins/Newtonsoft.Json.dll" />
-  </ItemGroup>
 
-  <ItemGroup>
+    <!-- Doc Nuget -->
+    <None Include="../Documentation/README.md" Pack="true" PackagePath="\"/>
+
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
-
-  <!-- <Target Name="PostBuild" BeforeTargets="PostBuildEvent">
-    <Exec Command="del $(TargetDir)$(TargetName).deps.json" />
-  </Target> -->
-
 </Project>
