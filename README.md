@@ -40,6 +40,12 @@ Nethostfire is a library (netstandard2.1) designed to create UDP servers and cli
 </Project>
 ```
 
+### Installation for NuGet
+Official Nethostfire NuGet page, you can find it [here](https://www.nuget.org/packages/Nethostfire/) or use the command line below to add package in project.
+```
+  dotnet add package Nethostfire --version 0.9.4
+```
+
 ---
 
 ### Usage

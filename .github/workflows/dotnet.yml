@@ -69,10 +69,10 @@ jobs:
             echo "SKIP_RELEASE=false" >> $GITHUB_OUTPUT
           fi
 
-      # Compila o projeto no modo Debug para gerar o arquivo especificado
+      # Compila o projeto no modo Release para gerar o arquivo especificado
       - name: Build Nethostfire
         if: steps.check_release.outputs.SKIP_RELEASE == 'false'
-        run: dotnet build Nethostfire/Nethostfire.csproj --configuration Debug
+        run: dotnet build Nethostfire/Nethostfire.csproj -c Release
 
       # Gera o changelog, contribuidores e full changelog
       - name: Generate Changelog and Contributors
@@ -133,8 +133,15 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL gerada no passo anterior
-          asset_path: Nethostfire/bin/Debug/netstandard2.1/Nethostfire.dll  # Caminho do arquivo
+          asset_path: Nethostfire/bin/Release/netstandard2.1/Nethostfire.dll  # Caminho do arquivo
           asset_name: Nethostfire.dll  # Nome do arquivo no download
           asset_content_type: application/octet-stream  # Tipo MIME genérico para DLL
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publica o projeto no NuGet
+      - name: Publish to NuGet
+        if: steps.check_release.outputs.SKIP_RELEASE == 'false'
+        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{secrets.NUGET_API_KEY}}
