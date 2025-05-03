@@ -40,6 +40,11 @@ namespace Nethostfire.UDP {
         /// </summary>
         public event EventHandler<ClientDataReceivedEventArgs>? DataReceived;
 
+        public Client(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86){
+            if(Host != null)
+                Connect(IPAddress.Any, Port, symmetricSizeRSA);
+        }
+
         public void Connect(IPAddress Host, int Port, int symmetricSizeRSA = 86){
             try{
                 if(Socket == null){

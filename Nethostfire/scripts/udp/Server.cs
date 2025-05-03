@@ -55,6 +55,12 @@ namespace Nethostfire.UDP {
         public ServerState State {get {return serverStatus;}}
 
 
+        public Server(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86){
+            if(Host != null)
+                Start(IPAddress.Any, Port, symmetricSizeRSA);
+        }
+
+
         public void Start(IPAddress Host, short Port = 0, int symmetricSizeRSA = 86){
             try{
                 if(Socket == null){

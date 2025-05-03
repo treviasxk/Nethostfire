@@ -24,14 +24,11 @@ namespace Nethostfire{
             // AssemblyResolve
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>{
                 var assemblyName = new AssemblyName(args.Name).Name;
-                var resourceName = executingAssembly.GetManifestResourceNames()
-                    .FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll") || r.Contains(assemblyName));
+                var resourceName = executingAssembly.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll") || r.Contains(assemblyName));
 
-                if (resourceName != null)
-                {
+                if(resourceName != null){
                     using var stream = executingAssembly.GetManifestResourceStream(resourceName);
-                    if (stream != null)
-                    {
+                    if(stream != null){
                         byte[] data = new byte[stream.Length];
                         stream.Read(data, 0, data.Length);
                         return Assembly.Load(data);

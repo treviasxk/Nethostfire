@@ -17,6 +17,7 @@ internal class Program{
         //Client.Status += OnStatus;
         Server.Start(IPAddress.Any, 25000);
         Client.Connect(IPAddress.Loopback, 25000);
+
         Console.ReadLine();
     }
 
