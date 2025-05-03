@@ -20,6 +20,13 @@ namespace Nethostfire.MySQL{
 
         public async void Connect(IPAddress server, int port, string username, string password, string database){
             try{
+                string runtimeVersion = global::System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+                string versionNumber = global::System.Text.RegularExpressions.Regex.Match(runtimeVersion, @"\d+\.\d+\.\d+").Value;
+                if(new Version(versionNumber) < new Version("9.0.0")){
+                    WriteLog("MySQL Connector only works with .NET 9.0.0 or higher", this, EnableLogs);
+                    return;
+                }
+
                 ChangeState(MySQLState.Connecting, $"Connecting in {server}:{port}");
                 mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnection");
                 //mySqlConnection = new MySqlConnector.MySqlClient.MySqlConnection();
