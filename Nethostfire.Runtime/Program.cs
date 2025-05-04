@@ -17,7 +17,6 @@ internal class Program{
         //Client.Status += OnStatus;
         Server.Start(IPAddress.Any, 25000);
         Client.Connect(IPAddress.Loopback, 25000);
-
         Console.ReadLine();
     }
 
@@ -28,7 +27,7 @@ internal class Program{
     }
 
     static void TestMySQL(){
-        MySQL.Connect(IPAddress.Parse("127.0.0.1"), 3306, "root", "12345678", "test");
+        MySQL.Connect(IPAddress.Loopback, 3306, "root", "12345678", "test");
     }
 
 

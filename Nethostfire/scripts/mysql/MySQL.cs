@@ -17,6 +17,11 @@ namespace Nethostfire.MySQL{
         public bool AutoReconnect {get; set;} = true;
         
         /// <summary>
+        /// Timeout in seconds for the reconnection to MySQL. (The default value is 5 seconds).
+        /// </summary>
+        public int ReconnectTimeout {get; set;} = 5; // Timeout in seconds
+        
+        /// <summary>
         /// In the StateChanged Event you can check the current state of mysql
         /// </summary>
         public event EventHandler<MySQLStateEventArgs>? StateChanged;
@@ -26,9 +31,11 @@ namespace Nethostfire.MySQL{
         /// </summary>
         public bool EnableLogs {get; set;} = true;
 
-        public void Connect(IPAddress server, int port, string username, string password, string database){
+        public void Connect(IPAddress host, int port, string username, string password, string database) => Connect(host.ToString(), port, username, password, database);
+
+        public void Connect(string host, int port, string username, string password, string database){
             if(State != MySQLState.Connected){
-                ChangeState(MySQLState.Connecting, $"Connecting in {server}:{port}");
+                ChangeState(MySQLState.Connecting, $"Connecting in {host}:{port}");
                 var t = new Thread(async ()=>{
                     while(State == MySQLState.Connecting){
                         string runtimeVersion = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
@@ -39,7 +46,7 @@ namespace Nethostfire.MySQL{
                         }
 
                         mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnection");
-                        mySqlConnection!.ConnectionString = "server="+server+";port="+ port +";database="+database+";user="+username+";password="+password+";";
+                        mySqlConnection!.ConnectionString = "server="+host+";port="+ port +";database="+database+";user="+username+";password="+password+";";
                         
                         try{
                             await mySqlConnection.OpenAsync();
@@ -48,13 +55,14 @@ namespace Nethostfire.MySQL{
                             // Captura MySqlException dinamicamente
                             if(ex.GetType().FullName == "MySqlConnector.MySqlException" && ex.GetType().GetProperty("Number")?.GetValue(ex) is int number){
                                 if(AutoReconnect && number == 1042){ // Unable to connect to any of the specified MySQL hosts.
-                                    WriteLog($"{ex.Message} (Code: {number}), retry in 5 seconds", this, EnableLogs);
+                                    WriteLog($"{ex.Message} (Code: {number}), retry in {ReconnectTimeout} seconds", this, EnableLogs);
+                                    Thread.Sleep(ReconnectTimeout * 1000);
                                     continue;
                                 }
                                 ChangeState(MySQLState.Disconnected, $"{ex.Message} (Code: {number})");
                             }
                         }
-                        Thread.Sleep(5000);
+                        Thread.Sleep(ReconnectTimeout * 1000);
                     }
                 });
                 t.IsBackground = true;
