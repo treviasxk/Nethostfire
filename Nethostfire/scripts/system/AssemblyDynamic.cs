@@ -38,7 +38,7 @@ namespace Nethostfire{
                         return Assembly.Load(data);
                     }
                 }
-                throw new Nethostfire($"Could not load DLL {libName}");
+                return null;
             };
 
             // Load main DLL
