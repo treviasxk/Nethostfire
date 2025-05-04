@@ -6,7 +6,7 @@ using System.Data;
 using System.Net;
 using static Nethostfire.Nethostfire;
 namespace Nethostfire.MySQL{
-    public class MySQL {
+    public class MySQL : IDisposable {
         dynamic? mySqlConnection = null;
         MySQLState state = MySQLState.Disconnected;
         public MySQLState State {get {return state;}}
@@ -31,8 +31,24 @@ namespace Nethostfire.MySQL{
         /// </summary>
         public bool EnableLogs {get; set;} = true;
 
+        /// <summary>
+        /// Connect to MySQL Server
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <param name="database"></param>
         public void Connect(IPAddress host, int port, string username, string password, string database) => Connect(host.ToString(), port, username, password, database);
 
+        /// <summary>
+        /// Connect to MySQL Server
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <param name="database"></param>
         public void Connect(string host, int port, string username, string password, string database){
             if(State != MySQLState.Connected){
                 ChangeState(MySQLState.Connecting, $"Connecting in {host}:{port}");
@@ -46,6 +62,11 @@ namespace Nethostfire.MySQL{
                         }
 
                         mySqlConnection = AssemblyDynamic.Get("MySqlConnector", "MySqlConnection");
+                        if(mySqlConnection == null){
+                            ChangeState(MySQLState.Disconnected, "MySQL Connector not found");
+                            return;
+                        }
+
                         mySqlConnection!.ConnectionString = "server="+host+";port="+ port +";database="+database+";user="+username+";password="+password+";";
                         
                         try{
@@ -83,46 +104,91 @@ namespace Nethostfire.MySQL{
             RunOnMainThread(() => StateChanged?.Invoke(this, new MySQLStateEventArgs(mySQLState)));
         }
 
+        /// <summary>
+        /// Close MySQL Connection
+        /// </summary>
         public void Close(){
             if(mySqlConnection != null){
-                mySqlConnection.Close();
+                Dispose();
                 ChangeState(MySQLState.Disconnected);
             }
         }
 
-        //Execute query
-        public bool ExecuteQuery(string sql, object[] parameters){
-            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlCommand")(sql, mySqlConnection);
+        /// <summary>
+        /// Execute Query
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        public bool ExecuteQuery(string sql, object[]? parameters = null){
+            if(mySqlConnection == null)
+                return false;
+
+            var command = mySqlConnection?.CreateCommand();
+            command!.CommandText = sql;
+
+            if(parameters != null)
             for(int i = 0; i < parameters.Length; i++)
-                command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
-            if(command.ExecuteNonQuery() > 0)
+                command?.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
+            if(command?.ExecuteNonQuery() > 0)
                 return true;
             else
                 return false;
         }
 
-        //Check query exist
-        public bool Query(string sql, object[] parameters){
-            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlCommand")(sql, mySqlConnection);
+        /// <summary>
+        /// Query without parameters and return bool
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        public bool Query(string sql, object[]? parameters = null){
+            if(mySqlConnection == null)
+                return false;
+
+            var command = mySqlConnection?.CreateCommand();
+            command!.CommandText = sql;
+            if(parameters != null)
             for(int i = 0; i < parameters.Length; i++)
-                command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
-            var reader = command.ExecuteReader();
-            bool result = reader.HasRows;
-            reader.Close();
-            reader.Dispose();
+                command?.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
+            var reader = command?.ExecuteReader();
+            bool result = reader?.HasRows;
+            reader?.Close();
+            reader?.Dispose();
             return result;
         }
 
-        //Result select
-        public bool Query(string sql, object[] parameters, out DataRow[] dataRows){
-            dynamic command = AssemblyDynamic.Get("MySqlConnector", "MySqlCommand")(sql, mySqlConnection);
+        /// <summary>
+        /// Query without parameters and return DataRow[]
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="dataRows"></param>
+        /// <returns></returns>
+        public bool Query(string sql, out DataRow[] dataRows) => Query(sql, null, out dataRows);
+
+        /// <summary>
+        /// Query with parameters and return DataRow[]
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="parameters"></param>
+        /// <param name="dataRows"></param>
+        /// <returns></returns>
+        public bool Query(string sql, object[]? parameters, out DataRow[] dataRows){
+            if(mySqlConnection == null){
+                 dataRows = [];
+                return false;
+            }
+
+            var command = mySqlConnection?.CreateCommand();
+            command!.CommandText = sql;
+            if(parameters != null)
             for(int i = 0; i < parameters.Length; i++)
-                command.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
-            var reader = command.ExecuteReader();
+                command?.Parameters.AddWithValue("@" + (i + 1).ToString(), parameters[i]);
+            var reader = command?.ExecuteReader();
             DataTable dataTable = new DataTable();
             dataTable.Load(reader);
-            reader.Close();
-            reader.Dispose();
+            reader?.Close();
+            reader?.Dispose();
 
             dataRows = dataTable.AsEnumerable().ToArray();
             
@@ -130,6 +196,16 @@ namespace Nethostfire.MySQL{
                 return false;
 
             return true;
+        }
+
+        public void Dispose(){
+            if(mySqlConnection != null){
+                mySqlConnection.Close();
+                mySqlConnection.Dispose();
+                state = MySQLState.Disconnected;
+                AssemblyDynamic.Remove("MySqlConnector", "MySqlConnection");
+                mySqlConnection = null;
+            }
         }
     }
 }

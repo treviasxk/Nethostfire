@@ -13,6 +13,12 @@ namespace Nethostfire{
 
     class AssemblyDynamic{
         static ConcurrentDictionary<string, dynamic> ListAssemblyDynamic = new();
+
+        public static void Remove(string libName, string typeName, MethodData? methodData = null){
+            var AssemblyName = typeName + (methodData.HasValue ? $".{methodData.Value.MethodName}" : "");
+            ListAssemblyDynamic.TryRemove(AssemblyName, out _);
+        }
+
         public static dynamic? Get(string libName, string typeName, MethodData? methodData = null){
             typeName = $"{libName}.{typeName}";
             var AssemblyName = typeName + (methodData.HasValue ? $".{methodData.Value.MethodName}" : "");

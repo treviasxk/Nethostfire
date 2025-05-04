@@ -38,9 +38,13 @@ internal class Program{
     }
 
     static void TestMySQL(){
-        MySQL.Connect(IPAddress.Loopback, 3306, "root", "12345678", "test");
+        MySQL.StateChanged += OnState;
+
     }
 
+    private static void OnState(object? sender, MySQLStateEventArgs e){
+
+    }
 
     private static void OnStatus(object? sender, SessionStatusEventArgs e){
         if(e.Status == SessionStatus.Connected){
