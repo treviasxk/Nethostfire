@@ -11,19 +11,30 @@ internal class Program{
     static Server Server = new();
     static Client Client = new();
     static MySQL MySQL = new();
+
+    public class Message{
+        public string? text { get; set; }
+    }
     private static void Main(string[] args){
-        //TestJson();
-        //TestMySQL();
+        TestJson();
+        TestMySQL();
         //Client.Status += OnStatus;
+
         Server.Start(IPAddress.Any, 25000);
         Client.Connect(IPAddress.Loopback, 25000);
         Console.ReadLine();
     }
 
     static void TestJson(){
-        var json = Json.ToJson(Server);
-        Server? server = Json.FromJson<Server>(json);
-        Console.WriteLine(server == null);
+        var message = new Message(){text = "Hello World!"};
+        var json = Json.ToJson(message);
+        var obj = Json.FromJson<Message>(json);
+        Console.WriteLine(obj?.text);
+
+        message = new Message(){text = "Hello World! 2"};
+        json = Json.ToJson(message);
+        obj = Json.FromJson<Message>(json);
+        Console.WriteLine(obj?.text);
     }
 
     static void TestMySQL(){

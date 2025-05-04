@@ -81,7 +81,7 @@ namespace Nethostfire.UDP {
                     WriteLog($"Hosted in: {Host}:{Port}", this, EnableLogs);
                     ChangeStatus(ServerState.Running, false);
                 }
-            }catch(Exception ex){
+            }catch(Nethostfire ex){
                 throw new Nethostfire(ex.Message, this);
             }
         }

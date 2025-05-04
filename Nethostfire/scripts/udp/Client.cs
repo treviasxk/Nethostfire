@@ -64,7 +64,7 @@ namespace Nethostfire.UDP {
                         Priority = ThreadPriority.Highest
                     }.Start();
                 }
-            }catch(Exception ex){
+            }catch(Nethostfire ex){
                 throw new Nethostfire(ex.Message, this);
             }
         }

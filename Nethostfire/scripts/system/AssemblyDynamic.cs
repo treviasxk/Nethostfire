@@ -16,15 +16,19 @@ namespace Nethostfire{
         public static dynamic? Get(string libName, string typeName, MethodData? methodData = null){
             typeName = $"{libName}.{typeName}";
             var AssemblyName = typeName + (methodData.HasValue ? $".{methodData.Value.MethodName}" : "");
-            if(ListAssemblyDynamic.TryGetValue(AssemblyName, out dynamic? Dynamic))
+
+            dynamic? Dynamic = null;
+            ListAssemblyDynamic.TryGetValue(AssemblyName, out Dynamic);
+            if(methodData == null && Dynamic != null)
                 return Dynamic;
 
             var executingAssembly = Assembly.GetExecutingAssembly();
 
             // AssemblyResolve
+            if(Dynamic == null)
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>{
                 var assemblyName = new AssemblyName(args.Name).Name;
-                var resourceName = executingAssembly.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll") || r.Contains(assemblyName));
+                var resourceName = executingAssembly.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith($"{assemblyName}.dll"));
 
                 if(resourceName != null){
                     using var stream = executingAssembly.GetManifestResourceStream(resourceName);
@@ -34,27 +38,26 @@ namespace Nethostfire{
                         return Assembly.Load(data);
                     }
                 }
-                return null;
+                throw new Nethostfire($"Could not load DLL {libName}");
             };
 
             // Load main DLL
-            Assembly? assembly = null;
             var dllResourceName = executingAssembly.GetManifestResourceNames().FirstOrDefault(r => r.EndsWith($"{libName}.dll"));
-
+            
             if(dllResourceName != null){
                 using var stream = executingAssembly.GetManifestResourceStream(dllResourceName);
                 if(stream != null){
                     byte[] data = new byte[stream.Length];
                     stream.Read(data, 0, data.Length);
-                    assembly = Assembly.Load(data);
+                    Dynamic = Assembly.Load(data);
                 }
             }
 
-            if(assembly == null)
-                throw new Exception($"Could not load DLL {libName}");
+            if(Dynamic == null)
+                throw new Nethostfire($"Could not load DLL {libName}");
             
             // Rest of the code (static methods or instantiation)
-            if(methodData.HasValue && assembly.GetType(typeName) is Type typeStatic && typeStatic != null && typeStatic.IsAbstract && typeStatic.IsSealed){
+            if(methodData.HasValue && Dynamic.GetType(typeName) is Type typeStatic && typeStatic != null && typeStatic.IsAbstract && typeStatic.IsSealed){
                 var metodoGenerico = typeStatic.GetMethods(BindingFlags.Public | BindingFlags.Static)
                     .FirstOrDefault(m => m.Name == methodData.Value.MethodName
                         && !m.IsGenericMethod
@@ -64,22 +67,22 @@ namespace Nethostfire{
                     try{
                         Dynamic = metodoGenerico.IsGenericMethod ? metodoGenerico.MakeGenericMethod(typeof(object)).Invoke(null, methodData.Value.Params) : metodoGenerico.Invoke(null, methodData.Value.Params);
                     }catch(TargetInvocationException ex){
-                        throw new Exception($"Error invoking method {methodData.Value.MethodName}: {ex.InnerException?.Message}", ex.InnerException);
+                        throw new Nethostfire($"Error invoking method {methodData.Value.MethodName}: {ex.InnerException?.Message}", ex.InnerException);
                     }
                 }
             }else{
-                var type = assembly.GetType(typeName);
+                var type = Dynamic.GetType(typeName);
                 if(type == null)
-                    throw new Exception($"Type {typeName} not found in DLL {libName}");
+                    throw new Nethostfire($"Type {typeName} not found in DLL {libName}");
 
                 try{
                     // Verifica se o tipo tem um construtor sem parâmetros
                     if(type.GetConstructor(Type.EmptyTypes) == null)
-                        throw new Exception($"Type {typeName} does not have a parameterless constructor.");
+                        throw new Nethostfire($"Type {typeName} does not have a parameterless constructor.");
 
                     Dynamic = Activator.CreateInstance(type);
                 }catch (TargetInvocationException ex){
-                    throw new Exception($"Error instantiating {typeName}: {ex.InnerException?.Message}", ex.InnerException);
+                    throw new Nethostfire($"Error instantiating {typeName}: {ex.InnerException?.Message}", ex.InnerException);
                 }
             }
 
