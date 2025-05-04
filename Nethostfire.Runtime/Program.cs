@@ -26,6 +26,10 @@ internal class Program{
     }
 
     static void TestJson(){
+        var messxage = Json.FromJson<Message>("teste");
+
+        Console.WriteLine(Json.ToJson(messxage));
+
         var message = new Message(){text = "Hello World!"};
         var json = Json.ToJson(message);
         var obj = Json.FromJson<Message>(json);

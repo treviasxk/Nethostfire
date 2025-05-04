@@ -9,29 +9,45 @@ namespace Nethostfire{
         /// <summary>
         /// Convert object to JSON.
         /// </summary>
-        public static string ToJson(object data){
-            return AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new(){MethodName =  "SerializeObject", Params = [data]}) ?? "";
+        public static string? ToJson(object data){
+            try{
+                return AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new(){MethodName =  "SerializeObject", Params = [data]}) ?? "";
+            }catch{
+                return default;
+            }
         }
 
         /// <summary>
         /// Convert object to JSON.
         /// </summary>
-        public static byte[] GetBytes(object data){
-            return Encoding.UTF8.GetBytes(AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new(){MethodName =  "SerializeObject", Params = [data]}) ?? "");
+        public static byte[]? GetBytes(object data){
+            try{
+                return Encoding.UTF8.GetBytes(AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new(){MethodName =  "SerializeObject", Params = [data]}) ?? "");
+            }catch{
+                return default;
+            }
         }
 
         /// <summary>
         /// Desconvert JSON to object.
         /// </summary>
         public static T? FromJson<T>(string json){
-            return (T?)AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new() {MethodName = "DeserializeObject", Params = [json]})?.ToObject<T>();
+            try{
+                return (T)AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new() {MethodName = "DeserializeObject", Params = [json]})?.ToObject<T>()! ?? default;
+            }catch{
+                return default;
+            }
         }
 
         /// <summary>
         /// Desconvert JSON to object.
         /// </summary>
         public static T? FromJson<T>(byte[] bytes){
-            return (T?)AssemblyDynamic.Get("Newtonsoft.Json", "JsonConvert", new(){MethodName =  "DeserializeObject", Params = [Encoding.UTF8.GetString(bytes)]})?.ToObject<T>();
+            try{
+                return FromJson<T>(Encoding.UTF8.GetString(bytes));
+            }catch{
+                return default;
+            }
         }
     }
 }

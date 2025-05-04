@@ -72,8 +72,8 @@ namespace Nethostfire{
                 if(metodoGenerico != null){
                     try{
                         Dynamic = metodoGenerico.IsGenericMethod ? metodoGenerico.MakeGenericMethod(typeof(object)).Invoke(null, methodData.Value.Params) : metodoGenerico.Invoke(null, methodData.Value.Params);
-                    }catch(TargetInvocationException ex){
-                        throw new Nethostfire($"Error invoking method {methodData.Value.MethodName}: {ex.InnerException?.Message}", ex.InnerException);
+                    }catch{
+                        //throw new Nethostfire($"Error invoking method {methodData.Value.MethodName}: {ex.InnerException?.Message}", ex.InnerException);
                     }
                 }
             }else{
