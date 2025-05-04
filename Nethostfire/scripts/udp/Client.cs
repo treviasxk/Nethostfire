@@ -5,7 +5,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using static Nethostfire.System;
+using static Nethostfire.Nethostfire;
 using static Nethostfire.UDP.UDP;
 using static Nethostfire.DataSecurity;
 using System.Collections.Concurrent;

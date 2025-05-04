@@ -3,7 +3,7 @@
 // Github:              https://github.com/treviasxk
 
 using UnityEngine;
-using static Nethostfire.System;
+using static Nethostfire.Nethostfire;
 namespace Nethostfire{
     public partial class Nesthostfire : MonoBehaviour{
 

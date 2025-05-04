@@ -15,7 +15,7 @@ namespace Nethostfire {
         Disconnected,
     }
 
-    class System{
+    partial class Nethostfire{
         public static ConcurrentQueue<Action> ListRunOnMainThread = new();
         public static Process Process = Process.GetCurrentProcess();
         public static HashSet<Client> ListClient = new();
@@ -116,9 +116,9 @@ namespace Nethostfire {
         static void ShowUnityLog(string Message) => UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
     }
 
-    class Nethostfire : Exception{
+    partial class Nethostfire : Exception{
         public Nethostfire (string message, object? instance = null) : base(message){
-            System.WriteLog(message, true, false);
+            WriteLog(message, true, false);
         }
     }
 }

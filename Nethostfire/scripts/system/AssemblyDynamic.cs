@@ -73,6 +73,10 @@ namespace Nethostfire{
                     throw new Exception($"Type {typeName} not found in DLL {libName}");
 
                 try{
+                    // Verifica se o tipo tem um construtor sem parâmetros
+                    if(type.GetConstructor(Type.EmptyTypes) == null)
+                        throw new Exception($"Type {typeName} does not have a parameterless constructor.");
+
                     Dynamic = Activator.CreateInstance(type);
                 }catch (TargetInvocationException ex){
                     throw new Exception($"Error instantiating {typeName}: {ex.InnerException?.Message}", ex.InnerException);
