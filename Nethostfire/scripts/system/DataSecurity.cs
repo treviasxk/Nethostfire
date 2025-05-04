@@ -76,6 +76,17 @@ namespace Nethostfire{
             }
         }
 
+        public static string GetHashMD5(string text){
+            try{
+                string hash = BitConverter.ToString(GetHashMD5(Encoding.UTF8.GetBytes(text)))
+                .Replace("-", string.Empty)
+                .ToLower();
+                return hash;
+            }catch{
+                return "";
+            }
+        }
+
         public static byte[] DecryptRSA(byte[] bytes, string? privateKeyRSA){
             using(var RSA = new RSACryptoServiceProvider())
             try{
