@@ -87,6 +87,7 @@ namespace Nethostfire.UDP {
         internal int IndexShipping;
         // Timer to check if client is connected
         internal long Timer;
+        internal long TimerPing;
         internal long TimerReceivedPPS;
         internal long TimerSendPPS;
         internal ConcurrentDictionary<int, byte[]> retransmissionBuffer = new();

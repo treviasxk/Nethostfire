@@ -5,6 +5,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Nethostfire.UDP;
 
 namespace Nethostfire.Tests;
@@ -52,15 +53,15 @@ public class Utils{
         client.DataReceived += (ob, e) =>{
             if(typeEncrypt == TypeEncrypt.OnlyCompress || typeEncrypt == TypeEncrypt.OnlyBase64){
                 if(typeEncrypt == TypeEncrypt.OnlyCompress){
-                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(e.Data));
+                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(e.Bytes));
                     result = text == message;
                 }
                 if(typeEncrypt == TypeEncrypt.OnlyBase64){
-                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(e.Data));
+                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(e.Bytes));
                     result = text == message;
                 }
             }else{
-                result = Encoding.UTF8.GetString(e.Data) == message && e.GroupID == 100;
+                result = Encoding.UTF8.GetString(e.Bytes) == message && e.GroupID == 100;
             }
         };
 
@@ -91,15 +92,15 @@ public class Utils{
         server.DataReceived += (ob, e) =>{
             if(typeEncrypt == TypeEncrypt.OnlyCompress || typeEncrypt == TypeEncrypt.OnlyBase64){
                 if(typeEncrypt == TypeEncrypt.OnlyCompress){
-                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(e.Data));
+                    var text = Encoding.UTF8.GetString(DataSecurity.Decompress(e.Bytes));
                     result = text == message;
                 }
                 if(typeEncrypt == TypeEncrypt.OnlyBase64){
-                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(e.Data));
+                    var text = Encoding.UTF8.GetString(DataSecurity.DecryptBase64(e.Bytes));
                     result = text == message;
                 }
             }else{
-                result = Encoding.UTF8.GetString(e.Data) == message && e.GroupID == 100;
+                result = Encoding.UTF8.GetString(e.Bytes) == message && e.GroupID == 100;
             }
         };
         
@@ -112,24 +113,24 @@ public class Utils{
         return result;
     }
 
-    struct Teste {
-        public string msg;
+    public struct Message{
+        public string? text { get; set; }
     }
     public static bool SendClientPacket(bool nulle = true){
-        Teste teste = new(){msg = "Hello World!"};
+        Message message = new(){text = "Hello World!"};
         bool result = false;
         var client = new Client();
         client.Status += (ob, e)=>{
             if(e.Status == SessionStatus.Connected)
-                client.Send(nulle ? null : Json.GetBytes(teste), 100);
+                client.Send(nulle ? null : JsonSerializer.SerializeToUtf8Bytes(message), 100);
         };
 
         var server = new Server();
         server.DataReceived += (ob, e) =>{
             if(nulle)
-                result = e.Data.Length == 0 && e.GroupID == 100;
+                result = e.Bytes.Length == 0 && e.GroupID == 100;
             else
-                result = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
+                result = JsonSerializer.Deserialize<Message>(e.Bytes).Equals(message) && e.GroupID == 100;
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -143,20 +144,20 @@ public class Utils{
 
 
     public static bool SendServerPacket(bool nulle = true){
-        Teste teste = new(){msg = "Hello World!"};
+        Message message = new(){text = "Hello World!"};
         bool result = false;
         var client = new Client();
         var server = new Server();
 
         server.Connected += (ob, e) =>{
-            server.Send(nulle ? null : Json.GetBytes(teste), 100, e.IP);
+            server.Send(nulle ? null : JsonSerializer.SerializeToUtf8Bytes(message), 100, e.IP);
         };
 
         client.DataReceived += (ob, e) =>{
             if(nulle)
-                result = e.Data.Length == 0 && e.GroupID == 100;
+                result = e.Bytes.Length == 0 && e.GroupID == 100;
             else
-                result = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
+                result = JsonSerializer.Deserialize<Message>(e.Bytes).Equals(message) && e.GroupID == 100;
         };
         
         server.Start(IPAddress.Any, 25000);
@@ -169,7 +170,7 @@ public class Utils{
     }
 
    public static bool SendServerPacketGroup(bool nulle = true){
-        Teste teste = new(){msg = "Hello World!"};
+        Message message = new(){text = "Hello World!"};
         bool result = false, result2 = false;
         var client = new Client();
         var client2 = new Client();
@@ -180,20 +181,20 @@ public class Utils{
         server.Connected += (ob, e) =>{
             ips.Enqueue(e.IP);
             if(ips.Count == 2)
-                server.SendGroup(nulle ? null : Json.GetBytes(teste), 100, ips);
+                server.SendGroup(nulle ? null : JsonSerializer.SerializeToUtf8Bytes(message), 100, ips);
         };
 
         client.DataReceived += (ob, e) =>{
             if(nulle)
-                result = e.Data.Length == 0 && e.GroupID == 100;
+                result = e.Bytes.Length == 0 && e.GroupID == 100;
             else
-                result = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
+                result = JsonSerializer.Deserialize<Message>(e.Bytes).Equals(message) && e.GroupID == 100;
         };
         client2.DataReceived += (ob, e) =>{
             if(nulle)
-                result2 = e.Data.Length == 0 && e.GroupID == 100;
+                result2 = e.Bytes.Length == 0 && e.GroupID == 100;
             else
-                result2 = Json.FromJson<Teste>(e.Data).Equals(teste) && e.GroupID == 100;
+                result2 = JsonSerializer.Deserialize<Message>(e.Bytes).Equals(message) && e.GroupID == 100;
         };
         
         server.Start(IPAddress.Any, 25000);

@@ -41,7 +41,8 @@ namespace Nethostfire.UDP {
         public event EventHandler<ClientDataReceivedEventArgs>? DataReceived;
 
         public Client(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86){
-            if(Host != null)
+            session ??= new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+            if (Host != null)
                 Connect(IPAddress.Any, Port, symmetricSizeRSA);
         }
 
@@ -49,7 +50,6 @@ namespace Nethostfire.UDP {
             try{
                 if(Socket == null){
                     Socket = new UdpClient();
-                    StartUnity(client: this);
                     GenerateKey(symmetricSizeRSA);
                     WriteLog($"Connecting on {Host}:{Port}", this, EnableLogs);
                     ChangeStatus(SessionStatus.Connecting, false);
@@ -72,7 +72,6 @@ namespace Nethostfire.UDP {
         public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPacket(Socket, ref bytes, groupID, typeEncrypt, typeShipping, ref session, ListSendGroupIdPPS: in ListSendGroudIdPPS);
         public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt, typeShipping);
         public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt, typeShipping);
-        public void Send(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Json.GetBytes(data), groupID, typeEncrypt, typeShipping);
 
         public void SetSendLimitGroupPPS(int groupID, int pps){
             if(pps > 0)
@@ -92,12 +91,14 @@ namespace Nethostfire.UDP {
             session.Status = status;
             if(log)
                 WriteLog(status, this, EnableLogs);
-            RunOnMainThread(() => Status?.Invoke(this, new SessionStatusEventArgs(status)));
+            Parallel.Invoke(() => Status?.Invoke(this, new SessionStatusEventArgs(status)));
         }
 
         public void Disconnect(){
             ChangeStatus(SessionStatus.Disconnecting);
-            Dispose();
+            Socket?.Close();
+            Socket = null;
+            ListSendGroudIdPPS = new();
             ChangeStatus(SessionStatus.Disconnected);
         }
 
@@ -115,57 +116,68 @@ namespace Nethostfire.UDP {
                 }
                 
                 if(bytes != null)
-                    Parallel.Invoke((Action)(()=>{
-                    // Update ping and timer connection
-                    if(bytes.Length == 1){
-                        switch(bytes[0]){
-                            case 0: // Kicked from server
-                                //ChangeStatus(ClientStatus.Kicked);
-                            return;
-                            case 1: // Update ping
-                                this.session.Ping = GetPing((long)this.session.Timer);
-                                this.session.Timer = DateTime.Now.Ticks;
-                            return;
-                            case 2: // Max client exceeded
-                                //ChangeStatus(ClientStatus.MaxClientExceeded);
-                            return;
-                            case 3: // IP blocked
-                                //ChangeStatus(ClientStatus.IpBlocked);
-                            return;
-                        }
-                    }
-
-                    // item1 = bytes
-                    // item2 = groupID
-                    // item3 = typeEncrypt
-                    // item4 = typeShipping
-                    var data = DeconvertPacket(Socket, bytes, ref session, null);
-                    if(data.HasValue)
-                    if(StatusChanged == SessionStatus.Connected){
-                        if(CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref this.session, LimitPPS, in ListReceiveGroudIdPPS))
-                                RunOnMainThread(() => DataReceived?.Invoke(this, new ClientDataReceivedEventArgs(data.Value.Item1, data.Value.Item2)));
-                        return;
-                    }else
-                    if(StatusChanged == SessionStatus.Connecting){
-                        // Update timer
+                    Parallel.Invoke(() =>
+                    {
                         session.Timer = DateTime.Now.Ticks;
-                        // Check RSA server and send AES client
-                        if(data.Value.Item2 == 0){
-                            string value = Encoding.ASCII.GetString(data.Value.Item1);
-                            if(value.StartsWith("<RSAKeyValue>") && value.EndsWith("</RSAKeyValue>") && PrivateKeyAES != null)
-                                session.PublicKeyRSA = value;
-                            return;
-                        }else
-                        // Check AES server and connect
-                        if(data.Value.Item2 == 1){
-                            if(data.Value.Item1.Length == 16){
-                                session.PrivateKeyAES = data.Value.Item1;
-                                    ChangeStatus(SessionStatus.Connected);
+                        // Update ping and timer connection
+                        if (bytes.Length == 1)
+                        {
+                            switch (bytes[0])
+                            {
+                                case 0: // Kicked from server
+                                        //ChangeStatus(ClientStatus.Kicked);
+                                    return;
+                                case 1: // Update ping
+                                    session.Ping = GetPing(session.TimerPing);
+                                    session.TimerPing = DateTime.Now.Ticks;
+                                    return;
+                                case 2: // Max client exceeded
+                                        //ChangeStatus(ClientStatus.MaxClientExceeded);
+                                    return;
+                                case 3: // IP blocked
+                                        //ChangeStatus(ClientStatus.IpBlocked);
+                                    return;
                             }
-                            return;
                         }
-                    }    
-                }));
+
+                        // item1 = bytes
+                        // item2 = groupID
+                        // item3 = typeEncrypt
+                        // item4 = typeShipping
+                        var data = DeconvertPacket(Socket, bytes, ref session, null);
+
+                        if (data.HasValue)
+                            if (StatusChanged == SessionStatus.Connected)
+                            {
+
+                                if (CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
+                                    RunParallel(()=>DataReceived?.Invoke(this, new ClientDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2)));
+                                return;
+                            }
+                            else
+                            if (StatusChanged == SessionStatus.Connecting)
+                            {
+                                // Check RSA server and send AES client
+                                if (data.Value.Item2 == 0)
+                                {
+                                    string value = Encoding.ASCII.GetString(data.Value.Item1);
+                                    if (value.StartsWith("<RSAKeyValue>") && value.EndsWith("</RSAKeyValue>") && PrivateKeyAES != null)
+                                        session.PublicKeyRSA = value;
+                                    return;
+                                }
+                                else
+                                // Check AES server and connect
+                                if (data.Value.Item2 == 1)
+                                {
+                                    if (data.Value.Item1.Length == 16)
+                                    {
+                                        session.PrivateKeyAES = data.Value.Item1;
+                                        ChangeStatus(SessionStatus.Connected);
+                                    }
+                                    return;
+                                }
+                            }
+                    });
             }
         }
 
@@ -173,12 +185,16 @@ namespace Nethostfire.UDP {
         void Service(){
             while(StatusChanged != SessionStatus.Disconnected){
                 // Authenting
-                if(StatusChanged == SessionStatus.Connecting){
-                    if(session.PublicKeyRSA == ""){
+                if (StatusChanged == SessionStatus.Connecting)
+                {
+                    if (session.PublicKeyRSA == "")
+                    {
                         var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
                         SendPacket(Socket!, ref bytes, 0, TypeEncrypt.Compress, TypeShipping.None, ref session);
-                    }else
-                    if(session.PrivateKeyAES == null){
+                    }
+                    else
+                    if (session.PrivateKeyAES == null)
+                    {
                         var key = PrivateKeyAES;
                         SendPacket(Socket!, ref key, 1, TypeEncrypt.RSA, TypeShipping.None, ref session);
                     }
@@ -205,14 +221,12 @@ namespace Nethostfire.UDP {
         /// Clear all events, data and free memory.
         /// </summary>
         public void Dispose(){
-            // Is need clear events first to can clean ListRunMainThread in NethostfireService
-            session.Status = SessionStatus.Disconnecting;
+            DataReceived = null;
+            Status = null;
             Socket?.Close();
             Socket = null;
             ListSendGroudIdPPS = new();
-            session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             GC.SuppressFinalize(this);
-            session.Status = SessionStatus.Disconnected;
         }
     }
 }

@@ -15,8 +15,8 @@ namespace Nethostfire.UDP {
         public UdpClient? Socket {get;set;}
         public int LimitPPS {get;set;} = 0;
         ServerState serverStatus = ServerState.Stopped;
-        ConcurrentDictionary<int, int> ListReceiveGroudIdPPS = new();
-        ConcurrentDictionary<int, int> ListSendGroudIdPPS = new();
+        ConcurrentDictionary<int, int>? ListReceiveGroudIdPPS;
+        ConcurrentDictionary<int, int>? ListSendGroudIdPPS;
         /// <summary>
         /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000)
         /// </summary>
@@ -30,7 +30,7 @@ namespace Nethostfire.UDP {
         /// <summary>
         /// The Sessions is all clients connected to the server.
         /// </summary>
-        public ConcurrentDictionary<IPEndPoint, Session> Sessions {get; set;} = new();
+        public ConcurrentDictionary<IPEndPoint, Session> Sessions { get; set; } = new();
 
         /// <summary>
         /// StateChanged is an event that returns ServerStatus whenever the status changes, with which you can use it to know the current status of the server.
@@ -53,10 +53,12 @@ namespace Nethostfire.UDP {
         public event EventHandler<SessionEventArgs>? Disconnected;
 
         public ServerState State {get {return serverStatus;}}
-
-
-        public Server(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86){
-            if(Host != null)
+        public Server(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86)
+        {
+            Sessions ??= new();
+            ListReceiveGroudIdPPS ??= new();
+            ListSendGroudIdPPS ??= new();
+            if (Host != null)
                 Start(IPAddress.Any, Port, symmetricSizeRSA);
         }
 
@@ -65,7 +67,6 @@ namespace Nethostfire.UDP {
             try{
                 if(Socket == null){
                     Socket ??= new UdpClient();
-                    StartUnity(server: this);
                     GenerateKey(symmetricSizeRSA);
                     ChangeStatus(ServerState.Initializing);
                     Socket.Client.Bind(new IPEndPoint(Host, Port));
@@ -88,16 +89,16 @@ namespace Nethostfire.UDP {
 
         public void SetReceiveLimitGroupPPS(ushort groupID, int pps){
             if(pps > 0)
-                ListReceiveGroudIdPPS.TryAdd(groupID, pps);
+                ListReceiveGroudIdPPS!.TryAdd(groupID, pps);
             else
-                ListReceiveGroudIdPPS.TryRemove(groupID, out _);
+                ListReceiveGroudIdPPS!.TryRemove(groupID, out _);
         }
 
         public void SetSendLimitGroupPPS(ushort groupID, int pps){
             if(pps > 0)
-                ListSendGroudIdPPS.TryAdd(groupID, pps);
+                ListSendGroudIdPPS!.TryAdd(groupID, pps);
             else
-                ListSendGroudIdPPS.TryRemove(groupID, out _);
+                ListSendGroudIdPPS!.TryRemove(groupID, out _);
         }
 
         public void Send(byte[]? bytes, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None){
@@ -107,17 +108,13 @@ namespace Nethostfire.UDP {
         
         public void Send(string text, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Encoding.UTF8.GetBytes(text), groupID, ip, typeEncrypt, typeShipping);
         public void Send(int value, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(BitConverter.GetBytes(value), groupID, ip, typeEncrypt, typeShipping);
-        public void Send(object data, int groupID, IPEndPoint ip, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Json.GetBytes(data), groupID, ip, typeEncrypt, typeShipping);
-
         public void SendGroup(byte[]? bytes, int groupID, ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Parallel.ForEach(ips, (ip) => Send(bytes, groupID, ip, typeEncrypt, typeShipping));
         public void SendGroup(string text, int groupID, ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroup(Encoding.UTF8.GetBytes(text), groupID, ips, typeEncrypt, typeShipping);
         public void SendGroup(int value, int groupID, ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroup(BitConverter.GetBytes(value), groupID, ips, typeEncrypt, typeShipping);
-        public void SendGroup(object data, int groupID, ConcurrentQueue<IPEndPoint> ips, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendGroup(Json.GetBytes(data), groupID, ips, typeEncrypt, typeShipping);
-        
+
         public void SendAll(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Parallel.ForEach(Sessions.Keys, (ip) => Send(bytes, groupID, ip, typeEncrypt, typeShipping));
         public void SendAll(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAll(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt, typeShipping);
         public void SendAll(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAll(BitConverter.GetBytes(value), groupID, typeEncrypt, typeShipping);
-        public void SendAll(object data, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendAll(Json.GetBytes(data), groupID, typeEncrypt, typeShipping);
 
         async void ReceivePacket(){
             while(Socket != null){
@@ -142,46 +139,54 @@ namespace Nethostfire.UDP {
 
                     if(data.HasValue)
                     if(Authenticated){
+                        session.Timer = DateTime.Now.Ticks;
                         // Commands
-                        if(bytes.Length == 1){
-                            switch(bytes[0]){
+                        if (bytes.Length == 1)
+                        {
+                            switch (bytes[0])
+                            {
                                 case 0: // Force disconnect
-                                    //Kick(ip);
-                                return;
+                                        //Kick(ip);
+                                    return;
                                 case 1: // Update ping
-                                    session.Ping = GetPing(session.Timer);
-                                    session.Timer = DateTime.Now.Ticks;
+                                    session.Ping = GetPing(session.TimerPing);
+                                    session.TimerPing = DateTime.Now.Ticks;
                                     SendPing(Socket, [1], ip);
-                                return;
+                                    return;
                                 case 2:
                                     SendPing(Socket, [1], ip);
-                                return;
+                                    return;
                             }
-                        }else{
-                            if(session.PublicKeyRSA == "" || session.PrivateKeyAES == null){
-                                switch(data.Value.Item2){
+                        }
+                        else
+                        {
+                            if (session.PublicKeyRSA == "" || session.PrivateKeyAES == null)
+                            {
+                                switch (data.Value.Item2)
+                                {
                                     case 0:
                                         // Resend RSA
                                         var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
                                         SendPacket(Socket, ref bytes, 0, TypeEncrypt.None, TypeShipping.None, ref session, ip);
-                                    return;
+                                        return;
                                     case 1:
                                         // AES
                                         session.PrivateKeyAES = data.Value.Item1;
                                         var key = PrivateKeyAES;
                                         SendPacket(Socket, ref key, 1, TypeEncrypt.RSA, TypeShipping.None, ref session, ip);
-                                        if(session.Status == SessionStatus.Connecting){
+                                        if (session.Status == SessionStatus.Connecting)
+                                        {
                                             WriteLog($"{ip} Connected!", this, EnableLogs);
-                                            session.Timer = DateTime.Now.Ticks;
                                             session.Status = SessionStatus.Connected;
-                                            RunOnMainThread(() => Connected?.Invoke(this, new SessionEventArgs(ip, session)));
+                                            RunParallel(()=>Connected?.Invoke(this, new SessionEventArgs(ip, session)));
                                         }
-                                    return;
+                                        return;
                                 }
-                            }else{
-                                if(CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS)){
-                                    RunOnMainThread(() => DataReceived?.Invoke(this, new ServerDataReceivedEventArgs(data.Value.Item1, data.Value.Item2, ip)));
-                                }
+                            }
+                            else
+                            {
+                                if (CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
+                                   RunParallel(()=>DataReceived?.Invoke(this, new ServerDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2, ip)));
                                 return;
                             }
                         }
@@ -218,7 +223,7 @@ namespace Nethostfire.UDP {
                 Parallel.ForEach(Sessions.Where(item => item.Value.Timer + ConnectedTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks), item =>{
                     if(Sessions.TryRemove(item.Key, out _)){
                         WriteLog($"{item.Key} Disconnected!", this, EnableLogs);
-                        RunOnMainThread(() => Disconnected?.Invoke(this, new SessionEventArgs(item.Key, item.Value)));
+                        RunParallel(()=>Disconnected?.Invoke(this, new SessionEventArgs(item.Key, item.Value)));
                     }
                 });
 
@@ -233,20 +238,24 @@ namespace Nethostfire.UDP {
             serverStatus = status;
             if(log)
                 WriteLog(status, this, EnableLogs);
-            RunOnMainThread(() => StateChanged?.Invoke(this, new ServerStateEventArgs(status)));
+            RunParallel(() => StateChanged?.Invoke(this, new ServerStateEventArgs(status)));
         }
 
         /// <summary>
         /// Clear all events, data and free memory.
         /// </summary>
         public void Dispose(){
-            serverStatus = ServerState.Stopping;
+            DataReceived = null;
+            StateChanged = null;
+            Connected = null;
+            Disconnected = null;
             Socket?.Close();
             Socket = null;
-            ListReceiveGroudIdPPS = new();
-            Sessions.Clear();
-            GC.SuppressFinalize(this);
+            ListReceiveGroudIdPPS = null;
+            ListSendGroudIdPPS = null;
+            Sessions = new();
             serverStatus = ServerState.Stopped;
+            GC.SuppressFinalize(this);
         }
     }
 }
