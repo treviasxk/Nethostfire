@@ -16,7 +16,7 @@ namespace Nethostfire {
         static StreamWriter? fileLog;
         static int currentInstance = 0;
         public static bool SaveLog = true;
-        public static bool UnityBatchMode = false, RunningInUnity = false;
+        public static bool IsUnityBatchMode = false, IsRunningInUnity = false;
 
         internal static ushort GetPing(long Timer)
         {
@@ -26,7 +26,9 @@ namespace Nethostfire {
 
         internal static void LoadUnity()
         {
-            UnityBatchMode = UnityEngine.Application.isBatchMode;
+            // Resolve high usage cpu in BatchMode Unity
+            IsUnityBatchMode = UnityEngine.Application.isBatchMode;
+            UnityEngine.QualitySettings.vSyncCount = IsUnityBatchMode ? 0 : UnityEngine.QualitySettings.vSyncCount;
         }
 
         internal static void StartUnity()
@@ -34,7 +36,7 @@ namespace Nethostfire {
             try
             {
                 LoadUnity();
-                RunningInUnity = true;
+                IsRunningInUnity = true;
             }
             catch { }
         }
@@ -80,7 +82,7 @@ namespace Nethostfire {
             }
 
             if (showLog)
-                if (RunningInUnity && !UnityBatchMode)
+                if (IsRunningInUnity && !IsUnityBatchMode)
                     ShowUnityLog(message);
                 else
                 {

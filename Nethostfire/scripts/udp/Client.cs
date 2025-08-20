@@ -13,17 +13,17 @@ using System.Collections.Concurrent;
 namespace Nethostfire.UDP {
     public class Client : IDisposable{
         public int LimitPPS {get;set;} = 0;
-        ConcurrentDictionary<int, int> ListSendGroudIdPPS = new();
-        ConcurrentDictionary<int, int> ListReceiveGroudIdPPS = new();
+        ConcurrentDictionary<int, int> ListSendGroupIdPPS = new();
+        ConcurrentDictionary<int, int> ListReceiveGroupIdPPS = new();
         Session session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
         public Session Session {get{return session;}}
         public UdpClient? Socket {get; set;}
-        public SessionStatus StatusChanged {get{return session.Status;}}
+        public SessionStatus Status {get{return session.Status;}}
         
         /// <summary>
         /// Status is an event that returns ClientStatus whenever the status changes, with which you can use it to know the current status of the client.
         /// </summary>
-        public event EventHandler<SessionStatusEventArgs>? Status;
+        public event EventHandler<SessionStatusEventArgs>? StatusChanged;
 
         /// <summary>
         /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000).
@@ -41,6 +41,7 @@ namespace Nethostfire.UDP {
         public event EventHandler<ClientDataReceivedEventArgs>? DataReceived;
 
         public Client(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86){
+            StartUnity();
             session ??= new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             if (Host != null)
                 Connect(IPAddress.Any, Port, symmetricSizeRSA);
@@ -69,36 +70,36 @@ namespace Nethostfire.UDP {
             }
         }
 
-        public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPacket(Socket, ref bytes, groupID, typeEncrypt, typeShipping, ref session, ListSendGroupIdPPS: in ListSendGroudIdPPS);
+        public void Send(byte[]? bytes, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => SendPacket(Socket, ref bytes, groupID, typeEncrypt, typeShipping, ref session, ListSendGroupIdPPS: in ListSendGroupIdPPS);
         public void Send(string text, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(Encoding.UTF8.GetBytes(text), groupID, typeEncrypt, typeShipping);
         public void Send(int value, int groupID, TypeEncrypt typeEncrypt = TypeEncrypt.None, TypeShipping typeShipping = TypeShipping.None) => Send(BitConverter.GetBytes(value), groupID, typeEncrypt, typeShipping);
 
         public void SetSendLimitGroupPPS(int groupID, int pps){
             if(pps > 0)
-                ListSendGroudIdPPS.TryAdd(groupID, pps);
+                ListSendGroupIdPPS.TryAdd(groupID, pps);
             else
-                ListSendGroudIdPPS.TryRemove(groupID, out _);
+                ListSendGroupIdPPS.TryRemove(groupID, out _);
         }
 
         public void SetReceiveLimitGroupPPS(int groupID, int pps){
             if(pps > 0)
-                ListReceiveGroudIdPPS.TryAdd(groupID, pps);
+                ListReceiveGroupIdPPS.TryAdd(groupID, pps);
             else
-                ListReceiveGroudIdPPS.TryRemove(groupID, out _);
+                ListReceiveGroupIdPPS.TryRemove(groupID, out _);
         }
 
         internal void ChangeStatus(SessionStatus status, bool log = true){
             session.Status = status;
             if(log)
                 WriteLog(status, this, EnableLogs);
-            Parallel.Invoke(() => Status?.Invoke(this, new SessionStatusEventArgs(status)));
+            Parallel.Invoke(() => StatusChanged?.Invoke(this, new SessionStatusEventArgs(status)));
         }
 
         public void Disconnect(){
             ChangeStatus(SessionStatus.Disconnecting);
             Socket?.Close();
             Socket = null;
-            ListSendGroudIdPPS = new();
+            ListSendGroupIdPPS = new();
             ChangeStatus(SessionStatus.Disconnected);
         }
 
@@ -147,15 +148,15 @@ namespace Nethostfire.UDP {
                         var data = DeconvertPacket(Socket, bytes, ref session, null);
 
                         if (data.HasValue)
-                            if (StatusChanged == SessionStatus.Connected)
+                            if (Status == SessionStatus.Connected)
                             {
 
-                                if (CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
+                                if (CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroupIdPPS))
                                     RunParallel(()=>DataReceived?.Invoke(this, new ClientDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2)));
                                 return;
                             }
                             else
-                            if (StatusChanged == SessionStatus.Connecting)
+                            if (Status == SessionStatus.Connecting)
                             {
                                 // Check RSA server and send AES client
                                 if (data.Value.Item2 == 0)
@@ -183,9 +184,9 @@ namespace Nethostfire.UDP {
 
 
         void Service(){
-            while(StatusChanged != SessionStatus.Disconnected){
+            while(Socket != null){
                 // Authenting
-                if (StatusChanged == SessionStatus.Connecting)
+                if (Status == SessionStatus.Connecting)
                 {
                     if (session.PublicKeyRSA == "")
                     {
@@ -200,7 +201,7 @@ namespace Nethostfire.UDP {
                     }
                 }
 
-                if(StatusChanged == SessionStatus.Connected){
+                if(Status == SessionStatus.Connected){
                     SendPing(Socket, [1]);  // Send Online Status
                     // Set Connecting...
                     if(session.Timer + ConnectTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks){
@@ -210,9 +211,10 @@ namespace Nethostfire.UDP {
                         ChangeStatus(SessionStatus.Connecting);
                     }
                 }
-                
+
                 // Packets retranmission
-                Parallel.ForEach(session.retransmissionBuffer.Values, bytes => SendPing(Socket, bytes));
+                if(Status != SessionStatus.Disconnected)
+                    Parallel.ForEach(session.retransmissionBuffer.Values, bytes => SendPing(Socket, bytes));
                 Thread.Sleep(1000);
             }
         }
@@ -222,10 +224,12 @@ namespace Nethostfire.UDP {
         /// </summary>
         public void Dispose(){
             DataReceived = null;
-            Status = null;
+            StatusChanged = null;
+            session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             Socket?.Close();
             Socket = null;
-            ListSendGroudIdPPS = new();
+            ListReceiveGroupIdPPS = new();
+            ListSendGroupIdPPS = new();
             GC.SuppressFinalize(this);
         }
     }

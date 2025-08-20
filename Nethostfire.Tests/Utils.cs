@@ -31,7 +31,7 @@ public class Utils{
         else
             server.Start(IPAddress.Any, 25000);
 
-        client.Status += (ob, e) =>{
+        client.StatusChanged += (ob, e) =>{
             if(e.Status == SessionStatus.Connected)
                 result = true;
         };
@@ -83,7 +83,7 @@ public class Utils{
         bool result = false;
         var message = "Hello World!";
         var client = new Client();
-        client.Status += (ob, e)=>{
+        client.StatusChanged += (ob, e)=>{
             if(e.Status == SessionStatus.Connected)
                 client.Send(Encoding.UTF8.GetBytes(message), 100, typeEncrypt);
         };
@@ -120,7 +120,7 @@ public class Utils{
         Message message = new(){text = "Hello World!"};
         bool result = false;
         var client = new Client();
-        client.Status += (ob, e)=>{
+        client.StatusChanged += (ob, e)=>{
             if(e.Status == SessionStatus.Connected)
                 client.Send(nulle ? null : JsonSerializer.SerializeToUtf8Bytes(message), 100);
         };
@@ -215,7 +215,7 @@ public class Utils{
         int pps = 5;
         Session? session = new();
         
-        client.Status += (ob, e) =>{
+        client.StatusChanged += (ob, e) =>{
             if(e.Status == SessionStatus.Connected && isClient){
                 for(int i = 0; i < pps * 3; i++){
                     client.Send("Hello", 10);
@@ -269,7 +269,7 @@ public class Utils{
 
         client.SetSendLimitGroupPPS(10, pps);
 
-        client.Status += (ob, e) =>{
+        client.StatusChanged += (ob, e) =>{
             if(e.Status == SessionStatus.Connected){
                 for(int i = 0; i < pps * 2; i++){
                     client.Send("Hello", 10);

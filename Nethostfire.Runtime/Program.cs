@@ -16,8 +16,7 @@ internal class Program{
         public string text { get; set; }
     }
     private static void Main(string[] args){
-        Client.Status += OnStatus;
-
+        Client.StatusChanged += OnStatus;
         Server.DataReceived += OnDataReceived;
         Server.Start(IPAddress.Any, 25000);
         Client.Connect(IPAddress.Loopback, 25000);
@@ -32,13 +31,15 @@ internal class Program{
 
     private static void OnStatus(object? sender, SessionStatusEventArgs e) {
         if (e.Status == SessionStatus.Connected) {
-            new Thread(() => {
-            while (true) {
-                Message[] messages = [new Message() { text = "HIIIIII" }];
-
-                Client.Send(MessagePackSerializer.Serialize(messages), 0, TypeEncrypt.None, TypeShipping.WithoutPacketLossEnqueue);
-                Thread.Sleep(100);
-            }
+            Client.Dispose();
+            new Thread(() =>
+            {
+                while (true)
+                {
+                    Message[] messages = [new Message() { text = "HIIIIII" }];
+                    Client.Send(MessagePackSerializer.Serialize(messages), 0, TypeEncrypt.None, TypeShipping.WithoutPacketLossEnqueue);
+                    Thread.Sleep(100);
+                }
             }).Start();
             //Client.Disconnect();
         }

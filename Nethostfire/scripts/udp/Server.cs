@@ -55,6 +55,7 @@ namespace Nethostfire.UDP {
         public ServerState State {get {return serverStatus;}}
         public Server(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86)
         {
+            StartUnity();
             Sessions ??= new();
             ListReceiveGroudIdPPS ??= new();
             ListSendGroudIdPPS ??= new();
