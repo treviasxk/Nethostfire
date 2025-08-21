@@ -12,8 +12,6 @@ Nethostfire is a library (netstandard2.1) designed to create UDP servers and cli
 - **Unity 3D Integration**: Adapted for Unity 3D projects, including support for Enter Play Mode and dedicated Unity server builds.
 - **High Performance**: Optimized for high-performance networking.
 - **Cross-Server Communication**: Supports creating cross-server communication systems.
-- **MySQL Integration**: Embedded MySQL client for database operations.
-- **JSON Serialization**: Built-in JSON serialization and deserialization.
 - **Packet Loss Prevention**: Features to send UDP packets without losses or in an enqueued manner.
 - **Client and Server Management**: Tools to manage connected clients and server sessions.
 
@@ -43,7 +41,7 @@ Nethostfire is a library (netstandard2.1) designed to create UDP servers and cli
 ### Installation for NuGet
 Official Nethostfire NuGet page, you can find it [here](https://www.nuget.org/packages/Nethostfire/) or use the command line below to add package in project.
 ```
-  dotnet add package Nethostfire --version 0.9.4
+  dotnet add package Nethostfire --version 0.9.7
 ```
 
 ---
@@ -112,22 +110,9 @@ The `TypeShipping` enum allows you to define how UDP packets are sent and handle
 client.Send("Reliable Message", 1, TypeEncrypt.None, TypeShipping.WithoutPacketLoss);
 
 // Sending a packet without packet loss and with queuing
-client.Send("Ordered Reliable Message", 1, TypeEncrypt.AES, TypeShipping.WithoutPacketLossEnqueue);
+client.Send("Ordered Reliable Message", 1, TypeEncrypt.None, TypeShipping.WithoutPacketLossEnqueue);
   ```
   
-#### MySQL Integration
-Nethostfire includes built-in support for MySQL, allowing you to connect to a database and perform operations directly from your application. This feature is useful for storing and retrieving data in real-time applications.
-
-##### Example: Connecting to a MySQL Database
-```csharp
-using System.Net;
-using Nethostfire.MySQL;
-
-var mysql = new MySQL();
-mysql.Connect(IPAddress.Parse("127.0.0.1"), 3306, "username", "password", "database");
-```
----
-
 ## Contribute
 Contributions are welcome! You can fork the repository and submit a pull request or sponsor the project to support its development.
  - Github: [Sponsor](https://github.com/sponsors/treviasxk)
