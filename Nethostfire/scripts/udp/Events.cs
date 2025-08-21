@@ -5,7 +5,7 @@
 using System.Net;
 using System.Text;
 
-namespace Nethostfire.UDP{
+namespace TreviasXk.UDP{
     public class SessionStatusEventArgs : EventArgs{
         public SessionStatus Status { get; }
 

@@ -6,7 +6,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Nethostfire{
+namespace TreviasXk{
     public class DataSecurity {
         static Aes AES = Aes.Create();
         public static string? PublicKeyRSA, PrivateKeyRSA;

@@ -5,9 +5,9 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
-using static Nethostfire.DataSecurity;
+using static TreviasXk.DataSecurity;
 
-namespace Nethostfire.UDP {
+namespace TreviasXk.UDP {
     public enum SessionStatus{
         Disconnected = 0,
         Disconnecting = 1,

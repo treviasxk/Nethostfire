@@ -4,10 +4,12 @@
 
 using System.Net;
 using MessagePack;
-using Nethostfire.UDP;
+using TreviasXk;
+using TreviasXk.UDP;
 
 internal class Program{
     static Server Server = new Server();
+    static Server Server2 = new Server();
     static Client Client = new Client();
     [MessagePackObject(AllowPrivate = true)]
     public struct Message
@@ -19,6 +21,7 @@ internal class Program{
         Client.StatusChanged += OnStatus;
         Server.DataReceived += OnDataReceived;
         Server.Start(IPAddress.Any, 25000);
+        Server2.Start(IPAddress.Any, 25000);
         Client.Connect(IPAddress.Loopback, 25000);
         Console.ReadLine();
     }

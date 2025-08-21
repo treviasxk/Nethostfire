@@ -2,10 +2,10 @@
 // Social Networks:     treviasxk
 // Github:              https://github.com/treviasxk
 
-using Nethostfire.UDP;
-using static Nethostfire.Tests.Utils;
+using TreviasXk.UDP;
+using static TreviasXk.Tests.Utils;
 
-namespace Nethostfire.Tests;
+namespace TreviasXk.Tests;
 
 public class Nethostfire{
     [Fact(DisplayName = "Test Client Send Packet")]

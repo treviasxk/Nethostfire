@@ -4,19 +4,15 @@
 
 using System.Text;
 
-namespace Nethostfire {
-    public enum MySQLState {
-        Connected,
-        Connecting,
-        Disconnected,
-    }
-
-    partial class Nethostfire
+namespace TreviasXk {    
+    public partial class Nethostfire
     {
         static StreamWriter? fileLog;
-        static int currentInstance = 0;
-        public static bool SaveLog = true;
-        public static bool IsUnityBatchMode = false, IsRunningInUnity = false;
+        static int InstanceID = 0;
+        public static bool SaveLogs { get; set; } = true;
+        public static bool SupressError { get; set; }
+        public static bool IsUnityBatchMode { get; internal set; }
+        public static bool IsRunningInUnity { get; internal set; }
 
         internal static ushort GetPing(long Timer)
         {
@@ -41,18 +37,32 @@ namespace Nethostfire {
             catch { }
         }
 
-        internal static void RunParallel(Action action) {
-            Parallel.Invoke(() => {
-                action?.Invoke();
+        internal static void InvokeEvent(Action action, object? instance)
+        {
+            Parallel.Invoke(() =>
+            {
+                try
+                {
+                    action?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    if (SupressError)
+                        WriteLog(ex, instance, false);
+                    else
+                        throw new Nethostfire(ex, instance);
+                }
             });
-        } 
+        }
 
+
+        public static void WriteLog(Exception exception, object? instance = null, bool showLog = true) => WriteLog(exception.Message + exception.StackTrace, exception, showLog);
         public static void WriteLog(object? message, object? instance = null, bool showLog = true) => WriteLog(message?.ToString() ?? "", instance, showLog);
         public static void WriteLog(string message, object? instance = null, bool showLog = true)
         {
             string InstanceName = instance == null ? "" : $"[{instance.GetType().Name.ToUpper()}] ";
 
-            if (SaveLog)
+            if (SaveLogs)
             {
                 if (!Directory.Exists("logs/"))
                     Directory.CreateDirectory("logs/");
@@ -62,19 +72,18 @@ namespace Nethostfire {
                 // Location logs
                 var filename = DateTime.Now.ToString("yyyy-MM-dd") + ".log";
 
-
                 // Generate new file if other program usage log file
                 if (fileLog == null)
                 {
                     while (true)
                         try
                         {
-                            fileLog = new StreamWriter($"logs/{AppDomain.CurrentDomain.FriendlyName}-{currentInstance}-{filename}", true, Encoding.UTF8) { AutoFlush = true };
+                            fileLog = new StreamWriter($"logs/{AppDomain.CurrentDomain.FriendlyName}-{InstanceID}-{filename}", true, Encoding.UTF8) { AutoFlush = true };
                             break;
                         }
                         catch
                         {
-                            currentInstance++;
+                            InstanceID++;
                         }
                 }
 
@@ -94,13 +103,12 @@ namespace Nethostfire {
                     Console.WriteLine(message);
                 }
         }
-        
+
         static void ShowUnityLog(string Message) => UnityEngine.Debug.Log("<color=red>[NETHOSTFIRE]</color> " + Message);
     }
 
     partial class Nethostfire : Exception{
-        public Nethostfire (string message, object? instance = null) : base(message){
-            WriteLog(message, true, false);
-        }
+        public Nethostfire(Exception exception, object? instance = null) => WriteLog(exception.Message + exception.StackTrace, instance == null ? exception : instance);
+        public Nethostfire(string message) => WriteLog(message);
     }
 }

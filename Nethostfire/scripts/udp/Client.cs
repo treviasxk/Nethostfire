@@ -5,12 +5,12 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using static Nethostfire.Nethostfire;
-using static Nethostfire.UDP.UDP;
-using static Nethostfire.DataSecurity;
+using static TreviasXk.Nethostfire;
+using static TreviasXk.UDP.UDP;
+using static TreviasXk.DataSecurity;
 using System.Collections.Concurrent;
 
-namespace Nethostfire.UDP {
+namespace TreviasXk.UDP {
     public class Client : IDisposable{
         public int LimitPPS {get;set;} = 0;
         ConcurrentDictionary<int, int> ListSendGroupIdPPS = new();
@@ -31,18 +31,13 @@ namespace Nethostfire.UDP {
         public int ConnectTimeout {get; set;} = 3000;
 
         /// <summary>
-        /// The EnableLogs when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
-        /// </summary>
-        public bool EnableLogs {get; set;} = true;
-
-        /// <summary>
         /// DataReceived an event that returns bytes received, GroupID and IP whenever the received bytes by clients, with it you can manipulate the bytes received.
         /// </summary>
         public event EventHandler<ClientDataReceivedEventArgs>? DataReceived;
 
         public Client(IPAddress? Host = null, short Port = 0, int symmetricSizeRSA = 86){
             StartUnity();
-            session ??= new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
+            session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             if (Host != null)
                 Connect(IPAddress.Any, Port, symmetricSizeRSA);
         }
@@ -52,7 +47,7 @@ namespace Nethostfire.UDP {
                 if(Socket == null){
                     Socket = new UdpClient();
                     GenerateKey(symmetricSizeRSA);
-                    WriteLog($"Connecting on {Host}:{Port}", this, EnableLogs);
+                    WriteLog($"Connecting on {Host}:{Port}", this);
                     ChangeStatus(SessionStatus.Connecting, false);
                     session.Status = SessionStatus.Connecting;
                     Socket.Connect(new IPEndPoint(Host, Port));
@@ -66,7 +61,7 @@ namespace Nethostfire.UDP {
                     }.Start();
                 }
             }catch(Nethostfire ex){
-                throw new Nethostfire(ex.Message, this);
+                throw new Nethostfire(ex, this);
             }
         }
 
@@ -91,12 +86,13 @@ namespace Nethostfire.UDP {
         internal void ChangeStatus(SessionStatus status, bool log = true){
             session.Status = status;
             if(log)
-                WriteLog(status, this, EnableLogs);
+                WriteLog(status, this);
             Parallel.Invoke(() => StatusChanged?.Invoke(this, new SessionStatusEventArgs(status)));
         }
 
         public void Disconnect(){
             ChangeStatus(SessionStatus.Disconnecting);
+            session = new(){retransmissionBuffer = new(), Status = SessionStatus.Disconnected};
             Socket?.Close();
             Socket = null;
             ListSendGroupIdPPS = new();
@@ -152,7 +148,7 @@ namespace Nethostfire.UDP {
                             {
 
                                 if (CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroupIdPPS))
-                                    RunParallel(()=>DataReceived?.Invoke(this, new ClientDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2)));
+                                    InvokeEvent(()=>DataReceived?.Invoke(this, new ClientDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2)), this);
                                 return;
                             }
                             else

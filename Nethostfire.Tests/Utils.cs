@@ -6,9 +6,9 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Nethostfire.UDP;
+using TreviasXk.UDP;
 
-namespace Nethostfire.Tests;
+namespace TreviasXk.Tests;
 public class Utils{
     public static bool TestOffline(bool clientoff = false){
         var result = false;

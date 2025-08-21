@@ -5,12 +5,12 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using static Nethostfire.Nethostfire;
-using static Nethostfire.DataSecurity;
+using static TreviasXk.Nethostfire;
+using static TreviasXk.DataSecurity;
 using System.Collections.Concurrent;
-using static Nethostfire.UDP.UDP;
+using static TreviasXk.UDP.UDP;
 
-namespace Nethostfire.UDP {
+namespace TreviasXk.UDP {
     public class Server : IDisposable{
         public UdpClient? Socket {get;set;}
         public int LimitPPS {get;set;} = 0;
@@ -21,11 +21,6 @@ namespace Nethostfire.UDP {
         /// ConnectTimeout is the maximum time limit in milliseconds that a client can remain connected to the server when a ping is not received. (default value is 3000)
         /// </summary>
         public int ConnectedTimeout {get; set;} = 3000;
-
-        /// <summary>
-        /// The EnableLogs when declaring false, the logs in Console.Write and Debug.Log of Unity will no longer be displayed. (The default value is true).
-        /// </summary>
-        public bool EnableLogs {get; set;} = true;
 
         /// <summary>
         /// The Sessions is all clients connected to the server.
@@ -80,11 +75,11 @@ namespace Nethostfire.UDP {
                         IsBackground = true,
                         Priority = ThreadPriority.Highest
                     }.Start();
-                    WriteLog($"Hosted in: {Host}:{Port}", this, EnableLogs);
+                    WriteLog($"Hosted in: {Host}:{Port}", this);
                     ChangeStatus(ServerState.Running, false);
                 }
             }catch(Nethostfire ex){
-                throw new Nethostfire(ex.Message, this);
+                throw new Nethostfire(ex, this);
             }
         }
 
@@ -177,9 +172,9 @@ namespace Nethostfire.UDP {
                                         SendPacket(Socket, ref key, 1, TypeEncrypt.RSA, TypeShipping.None, ref session, ip);
                                         if (session.Status == SessionStatus.Connecting)
                                         {
-                                            WriteLog($"{ip} Connected!", this, EnableLogs);
+                                            WriteLog($"{ip} Connected!", this);
                                             session.Status = SessionStatus.Connected;
-                                            RunParallel(()=>Connected?.Invoke(this, new SessionEventArgs(ip, session)));
+                                            InvokeEvent(()=>Connected?.Invoke(this, new SessionEventArgs(ip, session)), this);
                                         }
                                         return;
                                 }
@@ -187,7 +182,7 @@ namespace Nethostfire.UDP {
                             else
                             {
                                 if (CheckReceiveLimitPPS(data.Value.Item1, data.Value.Item2, ref session, LimitPPS, in ListReceiveGroudIdPPS))
-                                   RunParallel(()=>DataReceived?.Invoke(this, new ServerDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2, ip)));
+                                   InvokeEvent(()=>DataReceived?.Invoke(this, new ServerDataReceivedEventArgs(this, data.Value.Item1, data.Value.Item2, ip)), this);
                                 return;
                             }
                         }
@@ -201,7 +196,7 @@ namespace Nethostfire.UDP {
                                 session.Timer = DateTime.Now.Ticks;
                                 session.Status = SessionStatus.Connecting;
                                 if(Sessions.TryAdd(ip, session)){
-                                    WriteLog($"{ip} Incomming...", this, EnableLogs);
+                                    WriteLog($"{ip} Incomming...", this);
                                     var bytes = Encoding.ASCII.GetBytes(PublicKeyRSA!);
                                     SendPacket(Socket, ref bytes, 0, TypeEncrypt.Compress, TypeShipping.None, ref session, ip);
                                 }
@@ -223,8 +218,8 @@ namespace Nethostfire.UDP {
                 // Check timer connection dataClients.
                 Parallel.ForEach(Sessions.Where(item => item.Value.Timer + ConnectedTimeout * TimeSpan.TicksPerMillisecond < DateTime.Now.Ticks), item =>{
                     if(Sessions.TryRemove(item.Key, out _)){
-                        WriteLog($"{item.Key} Disconnected!", this, EnableLogs);
-                        RunParallel(()=>Disconnected?.Invoke(this, new SessionEventArgs(item.Key, item.Value)));
+                        WriteLog($"{item.Key} Disconnected!", this);
+                        InvokeEvent(()=>Disconnected?.Invoke(this, new SessionEventArgs(item.Key, item.Value)), this);
                     }
                 });
 
@@ -238,8 +233,8 @@ namespace Nethostfire.UDP {
         internal void ChangeStatus(ServerState status, bool log = true){
             serverStatus = status;
             if(log)
-                WriteLog(status, this, EnableLogs);
-            RunParallel(() => StateChanged?.Invoke(this, new ServerStateEventArgs(status)));
+                WriteLog(status, this);
+            InvokeEvent(() => StateChanged?.Invoke(this, new ServerStateEventArgs(status)), this);
         }
 
         /// <summary>
